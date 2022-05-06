@@ -12,16 +12,15 @@ def csvtoPcap(listfiles,directory):
     files,filenames=readfile(listfiles)
     operator_dict={"oper":{},"mcc":{},"mnc":{}}
     for i in range(0,len(files)):
-        
-        #print("process file " + filenames[i])
+        print("process file " + filenames[i])
         operaters = {}
-        for line in files[i]: # browse each line of the zk file to find the terminal that is concerned
+        for line in files[i]:
             words = line.split(",")
             line = words
             if (line[0].find("@START") != 0):
                 if (line[0].find("@END") != 0):
-                    if (line[0]!="HB" and line[0]!="CO" and line[0]!="FE" ):    # look only for the interesting lines of the zk file
-                        phoneid="phone_"+str(line[5])   # the terminal identity is in column 5
+                    if (line[0]!="HB" and line[0]!="CO" and line[0]!="FE" ):
+                        phoneid="phone_"+str(line[5])
                         if (phoneid not in operaters.keys()):
                             operaters[phoneid] = operater(line[5])
                             operaters[phoneid].setMessages(line)
@@ -30,39 +29,33 @@ def csvtoPcap(listfiles,directory):
                         if (phoneid not in operator_dict.keys()):
                             operator_dict["oper"][phoneid] = []
         for oper in operaters.keys():
-            try:
-                print("Process the phone with phone id is " + operaters[oper].getOperater())
-                MLmessages = mlMessageList()
-                PLmessages = plMessages()
-                groupname = operaters[oper].writejsonMessage(operaters[oper], MLmessages, PLmessages)
-                pathjson = MLmessages.callWireshark(groupname, filenames[i], operaters[oper],operator_dict["oper"][operaters[oper].getOperater()])
-                print("done call wireshark")
-                MLmessages.processingJson(pathjson, filenames[i], operaters[oper])
-                print("done write file json of pcap")
-                PLmessages.writeLTEphoneJson(PLmessages.getMessages(), filenames[i], operaters[oper])
-                print("done write ltephone json")
-                trace = traceFromJson(filenames[i], operaters[oper])
-                print("done get file json")
-                jsonframes,mcc,mnc = trace.createTactable()
-                operator_dict["mcc"][operaters[oper].getOperater()]=mcc
-                operator_dict["mnc"][operaters[oper].getOperater()] = mnc
-                print("done create tac table")
-                jsonfile = trace.createPCItable(jsonframes)
-                print("done create pci table")
-                nameFile ="C"+mcc+"_"+mnc+"_"+filenames[i] + "_" + operaters[oper].getOperater() +".json"
-                with open(os.path.join(directory,nameFile), 'w') as outfile:
-                    json.dump(jsonfile, outfile, indent=4, separators=(',', ': '), sort_keys=False)
-            except:
-                print("There are no sim")
+            print("Process the phone with phone id is " + operaters[oper].getOperater())
+            MLmessages = mlMessageList()
+            PLmessages = plMessages()
+            groupname = operaters[oper].writejsonMessage(operaters[oper], MLmessages, PLmessages)
+            pathjson = MLmessages.callWireshark(groupname, filenames[i], operaters[oper],operator_dict["oper"][operaters[oper].getOperater()])
+            print("done call wireshark")
+            MLmessages.processingJson(pathjson, filenames[i], operaters[oper])
+            print("done write file json of pcap")
+            PLmessages.writeLTEphoneJson(PLmessages.getMessages(), filenames[i], operaters[oper])
+            print("done write ltephone json")
+            trace = traceFromJson(filenames[i], operaters[oper])
+            print("done get file json")
+            jsonframes,mcc,mnc = trace.createTactable()
+            operator_dict["mcc"][operaters[oper].getOperater()]=mcc
+            operator_dict["mnc"][operaters[oper].getOperater()] = mnc
+            print("done create tac table")
+            jsonfile = trace.createPCItable(jsonframes)
+            print("done create pci table")
+            nameFile ="C"+mcc+"_"+mnc+"_"+filenames[i] + "_" + operaters[oper].getOperater() +".json"
+            with open(os.path.join(directory,nameFile), 'w') as outfile:
+                json.dump(jsonfile, outfile, indent=4, separators=(',', ': '), sort_keys=False)
     for operator in operator_dict["oper"].keys():
-        try:
-            if len(operator_dict["oper"][operator])!=0:
-                callthark = [getWireshark("mergecap"), "-a", "-w",
+
+        if len(operator_dict["oper"][operator])!=0:
+            callthark = [getWireshark("mergecap"), "-a", "-w",
                          os.path.join(directory, operator_dict["mcc"][operator]+"_"+operator_dict["mnc"][operator]+"_" + operator+".pcap")] + operator_dict["oper"][operator]
-                subprocess.check_call(callthark)
-        except:
-            print("There are no sim")
-        
+            subprocess.check_call(callthark)
 
 
 

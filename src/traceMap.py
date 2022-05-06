@@ -347,6 +347,8 @@ def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
                         lat2 = (pointR["geo"].x) * np.pi / 180
                         Y = cos(lat1) * ln2
                         X = lat2 - lat1
+                        probleme = 0
+                        azimuthXL = atan2(Y,X)*180/np.pi
 
                         if X == 0:
                             if Y > 0:
@@ -368,6 +370,8 @@ def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
                                 azimuth = atan(Y / X) * 180 / np.pi - 180 + 360
 
                         # check the point if it is in the right azimuth
+                        if azimuth != azimuthXL:
+                            probleme += 1
 
                         if azimutmin < 0:
                             if ((azimuth < azimutmax) or (azimuth > azimutmin + 360)):

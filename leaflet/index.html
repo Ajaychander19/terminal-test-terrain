@@ -56,8 +56,14 @@
 				<button type="button" id="Base Station" class="btn btn-primary  btn-block " >Load Base Stations</button>
 				
 			</div>
-			
+
+							
 			<div class="panel panel-success">
+
+				<div class="checkbox checkbox-primary">
+					<input class="styled" type="checkbox"  id="ColorAlt">
+					<label for="ColorAlt">Alternative Color for PCI (reload BS, please) </label>
+                                </div>
 				<div class="checkbox checkbox-primary">
 					<input class="styled" type="checkbox"  id="Theory_Cell">
 					<label for="Theory_Cell">Theoretical Cell</label>
@@ -83,12 +89,10 @@
 					<input class="styled" type="checkbox"  id="PCI">
 					<label for="PCI">PCI</label>
 				</div>
-				
+						
 				<div class="checkbox checkbox-primary">
 					<input class="styled" type="checkbox"  id="RSRP">
 					<label for="RSRP">Serving cell RSRP </label>
-					
-					
 				</div>
 				
 				<div class="checkbox checkbox-primary">
@@ -179,7 +183,7 @@
 			}
 		
 			var basemap={"baselayer":baselayer}
-			
+			var ColorChoice = 0;
 			
 			var layercontrol = L.control.layers(baseMaps,null,{ collapsed: false }).addTo(map);
 			
@@ -191,9 +195,7 @@
 			var RSRP = L.layerGroup();
 			var PCI =L.layerGroup();
 			var hexlayer = L.hexbinLayer(hexbin_style()).hoverHandler(L.HexbinHoverHandler.tooltip()).addTo(map);
-			var rsrplayer = L.hexbinLayer(hexbin_style(1,["black","MidnightBlue","Navy","DarkBlue", "MediumBlue ","blue","RoyalBlue ","DodgerBlue ","DeepSkyBlue","LightSkyBlue" ,"Cyan", "PaleTurquoise ","Lime","GreenYellow","yellow","Gold ", "orange","DarkOrange", "Coral", "Tomato","OrangeRed", "red","Crimson"])).hoverHandler(L.HexbinHoverHandler.tooltip()).addTo(map);
-//			var rsrplayer = L.hexbinLayer(hexbin_style(1,["black","DarkBlue", "blue","LightSkyBlue" ,"Cyan", "Lime","green","yellow","orange","OrangeRed", "red"])).hoverHandler(L.HexbinHoverHandler.tooltip()).addTo(map);
-//			var rsrplayer = L.hexbinLayer(hexbin_style(1,["blue","LightSkyBlue","Cyan", "Lime", "green","yellow","orange","OrangeRed", "red"])).hoverHandler(L.HexbinHoverHandler.tooltip()).addTo(map);
+			var rsrplayer = L.hexbinLayer(hexbin_style(1,["black","MidnightBlue","Navy","DarkBlue", "MediumBlue","blue","RoyalBlue","DodgerBlue","DeepSkyBlue","LightSkyBlue", "Cyan", "PaleTurquoise","aquamarine","lightgreen","mediumaquamarine","GreenYellow","Lime","chartreuse","yellow","Gold", "orange","DarkOrange", "Coral", "Tomato","Crimson"])).hoverHandler(L.HexbinHoverHandler.tooltip()).addTo(map);
 			var overlayers={}	
 			var hexpoints=[]
 			var rsrpValue_points=[]
@@ -229,7 +231,7 @@
 			opacity: 0,
 			duration: 200,
 
-			colorScaleExtent: [ 20, 98 ],
+			colorScaleExtent: [ 0, 96 ],
 			radiusScaleExtent: [ 1, undefined ],
 			colorDomain: "linear",
 			radiusDomain: null,
@@ -281,6 +283,16 @@
 				map.addLayer(Theory_Cell);
 				
 			}
+		});
+			// get event for the Alternative Color checkbox
+			$("#ColorAlt").click(function(event) {
+			
+		        ColorChoice = 1-ColorChoice;
+		
+//			if(map.hasLayer(PCI)) {
+//				map.removeLayer(PCI);
+//				map.addLayer(PCI);
+//			}
 		});
 			// get event for the pci checkbox
 			$("#PCI").click(function(event) {
@@ -462,7 +474,11 @@
 				disabledAllLayer()
 				
 				readfile(sites_fileName,cells_fileName,map.getBounds(),siteserving,Theory_Cell,RSRP_offset,base_station,
-												Tracking_area,RSRP,PCI,hexlayer,rsrplayer,overlayers,sites,markerObject)	
+												Tracking_area,RSRP,PCI,hexlayer,rsrplayer,overlayers,sites,markerObject)
+                                 if (map.hasLayer(PCI)) {
+                                    map.removeLayer(PCI);
+				    map.addLayer(PCI);
+                                 }	
 			})
 			
 			// get event for the turn_off_serverbutton
@@ -482,6 +498,7 @@
 			})
 				
 			//---------------------------------------------------------------------	
+                       // disable all layers except the PCI
 			function disabledAllLayer(){
 				// remove select
 				$('#mySelect').empty();
@@ -511,9 +528,9 @@
 				map.removeLayer(Tracking_area);
 				Tracking_area.clearLayers();
 				$( "#Tracking_area" ).prop( "checked", false );
-				map.removeLayer(PCI);
+//  				      map.removeLayer(PCI);
 				PCI.clearLayers();
-				$( "#PCI" ).prop( "checked", false );
+//          				$( "#PCI" ).prop( "checked", false );
 				map.removeLayer(siteserving)
 				siteserving.clearLayers();
 				map.removeLayer(base_station)
@@ -850,6 +867,7 @@
 			
 			//---------------------------------------------------------------------
 			// this function adds the color for the points measured based on the PCI and add these points to a layer
+                       // PCIPCIPCI
 			function PCIcolor(jsoncell,layer){
 				var linepoints=[]
 				var rand = colorNumber(parseTuple(jsoncell.property)[0][1])
@@ -893,9 +911,9 @@
 			function heatpoint(jsoncell){
 				var point=[];
 				jsoncell.features.forEach(function(item){
-					if (item.RSRP>-100 ){
-//						point.push([item.lon,item.lat,item.RSRP-141])
-						point.push([item.lon,item.lat,item.RSRP-141])
+					if (item.RSRP>0 ){
+						//point.push([item.lon,item.lat,item.RSRP-141]) // TRIEU Hoang test color
+						point.push([item.lon,item.lat,item.RSRP])
 					}
 				})
 				return point
@@ -1105,26 +1123,17 @@
 			//---------------------------------------------------------------------
 			//process the PCI value for generating the code color
 			function colorNumber(val){
-				pci=parseInt(val,10)
-				var pciinBin = (pci).toString(2)
-				var baseL_ = new Array(25 - pciinBin.length).join("0");
-				
-				
-				if (pci<=255){
-					pcinumber = ( baseL_ + pciinBin ).substr(22,25) + Array(23-pciinBin.length).join("0") + pciinBin
-					
-				}
-				else {
-					pcinumber = ( baseL_ + pciinBin ).substr(22,25) + Array(7).join("0")+ ( baseL_ + pciinBin ).substr(21,25) +Array(5).join("0") + pciinBin
-				}
-				
-				if (parseInt(pcinumber,2).toString(16).length < 6){
-						valueInBinc = Array(7 - parseInt(pcinumber,2).toString(16).length).join("0") + parseInt(pcinumber,2).toString(16)
-					}else{
-					valueInBinc =  parseInt(pcinumber,2).toString(16)
-					}
-				
-				return valueInBinc
+                                console.log(val);
+				pci=parseInt(val,10);  // PCI is between 0 and 508, we consider it is coded on 9 bits and we split into 3 parts, each one over 3 bits
+
+                                ValTestee = (pci%9)*57+ Math.trunc(pci/9)+ColorChoice;
+                                if (ColorChoice!=0) {
+                                        ValTestee = (pci%3)*170+ Math.trunc(pci/3)+ColorChoice;
+                                       }
+                                ValCouleur = 10+ValTestee*32895
+                                Couleur = ValCouleur.toString(16);
+                                console.log(Couleur);
+                        return Couleur
 			}
 			//---------------------------------------------------------------------
 			// this function creates the circle for the point measured
@@ -1138,4 +1147,4 @@
 		</script>
 	
    </body>
-</html> 
+</html>
