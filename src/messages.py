@@ -3,6 +3,7 @@ import subprocess
 from constantPath import*
 import json
 import pandas as pd
+import platform
 
 #this class allows get the timestamp of messages
 class messageType:
@@ -110,7 +111,7 @@ class mlMessageList:
                    "CCCH_UL_152"+ "_"+oper.getOperater(): "152",
                    "DCCH_DL_153"+ "_"+oper.getOperater(): "153",
                    "DCCH_UL_154"+ "_"+oper.getOperater(): "154"}
-        root = getPathText("") + "\\"    # Specifique Windows retire
+        root = getPathText("") + ("\\" if platform.system()=="Windows" else "")   # Specifique Windows retire
         disGroup = []
         for nameFile in nameFiles:
             name = "%s.txt" % str(nameFile)
