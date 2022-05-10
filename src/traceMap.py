@@ -16,7 +16,7 @@ from shapely.ops import cascaded_union,polygonize
 from TreeCreation import *
 from shapely.geometry import MultiPoint,LinearRing
 from scipy.spatial import Voronoi
-from math import atan,sin,cos
+from math import atan,sin,cos, isnan
 # from area import area
 
 class traceFromJson:
@@ -185,14 +185,16 @@ def createSitefiles(operators, oper):
                         intersectionZone.append(var2)
             # calculate the distinaton on the direction of antenna
             for azimut in list(test["Azimut"]):
-                station["pointDestination"].append(
-                    {"lat": latsite + (0.5 * math.pow(10, -3)) * cos(azimut * np.pi / 180),
-                     "lng": lngsite + (0.5 * math.pow(10, -3)) * sin(azimut * np.pi / 180)})
+                if not isnan(azimut):
+                    station["pointDestination"].append(
+                        {"lat": latsite + (0.5 * math.pow(10, -3)) * cos(azimut * np.pi / 180),
+                         "lng": lngsite + (0.5 * math.pow(10, -3)) * sin(azimut * np.pi / 180)})
             # calculate the point for find the azimuth zone
             for element in intersectionZone: #sua o day 50 thanh 300
-                station["pointZone"].append(
-                    {"lat": latsite + (300 * math.pow(10, -3)) * cos(element * np.pi / 180),
-                     "lng": lngsite + (300 * math.pow(10, -3)) * sin(element * np.pi / 180)})
+                if not isnan(azimut):
+                    station["pointZone"].append(
+                        {"lat": latsite + (300 * math.pow(10, -3)) * cos(element * np.pi / 180),
+                         "lng": lngsite + (300 * math.pow(10, -3)) * sin(element * np.pi / 180)})
             sites.append(station)
         else:
             carte.loc[(carte["Numero Cartoradio"] == supportnb) & (
