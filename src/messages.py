@@ -56,8 +56,11 @@ class mlMessageList:
         return self.stackmessage
 
     def processingJson(self,pathnamefile, namefile,oper):
-        json_data = open(pathnamefile)
-        json_objects = json.load(json_data)
+        json_objects = []
+
+        with open(pathnamefile) as json_data:
+            json_objects = json.load(json_data)
+
         for i in range(0, len(json_objects)):
             frame_object = json_objects[i]["_source"]["layers"]["frame"]
            # print(refindTrack(self.stackmessage[i]))
@@ -142,24 +145,24 @@ class mlMessageList:
             print("ordered file")
             tsharkCall = [getWireshark("tshark"), "-T", "json", "-r",
                           path]  # export ra file json theo file pcap sau khi sap xep
-        tsharkOpen = (open(pathjson, "wb"))
-        subprocess.call(tsharkCall, stdout=tsharkOpen)
+        with open(pathjson, "wb") as tsharkOpen:
+            subprocess.call(tsharkCall, stdout=tsharkOpen)
+
         wiresharkNames.append(path)
         return pathjson
 
     def writeText(self,message_list, name, start_position):
         path = getPathText(str(name)+".txt")
-        f = open(path, 'w')
-        for mess in message_list:
-            time = mess[2] + " " + str(mess[3])
-            f.write(time)
-            f.write("\n")
-            f.write("0000")
-            for j in range(start_position, len(mess)):
-                f.write(" ")
-                f.write(str(mess[j]))
-            f.write("\n")
-        f.close()
+        with open(path, 'w') as f:
+            for mess in message_list:
+                time = mess[2] + " " + str(mess[3])
+                f.write(time)
+                f.write("\n")
+                f.write("0000")
+                for j in range(start_position, len(mess)):
+                    f.write(" ")
+                    f.write(str(mess[j]))
+                f.write("\n")
 
     def writeTAList(self,TACtable,oper):
         tac=TACtable.drop(["geolocation"], axis=1)

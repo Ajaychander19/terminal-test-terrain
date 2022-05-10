@@ -108,8 +108,11 @@ def Associate_cell(listfiles,directory):
                 {"Numero Cartoradio": df["Numero Cartoradio"], "Azimut": df["Azimut"], "Systeme": df["Systeme"],
                  "Longitude": df["Longitude"], "Latitude": df["Latitude"], "azimutMin": df["azimutMin"], "azimutMax": df["azimutMax"]})
         else:
-            json_data = open(file)
-            json_objects = json.load(json_data)
+            json_objects = None
+            
+            with open(file) as json_data:
+                json_objects = json.load(json_data)
+
             for item in json_objects:
                 if (list(item.keys())[0]== "SIB"):
                     coord = geometry.Point(

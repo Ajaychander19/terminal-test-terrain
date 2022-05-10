@@ -29,8 +29,11 @@ class traceFromJson:
     # return mcc, mnc and an object containing SIB informations
     def createTactable(self):
         df = pd.DataFrame({"TAC": [], "CellID": [], "PCI": [], "EARFCN": [], "geolocation": [],"mcc":[],"mnc":[]})
-        jsonObject = open(self.jsonSystemInfoName)
-        json_objects = json.load(jsonObject)
+        json_objects = []
+
+        with open(self.jsonSystemInfoName) as jsonObject:
+            json_objects = json.load(jsonObject)
+
         jsonlist=[]
         mcc=""
         mnc=""
@@ -77,8 +80,12 @@ class traceFromJson:
     # return an object containing SIB object and mesurement object
     def createPCItable(self,frame_list):
         df = pd.DataFrame({"PCI": [], "EARFCN": [], "Geolocation": [],"RSRP":[],"neighbourMax_RSRP":[]})
-        jsonLTE = open(self.ltephoneName)
-        json_ltes = json.load(jsonLTE)
+
+        json_ltes = []
+
+        with open(self.ltephoneName) as jsonLTE:
+            json_ltes = json.load(jsonLTE)
+
         for mersurement in json_ltes.keys():
             if (json_ltes[mersurement]["current cell"]["Geolocation"]["latitude"] != ""):
                 pci = json_ltes[mersurement]["current cell"]["PCI"]
