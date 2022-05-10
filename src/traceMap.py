@@ -40,7 +40,10 @@ class traceFromJson:
         for jsonfile in json_objects:
             dissector = jsonfile["_source"]["layers"]
             if "lte-rrc.BCCH_DL_SCH_Message_element" in (dissector).keys():
-                typemess = dissector["lte-rrc.BCCH_DL_SCH_Message_element"]["lte-rrc.message_tree"]["lte-rrc.c1_tree"]
+                # Windows specific name or misconfiguration ?
+                message_tree = 'lte-rrc.bCCH_DL_SCH_Message.message_tree' if platform.system() == 'Windows' \
+                    else 'lte-rrc.message_tree'
+                typemess = dissector["lte-rrc.BCCH_DL_SCH_Message_element"][message_tree]["lte-rrc.c1_tree"]
                 sib1 = list((typemess).keys())[0]
                 if sib1 == "lte-rrc.systemInformationBlockType1_element":
                     trackingAreaCode = typemess[sib1]["lte-rrc.cellAccessRelatedInfo_element"][
