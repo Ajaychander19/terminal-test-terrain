@@ -52,16 +52,16 @@ def csvtoPcap(listfiles,directory):
                 nameFile ="C"+mcc+"_"+mnc+"_"+filenames[i] + "_" + operaters[oper].getOperater() +".json"
                 with open(os.path.join(directory,nameFile), 'w') as outfile:
                     json.dump(jsonfile, outfile, indent=4, separators=(',', ': '), sort_keys=False)
-            except:
-                print("There are no sim")
+            except Exception as e:
+                print("Error : {0} : {1}.".format(type(e).__name__, e))
     for operator in operator_dict["oper"].keys():
         try:
             if len(operator_dict["oper"][operator])!=0:
                 callthark = [getWireshark("mergecap"), "-a", "-w",
                          os.path.join(directory, operator_dict["mcc"][operator]+"_"+operator_dict["mnc"][operator]+"_" + operator+".pcap")] + operator_dict["oper"][operator]
                 subprocess.check_call(callthark)
-        except:
-            print("There are no sim")
+        except Exception as e:
+            print("Error : {0} : {1}.".format(type(e).__name__, e))
         
 
 
