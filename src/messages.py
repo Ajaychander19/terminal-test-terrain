@@ -21,7 +21,7 @@ class messageType:
         return self.time
 
 class mlMessageList:
-    """This class has the function for processing lte-over-the-air message"""
+    """This class defines functions for processing lte-over-the-air messages"""
 
     def __init__(self):
         self.PCIs=[]
@@ -110,7 +110,7 @@ class mlMessageList:
         return Dis_groupName
 
     def callWireshark(self,nameFiles, filename,oper,wiresharkNames):
-        """call the wireshark application for text2pcap. reodercap, and mergecap"""
+        """call the wireshark application for text2pcap, reodercap, and mergecap"""
 
         # Preparing text2pcap call, which converts txt files into pcap files.
 
@@ -121,7 +121,7 @@ class mlMessageList:
                    "CCCH_UL_152"+ "_"+oper.getOperater(): "152",
                    "DCCH_DL_153"+ "_"+oper.getOperater(): "153",
                    "DCCH_UL_154"+ "_"+oper.getOperater(): "154"}
-        root = getPathText("") + ("\\" if platform.system()=="Windows" else "")   # Specifique Windows retire
+        root = getPathText("") + ("\\" if platform.system()=="Windows" else "")   # Specific Windows retire
         disGroup = []
         for nameFile in nameFiles:
             name = "%s.txt" % str(nameFile)
@@ -205,8 +205,9 @@ class plMessages():
     def setMessages(self,message):
         """store the message into stack"""
         self.messages.append(message)
+
     def getMessages(self):
-        """get the stack"""
+        """get the messages stack"""
         return self.messages
 
     def writeLTEphoneJson(self,file, namefile,oper):
