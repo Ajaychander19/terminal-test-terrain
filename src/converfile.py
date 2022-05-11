@@ -4,11 +4,15 @@ from PhoneId import*
 from traceMap import*
 from os import path
 
-#This function convert field-test file txt from ZKsamp to pcap file and generate json file correspond to field-test field
-#in put is the listfiles and directory
-#listfiles: list of field-test file roots
-#directory: path of working directory
+
 def csvtoPcap(listfiles,directory):
+    """This function converts field-test txt file from ZKsamp to pcap file and generate json file corresponding to
+    field-test field.
+
+    Parameters:
+        listfiles: list of field-test file roots
+        directory: path of working directory
+    """
     files,filenames=readfile(listfiles)
     operator_dict={"oper":{},"mcc":{},"mnc":{}}
     for i in range(0,len(files)):
@@ -18,6 +22,8 @@ def csvtoPcap(listfiles,directory):
         for line in files[i]: # browse each line of the zk file to find the terminal that is concerned
             words = line.split(",")
             line = words
+
+            # Recognizing interesting lines in the zk file.
             if (line[0].find("@START") != 0):
                 if (line[0].find("@END") != 0):
                     if (line[0]!="HB" and line[0]!="CO" and line[0]!="FE" ):    # look only for the interesting lines of the zk file
@@ -34,13 +40,23 @@ def csvtoPcap(listfiles,directory):
                 print("Process the phone with phone id is " + operaters[oper].getOperater())
                 MLmessages = mlMessageList()
                 PLmessages = plMessages()
+
+                # Getting operator information (such as location) obtained by parsing the ZK CSV file.
                 groupname = operaters[oper].writejsonMessage(operaters[oper], MLmessages, PLmessages)
                 pathjson = MLmessages.callWireshark(groupname, filenames[i], operaters[oper],operator_dict["oper"][operaters[oper].getOperater()])
                 print("done call wireshark")
+
+                # Merging geolocation data and ZK JSON.
                 MLmessages.processingJson(pathjson, filenames[i], operaters[oper])
-                print("done write file json of pcap")
+                print("done write json file of pcap")
+
+                # Producing LTEPhone JSON file, which contains various information about the signal,
+                # such as its power.
                 PLmessages.writeLTEphoneJson(PLmessages.getMessages(), filenames[i], operaters[oper])
                 print("done write ltephone json")
+
+                # Creating PCI and TAC tables.
+
                 trace = traceFromJson(filenames[i], operaters[oper])
                 print("done get file json")
                 jsonframes,mcc,mnc = trace.createTactable()
@@ -50,6 +66,9 @@ def csvtoPcap(listfiles,directory):
                 jsonfile = trace.createPCItable(jsonframes)
                 print("done create pci table")
                 nameFile ="C"+mcc+"_"+mnc+"_"+filenames[i] + "_" + operaters[oper].getOperater() +".json"
+
+                # Producing final JSON file.
+
                 with open(os.path.join(directory,nameFile), 'w') as outfile:
                     json.dump(jsonfile, outfile, indent=4, separators=(',', ': '), sort_keys=False)
             except Exception as e:
