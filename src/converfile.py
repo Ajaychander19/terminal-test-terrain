@@ -87,34 +87,56 @@ def csvtoPcap(listfiles,directory):
 
 
 
-#This function get 2 files of cartoratdio and generate 1 csv file with information using (and 1 json file for visualisation)
-#in put is the listfiles and directory
-#listfiles: list of site files root
-#directory: path of working directory
 #XLXLXLXLXL : la conversion en json ne peut pas  etre supprimee car elle est utilise par le javascript mais elle conduit a avoir beaucoup trop de fichier
 def createSite_json(listfiles,directory):
+    """Creates CSV files, each dedicated to an operator, that contains information about the operator's base station,
+    such as administrative identifiers, geolocation data... and JSON zoning files, also each dedicated to an operator,
+    that describes partitioning of these sites.
+    These files are produced from two files, provided by Cartoradio :
+        - Antennes_Emetteurs_Bandes_Cartoradio.csv, which contains information about base station
+        such as operator name, administrative identifiers, or emitting frequencies.
+        - Sites_Cartoradio.csv, which contains information about base station such as address, geolocation,
+        and owers of the place where base stations are.
+
+    Parameters :
+        - listfiles : list of selected files.
+        - directory : working directory path.
+    """
+
+    # Reading files...
     df0 = pd.read_csv(listfiles[0],sep=';',encoding='ISO-8859-1')
     df1 = pd.read_csv(listfiles[1],sep=';',encoding='ISO-8859-1')
+
+    # Identifying files and joining them with support numbers field.
     if (df0.shape[0]>df1.shape[0]):
         df1.set_index("Numéro du support", inplace=True)
         res=df0.join(df1, on='Numéro de support',how='left')
     else:
         df0.set_index("Numéro du support", inplace=True)
         res = df1.join(df0, on='Numéro de support', how='left')
+
+    # Creating JSON data based on the previous join between data from files.
+    # No duplicates.
     Antennas = pd.DataFrame(
         {"Numero du support": res["Numéro de support"], "Numero Cartoradio": res["Numéro Cartoradio"],
          "Azimut": res["Azimut"], "Exploitant": res["Exploitant"],
          "Systeme": res["Système"],"Longitude":res["Longitude"],"Latitude": res["Latitude"],"azimutMin":0,"azimutMax":0}).drop_duplicates()
+
+    # Grouping JSON data by antennas operators.
     operators=Antennas.groupby(["Exploitant"])
     operatorNames=["BOUYGUES TELECOM","FREE MOBILE","ORANGE","SFR"]
+
+    # Creating dedicated files to each operator.
     for oper in operators.groups.keys():
         if oper in operatorNames:
             site_zone, carte=createSitefiles(operators, oper)
+
+            # Producing site CSV file.
             carte.to_csv(directory+"/sites" + "_" + oper + ".csv", sep='\t', encoding='ISO-8859-1')
+
+            # Producing JSON site zone file.
             with open(directory+"/sites" + "_" + oper + "_" + "Zone" + ".json", 'w') as outfile:
                 json.dump(site_zone, outfile, indent=4, separators=(',', ': '), sort_keys=False)
-
-
 
 
 #This function get  1 csv site file and  json field-test files for generating  json cells file
