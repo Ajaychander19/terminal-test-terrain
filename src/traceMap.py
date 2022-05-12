@@ -123,30 +123,56 @@ class traceFromJson:
 # input: operator name and operator object
 # return site zone object and site frame.
 def createSitefiles(operators, oper):
+    """Produces the site file for a given operator.
+    Parameters:
+        - operators: site data grouped by operator.
+        - oper: operator of the file to produce.
+    Returns:
+        Site zones JSON objects list and site dataframe.
+    """
+
+    # Selecting operator group.
     group = operators.get_group((oper))
-    group=group[group["Systeme"].str.startswith('LTE')]
+    group = group[group["Systeme"].str.startswith('LTE')]
+
+    # Creating group file data frame.
     carte = pd.DataFrame(
         {"Numero du support": group["Numero du support"], "Numero Cartoradio": group["Numero Cartoradio"],
          "Azimut": group["Azimut"], "Exploitant": group["Exploitant"],
          "Systeme": group["Systeme"], "Longitude": group["Longitude"], "Latitude": group["Latitude"], "azimutMin": 0,
          "azimutMax": 0}).reset_index(drop=True)
-    operatorName=str(oper)
+
+    # operatorName=str(oper) # UNUSED
+
+    # Creating location data frame.
     baseStationLocation=pd.DataFrame({"Numero Cartoradio":carte["Numero Cartoradio"],"Longitude":carte["Longitude"],
                                       "Latitude":carte["Latitude"],"bounded":"true"}).drop_duplicates().reset_index(drop=True)
+
+    # Azimut data frame.
     calAzimut = carte.reset_index(drop=True).groupby(["Numero Cartoradio","Systeme"])
 
-    flag=False
+    # flag=False # UNUSED
 
     sites=[]
 
+    # Calculating azimuths...
     for group in calAzimut.groups.keys():
-        testnotorder=calAzimut.get_group((group))
+        testnotorder=calAzimut.get_group(group)
         test=testnotorder.sort_values("Azimut").reset_index(drop=True)
-        (supportnb,system)=group
-        station = {"Identification_number":supportnb,"Latitude":test.iloc[0]["Latitude"],"Longitude":test.iloc[0]["Longitude"],"pointDestination":[],"pointZone":[]}
+        (supportnb,system) = group
+
+        # Station coordinates data.
+        station = {
+            "Identification_number": supportnb,
+            "Latitude": test.iloc[0]["Latitude"],
+            "Longitude": test.iloc[0]["Longitude"],
+            "pointDestination": [],
+            "pointZone": []
+        }
+
         listazimut=list(test["Azimut"])
         listazimut.append(listazimut[0])
-        azimuttempo=0
+        #azimuttempo=0 # UNUSED
         lngsite = test.iloc[0]["Longitude"]
         latsite = test.iloc[0]["Latitude"]
         intersectionZone=[]
@@ -193,13 +219,15 @@ def createSitefiles(operators, oper):
                         intersectionZone.append(var1)
                     if (var2 >= 0) and (var2 not in intersectionZone):
                         intersectionZone.append(var2)
+
             # calculate the distinaton on the direction of antenna
             for azimut in list(test["Azimut"]):
                 if not isnan(azimut):
                     station["pointDestination"].append(
                         {"lat": latsite + (0.5 * math.pow(10, -3)) * cos(azimut * np.pi / 180),
                          "lng": lngsite + (0.5 * math.pow(10, -3)) * sin(azimut * np.pi / 180)})
-            # calculate the point for find the azimuth zone
+
+            # calculate the point to find the azimuth zone
             for element in intersectionZone: #sua o day 50 thanh 300
                 if not isnan(azimut):
                     station["pointZone"].append(
@@ -215,15 +243,18 @@ def createSitefiles(operators, oper):
     site_list_lng = baseStationLocation["Longitude"]
     site_list = list(zip(site_list_lat, site_list_lng))
     (min_lat, min_lng, max_lat, max_lng) = Polygon(site_list).bounds
-    id_count = 0
-    sites_zone = {"id": id_count, "lat": min_lat, "lng": min_lng, "dlat": max_lat - min_lat, "dlng": 0, "zone": [],
-                  "points": []}
-    root= Node(min_lat,min_lng,max_lat - min_lat,max_lng-min_lng,sites)
+    #id_count = 0
+    #sites_zone = {"id": id_count, "lat": min_lat, "lng": min_lng, "dlat": max_lat - min_lat, "dlng": 0, "zone": [],
+    #              "points": []}
+
+    # Partitionning sites.
+    root = Node(min_lat,min_lng,max_lat - min_lat,max_lng-min_lng,sites)
     root.insert()
-    site_zone=root.PreorderTraversal(root)
-    return site_zone,carte
+    site_zone = root.PreorderTraversal(root)
 
     print("done create the station table")
+
+    return site_zone, carte
 
 ###############################################################################################################
 
@@ -348,11 +379,11 @@ def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
             azicount = 0
             countcheck = 0
             surcount = 0
-            if row_Carte["Systeme"] == getLTEBandname(row_Surftable["EARFCN"]):  # kiem tra co cung earfcn khong
+            if row_Carte["Systeme"] == getLTEBandname(row_Surftable["EARFCN"]):  # check if it's the same earfcn
                 cellpolygon = row_Surftable["polygon"]
-                if (regiongeo.intersects(cellpolygon) == True):  # kiem tra co giao nhau khong
+                if (regiongeo.intersects(cellpolygon) == True):  # check if they intersect
                     pointrsrp = row_Surftable["PointRSRP"]
-                    for pointR in pointrsrp:  # xet moi diem trong cell
+                    for pointR in pointrsrp:  # check every cell in the cell
                         weight = getWeight(pointR["rsrp"])
                         lat1 = (row_Carte["Latitude"]) * np.pi / 180
                         ln2 = (-row_Carte["Longitude"] + pointR["geo"].y) * np.pi / 180
@@ -424,12 +455,12 @@ def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
             varvalue = gr["val"].tolist()
             ind = np.argmax(varvalue)
             temp=ind
-            flag_test=False
+            #flag_test=False # UNUSED
             for i in range(len(varvalue)):
                 if (i!=ind):
                     if np.absolute(np.log10(varvalue[i]/varvalue[temp]))>0.08:
                         temp=ind
-                        flag_test=True
+                        #flag_test=True # UNUSED
                     else:
                         temp=-1
             if temp!=-1:
