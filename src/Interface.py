@@ -90,13 +90,17 @@ class GUI(tkinter.Frame):
 
     def changeColor(self,color):
         self.canvas.itemconfig(self.rec,fill=color)
+
     def buttonClick(self,number):
         """ handle button click event and output text from entry area"""
-        if number==1:
+        if number == 1:   # Selecting output directory.
+
             self.changeColor('red')
             self.working_directory = filedialog.askdirectory()
             self.changeColor('green')
-        elif number ==2 :
+
+        elif number == 2:    # Field-testing trace file.
+
             self.changeColor('red')
             files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
             if (len(files) !=0):
@@ -107,7 +111,8 @@ class GUI(tkinter.Frame):
             else:
                 messagebox.showinfo("Warning", "Select at least one file")
             self.changeColor('green')
-        elif number==3:              # cartoradio conversion
+
+        elif number == 3:              # Cartoradio conversion, producing site and zone files.
             self.changeColor('red')
             files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
             if (len(files)<2):
