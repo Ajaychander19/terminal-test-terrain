@@ -72,11 +72,12 @@ def csvtoPcap(listfiles,directory):
                 nameFile ="C"+mcc+"_"+mnc+"_"+filenames[i] + "_" + operaters[oper].getOperater() +".json"
 
                 # Producing final JSON file.
-
                 with open(os.path.join(directory,nameFile), 'w') as outfile:
                     json.dump(jsonfile, outfile, indent=4, separators=(',', ': '), sort_keys=False)
+
             except Exception as e:
                 print("Error : {0} : {1}.".format(type(e).__name__, e))
+
     for operator in operator_dict["oper"].keys():
         try:
             if len(operator_dict["oper"][operator])!=0:
@@ -142,11 +143,6 @@ def createSite_json(listfiles,directory):
             with open(directory+"/sites" + "_" + oper + "_" + "Zone" + ".json", 'w') as outfile:
                 json.dump(site_zone, outfile, indent=4, separators=(',', ': '), sort_keys=False)
 
-
-#This function get  1 csv site file and  json field-test files for generating  json cells file
-#in put is the listfiles and directory
-#listfiles: list of site files root
-#directory: path of working directory
 def Associate_cell(listfiles,directory):
     """Produces association JSON file, which contains cells information, from the Zk JSON file
     data and the CSV site file.
