@@ -183,8 +183,8 @@ def distance(pointA,pointB):
     """Calculates the distance in kilometers between two points of given geographic coordinates (in degrees ?)
 
     Parameters:
-        pointA : point A, with geogaphic coordinates in degrees (?).
-        pointB : point B, with geogaphic coordinates in degrees (?).
+        pointA : point A, with geographic coordinates in degrees (?).
+        pointB : point B, with geographic coordinates in degrees (?).
 
     Returns:
         The distance between A and B in kilometers.
