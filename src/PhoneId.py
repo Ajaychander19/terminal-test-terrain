@@ -18,50 +18,68 @@ class operater:
         self.mnc=""
 
     def getMcc(self):
-        """get the mcc value"""
+        """Gets the MCC value"""
         return self.mcc
+
     def getMnc(self):
-        """get the mnc value"""
+        """Gets the mnc value"""
         return self.mnc
 
     def getOperater(self):
-        """get the name of the operator"""
+        """Gets the name of the operator"""
         return self.phoneid
 
-    def setMcc(self,mcc):
-        """changes self.mcc attribute with mcc parameter"""
-        self.mcc=mcc
+    def setMcc(self, mcc):
+        """Changes self.mcc attribute with mcc parameter"""
+        self.mcc = mcc
 
-    def setMnc(self,mnc):
-        """changes self.mcc attribute with mnc parameter"""
-        self.mnc=mnc
+    def setMnc(self, mnc):
+        """Changes self.mcc attribute with mnc parameter"""
+        self.mnc = mnc
 
     def setTypemess(self,mess):
-        """store the type message"""
+        """Stores the type message.
+
+        Parameters:
+            mess: message.
+        """
         self.typeMessages.append(mess[0])
 
-    def setMessages(self,message):
-        """store message (?) from (?) the same operator into a stack"""
+    def setMessages(self, message):
+        """Stores messages from the same operator into a stack
+
+        Parameters:
+            message: message to store.
+        """
         self.messages.append(message)
 
     def getMessages(self):
-        """get the messages stack."""
+        """Gets the messages stack."""
         return self.messages
 
-    def writejsonMessage(self,oper,MLmessages,PLmessages):
-        """get the information from messages into the operator attribute
-        return the group of messages in the same dissector
+    def writejsonMessage(self, oper, MLmessages, PLmessages):
+        """Copy operators messages data into the corresponding message
+        processing objects (mlMessages or plMessages).
+        Produces temporary text2pcap input files using mlMessages.writejson.
+
+        Parameters :
+            oper: operator data message.
+            MLmessages: LTE over-the-air mlMessages processing object.
+            PLMessages: LTEPhone plMessages processing object.
         """
         for line in oper.messages:
             messagetype=messageType(line)
             messagetype.getTime(3)
+
+            # LTE OTA Message
             if (messagetype.messageType == "ML"):
                 MLmessages.gettimeVar(messagetype.message)
                 MLmessages.getPCIs(messagetype.message)
                 MLmessages.getEARFCNs(messagetype.message)
                 MLmessages.setMessages(messagetype.message)
-            elif (messagetype.messageType == "PL"):
+            elif (messagetype.messageType == "PL"): # LTEPhone message
                 PLmessages.setMessages(messagetype.message)
+
         groupname=MLmessages.writejson(MLmessages.stackmessage,MLmessages.timeVar,oper)
         return groupname
 
