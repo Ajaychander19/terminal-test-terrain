@@ -12,11 +12,11 @@ class Node:
     def __init__(self,min_lat,min_lng,dlat,dlng,list):
         """Class constructor.
         Parameters:
-            - min_lat: minimum latitude of the zone.
-            - min_lng: minimum longitude of the zone.
-            - dlat: latitudinal length of the zone.
-            - dlng: longitudinal length of the zone.
-            - list: sites list.
+            min_lat: minimum latitude of the zone.
+            min_lng: minimum longitude of the zone.
+            dlat: latitudinal length of the zone.
+            dlng: longitudinal length of the zone.
+            list: sites list.
         """
         self.north_W = None
         self.north_E = None
@@ -79,10 +79,10 @@ class Node:
     def findArrayOfNode(self,min_lat,min_lng,dlat,dlng, listItem):
         """Finds sites which belongs to a zone of coordinates and size given.
         Parameters:
-            - min_lat: minimum latitude of the zone.
-            - min_lng: minimum longitude of the zone.
-            - dlat: latitudinal length of the zone.
-            - dlng: longitudinal length of the zone.
+            min_lat: minimum latitude of the zone.
+            min_lng: minimum longitude of the zone.
+            dlat: latitudinal length of the zone.
+            dlng: longitudinal length of the zone.
         Returns:
             A list of sites which belongs the given zone.
         """
@@ -109,10 +109,10 @@ class Node:
 
     def PreorderTraversal(self,root):
         """Produces a list of zones by doing a recursive preorder traversal of a tree.
-        Parameters :
-            - root : tree to explore.
-        Returns :
-            - The list of sites found during the traversal.
+        Parameters:
+            root: tree to explore.
+        Returns:
+            The list of sites found during the traversal.
         """
         res=[]
         if root:

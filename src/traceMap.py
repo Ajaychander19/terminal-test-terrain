@@ -21,13 +21,17 @@ from math import atan,sin,cos, isnan
 
 class traceFromJson:
     def __init__(self,file,oper):
-           self.ltephoneName = os.path.abspath(os.path.join(getPathText(""),file + "_" + "LTEphone"+"_"+oper.getOperater()+".txt"))
-#        self.ltephoneName = os.path.abspath("/tmp/outputFiles/" + file + "_" + "LTEphone"+"_"+oper.getOperater()+".txt")
-           self.jsonSystemInfoName = os.path.abspath(os.path.join(getPathText(""),file + "_" + "final"+"_"+oper.getOperater()+".txt"))
-#        self.jsonSystemInfoName = os.path.abspath("/tmp/outputFiles/"+ file + "_" + "final"+ "_"+oper.getOperater()+".txt")
-    # This function process  the LTE over-the-air(json file) which converted from pcap
-    # return mcc, mnc and an object containing SIB informations
+        self.ltephoneName = os.path.abspath(os.path.join(getPathText(""),file + "_" + "LTEphone"+"_"+oper.getOperater()+".txt"))
+        #self.ltephoneName = os.path.abspath("/tmp/outputFiles/" + file + "_" + "LTEphone"+"_"+oper.getOperater()+".txt")
+        self.jsonSystemInfoName = os.path.abspath(os.path.join(getPathText(""),file + "_" + "final"+"_"+oper.getOperater()+".txt"))
+        #self.jsonSystemInfoName = os.path.abspath("/tmp/outputFiles/"+ file + "_" + "final"+ "_"+oper.getOperater()+".txt")
+
     def createTactable(self):
+        """Process the LTE over-the-air JSON file obtained from pcap.
+
+        Returns:
+            A list containing SIB information, MCC and MNC.
+        """
         df = pd.DataFrame({"TAC": [], "CellID": [], "PCI": [], "EARFCN": [], "geolocation": [],"mcc":[],"mnc":[]})
         json_objects = []
 
@@ -76,12 +80,18 @@ class traceFromJson:
                                                             "lng":dissector["frame"]["frame.comment"]["frame.comment.geolocation"]["longitude"]},"mcc":mcc,"mnc":mnc}}
                         jsonlist.append(item)
 
-        return  jsonlist,mcc,mnc
+        return jsonlist,mcc,mnc
 
-    # This function process  the LTE phone message
-    # input: List of SIB object
-    # return an object containing SIB object and mesurement object
     def createPCItable(self,frame_list):
+        """Process LTEPhone messages.
+
+        Parameters:
+            frame_list: list of SIB objects.
+
+        Returns:
+            frame_list, appended by LTEPhone mesurement error.
+
+        """
         df = pd.DataFrame({"PCI": [], "EARFCN": [], "Geolocation": [],"RSRP":[],"neighbourMax_RSRP":[]})
 
         json_ltes = []
@@ -113,20 +123,18 @@ class traceFromJson:
                 pciEarfcnTable = df.groupby(["PCI", "EARFCN"],as_index=False)
                 item={"Mesurement":{"PCI": pci, "EARFCN":earfcn, "Geolocation":{"lat":json_ltes[mersurement]["current cell"]["Geolocation"]["latitude"],
                                     "lng":json_ltes[mersurement]["current cell"]["Geolocation"]["longitude"]},"RSRP":rsrp, "neighbourMax_RSRP":maxrsrp}}
-                frame_list.append(item)
-        return  frame_list
-
+                frame_list.append(item) # FIXME The parameter is also modified (passing by reference)
+        return frame_list
 
 ###############################################################################################################
 
-# This function process  create the site file for each operator
-# input: operator name and operator object
-# return site zone object and site frame.
 def createSitefiles(operators, oper):
     """Produces the site file for a given operator.
+
     Parameters:
-        - operators: site data grouped by operator.
-        - oper: operator of the file to produce.
+        operators: site data grouped by operator.
+        oper: operator of the file to produce.
+
     Returns:
         Site zones JSON objects list and site dataframe.
     """
@@ -258,15 +266,27 @@ def createSitefiles(operators, oper):
 
 ###############################################################################################################
 
-# input: Tactable of LLE-over-the-air message , pciEarfcnTable of LTE-phone message and csv site file (the one is generated)
-# return list of cell objects.
 def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
+    """Calculate cell areas from TACs, PCIs and operator data.
+
+    The cells are generated with SciPy's implememntation of
+    the Voronoi Algorithm.
+
+    Parameters:
+        Tactable: TACs table.
+        pciEarfcnTable : PCIs and EARFCNs table.
+        operatorDataFrame : operator information extracted from the site file.
+    Returns:
+        A list which contains the cells.
+    """
+
     print("voronoi processing ")
     points = []
     regiontable = {}
     baseStationLocation = pd.DataFrame(
         {"Numero Cartoradio": operatorDataframe["Numero Cartoradio"], "Longitude": operatorDataframe["Longitude"],
          "Latitude": operatorDataframe["Latitude"], "bounded": "true"}).drop_duplicates()
+
     for index, row in (baseStationLocation).iterrows():
         points.append([row["Longitude"], row["Latitude"]])
     vor = Voronoi(list(points), qhull_options='Qbb Qc Qx')
@@ -280,8 +300,10 @@ def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
             "Numero Cartoradio"]
         indexintable = supportnum.index.item()
         regiontable[str(supportnum.iloc[0])] = []
+
         if -1 in reg:
             baseStationLocation.loc[indexintable, "bounded"] = "false"
+
         for j in range(len(reg)):
             if reg[j] != -1:
                 regiontable[str(supportnum.iloc[0])].append(vor.vertices[reg[j]])  # lng, lat
