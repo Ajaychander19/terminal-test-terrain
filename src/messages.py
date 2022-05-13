@@ -7,14 +7,28 @@ import platform
 
 
 class messageType:
-    """this class allows get the timestamp of messages"""
+    """This class represents a message, defined by its content and its timestamp."""
 
-    def __init__(self,message):
+    def __init__(self, message):
+        """Class constructor
+
+        Parameters:
+            message: message content.
+        """
         self.time=""
         self.message=message
         self.messageType=self.message[0]
 
-    def getTime(self,j):
+    def getTime(self, j):
+        """Adds one microsecond to the message timestamp,
+        and returns it. This is done in order to allow
+        mergecap or / and reordercap to properly order the messages
+        by increasing timestamp, as the unmodified messages can be produced at the
+        same second, and therefore cannot be distinguished by their timestamp.
+
+        Parameters:
+            j: timestamp index in the message.
+        """
         timeArr = datetime.strptime(str(self.message[j]), '%H:%M:%S.%f')
         self.message[j] = (timeArr + timedelta(microseconds=1)).time()
         self.time=self.message[j]
@@ -31,33 +45,54 @@ class mlMessageList:
         self.stackmessage=[]
 
     def getCoordinates(self,message):
-        """get geolocation of trace"""
+        """Gets the geolocation of the trace
+        Parameters:
+            message: LTE OTA message.
+        """
         coordinate = {"latitude": message[7], "longitude": message[8]}
         self.coordinates.append(coordinate)
         return self.coordinates
 
     def gettimeVar(self,message):
-        """get timestamp of trace"""
+        """Gets the timestamp of the trace
+        Parameters:
+            message: LTE OTA message.
+        """
         self.timeVar.append(message[3])
         return self.timeVar
 
     def getPCIs(self,message):
-        """get PCI values"""
+        """Gets PCI values
+        Parameters:
+            message: LTE OTA message.
+        """
         self.PCIs.append(message[20])
         return self.PCIs
 
     def getEARFCNs(self,message):
-        """get EARFCN values"""
+        """Gets EARFCN values
+        Parameters:
+            message: LTE OTA message.
+        """
         self.EARFCNs.append(message[19])
         return self.EARFCNs
 
     def setMessages(self,message):
-        """store message into stack"""
+        """Stores message into the stack
+            message: LTE OTA message.
+        """
         self.stackmessage.append(message)
         return self.stackmessage
 
     def processingJson(self,pathnamefile, namefile,oper):
-        """read the json file converted from pcap file and add the geolocation into this file"""
+        """Reads the json file obtained from the pcap file and adds its geolocation data into another
+        given file, for a specified operator.
+
+        Parameters:
+            pathnamefile: path of the JSON file obtained from pcap file conversion.
+            namefile: file where the geolocation will be stored.
+            oper: operator
+        """
         json_objects = []
 
         with open(pathnamefile) as json_data:
@@ -70,11 +105,25 @@ class mlMessageList:
                                              "frame.comment.EARFCN": self.EARFCNs[i],"frame.comment.tracking": refindTrack(self.stackmessage[i])}
 
         nameFile = namefile + "_" + "final"+ "_"+oper.getOperater()+".txt"
+
         with open(getPathText(nameFile), 'w') as outfile:
             json.dump(json_objects, outfile, indent=4, separators=(',', ': '), sort_keys=False)
 
     def writejson(self,stackmessage,timeVar,oper):
-        """seperate the text file for each dissector"""
+        """Dispatch data into several file for each Wireshark dissector.
+
+        Produces temporary files with the mlMessagesList.writeText function.
+
+        Parameters:
+            stackmessage: stack which contains all messages to dispatch in files.
+            timeVar: messages timestamps.
+            oper: operator.
+
+        Returns:
+            List of the group name where data has been dispatched.
+        """
+
+        # Data groups.
         BCCH_BCH_148 = []
         BCCH_DL_149 = []
         PCCH_DL_150 = []
@@ -83,8 +132,12 @@ class mlMessageList:
         DCCH_DL_153 = []
         DCCH_UL_154 = []
         Dis_group = [BCCH_BCH_148, BCCH_DL_149, PCCH_DL_150, CCCH_DL_151, CCCH_UL_152, DCCH_DL_153, DCCH_UL_154]
+
+        # Group names.
         Dis_groupName = ["BCCH_BCH_148"+ "_"+oper.getOperater(), "BCCH_DL_149"+ "_"+oper.getOperater(), "PCCH_DL_150"+ "_"+oper.getOperater(),
                          "CCCH_DL_151"+ "_"+oper.getOperater(), "CCCH_UL_152"+ "_"+oper.getOperater(), "DCCH_DL_153"+ "_"+oper.getOperater(),"DCCH_UL_154"+ "_"+oper.getOperater()]
+
+        # Dispatching.
         for i in range(0, len(stackmessage)):
             if (i > 0):
                 time_object = datetime.strptime(str(stackmessage[i - 1][3]), '%H:%M:%S.%f')
@@ -105,12 +158,27 @@ class mlMessageList:
                 DCCH_DL_153.append(stackmessage[i])
             elif (stackmessage[i][33] == "DC" and stackmessage[i][34] == "UL-S"):
                 DCCH_UL_154.append(stackmessage[i])
+
         for j in range(0, len(Dis_group)):
             self.writeText(Dis_group[j],Dis_groupName[j], 40)
+
         return Dis_groupName
 
     def callWireshark(self,nameFiles, filename,oper,wiresharkNames):
-        """call the wireshark application for text2pcap, reodercap, and mergecap"""
+        """Invokes Wireshark tools : text2pcap to convert files from text to pcap format,
+        mergecap to merge pcap files produced, and reordercap to reorders frame in the final pcap
+        file.
+
+        Parameters:
+            nameFiles: list of text files to be processed.
+            filename: output file name.
+            oper: operator.
+            wiresharkNames: list which will be written by this function and will
+            store final files names (note: check if this is the right explanation).
+
+        Returns:
+            JSON final output file.
+        """
 
         # Preparing text2pcap call, which converts txt files into pcap files.
 
@@ -166,7 +234,13 @@ class mlMessageList:
         return pathjson
 
     def writeText(self,message_list, name, start_position):
-        """write the right format of text for the input of text2pcap"""
+        """Writes temporary txt files used as input for text2pcap.
+
+        Parameters :
+            message_list: list of messages to write.
+            name: name of the file to be created.
+            start_position: index of the first message to write.
+        """
         path = getPathText(str(name)+".txt")
         with open(path, 'w') as f:
             for mess in message_list:
@@ -180,11 +254,17 @@ class mlMessageList:
                 f.write("\n")
 
     def writeTAList(self,TACtable,oper):
-        """write the tracking area"""
+        """Dumps tracking area data into a JSON file.
+
+        Parameters:
+            TACtable: DataFrame containing tracking area data.
+            oper: operator.
+        """
         tac=TACtable.drop(["geolocation"], axis=1)
         Tactable=tac.drop_duplicates()
         tacstable=Tactable.groupby(["TAC"],as_index=False)
         ta={"mcc":Tactable.iloc[0]["mcc"],"mnc":Tactable.iloc[0]["mnc"],"TAList":[]}
+
         for tac in tacstable.groups.keys():
             gr=tacstable.get_group(tac)
             tracking={"TAC":tac,"cell":[]}
@@ -192,26 +272,37 @@ class mlMessageList:
                 tracking["cell"].append({"cellId":row["CellID"],"PCI":row["PCI"],"EARFCN":row["EARFCN"]})
             ta["TAList"].append(tracking)
         name= "TrackingAreaList" + "_"+oper.getOperater()+".txt"
+
         with open(getPathText(name), 'w') as outfile:
             json.dump(ta, outfile, indent=4, separators=(',', ': '), sort_keys=False)
 
 
 class plMessages():
-    """this class has the function for procesing the lte phone message"""
+    """This class defines functions to process LTEPhone messages"""
 
     def __init__(self):
         self.messages=[]
 
     def setMessages(self,message):
-        """store the message into stack"""
+        """Stores a message into the message stack.
+
+        Parameter:
+            message: message to store.
+        """
         self.messages.append(message)
 
     def getMessages(self):
-        """get the messages stack"""
+        """Gets the message stack"""
         return self.messages
 
     def writeLTEphoneJson(self,file, namefile,oper):
-        """write the lte phone message in the json format."""
+        """Write LTEPhone messages in a JSON file.
+
+        Parameters:
+            file: list of messages to write.
+            namefile: name of the file where messages data will be written.
+            oper: operator informations.
+        """
         df = pd.DataFrame(file)
         df1 = df[df.columns[71:]]
         df.drop(df.columns[71:], axis=1, inplace=True)
@@ -225,6 +316,7 @@ class plMessages():
                       "Average RSSI"
             , "RSSI Antenna 0", "RSSI Antenna 1", "SINR Antenna 0", "SINR Antenna 1", "Number of neighbours"]
         json_objects = dict()
+
         for index, row in df.iterrows():
             json_obj = dict()
             neighbourList = dict()
@@ -232,7 +324,8 @@ class plMessages():
                 row["Mode"] = "idle"
             elif row["Mode"] == "C":
                 row["Mode"] = "connected"
-            # Find the infos of the neighbours cells
+
+            # Find information about the neighbours cells
             neighbourCount = 0
             neighbourList = {}
             for i in range(0, len(df1.columns), 20):
@@ -245,6 +338,7 @@ class plMessages():
 
             # Prepare the json file
             json_obj["current cell"] = {}
+
             # json_obj["current cell"]["Date"]=row["Date"]
             time = str(row["Time"].strftime('%H:%M:%S.%f'))
             json_obj["current cell"]["Time"] = str(row["Date"]) + " " + time
