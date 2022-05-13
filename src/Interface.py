@@ -12,9 +12,7 @@ from tkinter import font
 from tkinter import messagebox, Canvas, BOTH
 
 class CreateToolTip(object):
-    '''
-    create a tooltip for a given widget
-    '''
+    """Creates a tooltip for a given widget."""
     def __init__(self, widget, text='widget info'):
         self.widget = widget
         self.text = text
@@ -40,6 +38,8 @@ class CreateToolTip(object):
             self.tw.destroy()
 
 class GUI(tkinter.Frame):
+    """TKInter main window frame"""
+
     def __init__(self,master=None,**kwargs):
         tkinter.Frame.__init__(self, master,width=768, height=576, borderwidth=1,**kwargs)
         self.pack()
@@ -139,7 +139,6 @@ class GUI(tkinter.Frame):
             try:
                 print("try to open url",url," with default browser")
                 webbrowser.open_new_tab(url)
-#                webbrowser.open_new_tab(url)
                 localhost()
             except webbrowser.Error:
                 print("Something went wrong when opening webbrowser")
@@ -148,7 +147,7 @@ class GUI(tkinter.Frame):
 
         pass
 
-
+# Entry point.
 if __name__ == "__main__":
     root = tkinter.Tk()
     guiFrame = GUI(root)
