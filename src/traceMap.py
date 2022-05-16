@@ -140,7 +140,7 @@ def createSitefiles(operators, oper):
     """
 
     # Selecting operator group.
-    group = operators.get_group((oper))
+    group = operators.get_group(oper)
     group = group[group["Systeme"].str.startswith('LTE')]
 
     # Creating group file data frame.
@@ -148,7 +148,7 @@ def createSitefiles(operators, oper):
         {"Numero du support": group["Numero du support"], "Numero Cartoradio": group["Numero Cartoradio"],
          "Azimut": group["Azimut"], "Exploitant": group["Exploitant"],
          "Systeme": group["Systeme"], "Longitude": group["Longitude"], "Latitude": group["Latitude"], "azimutMin": 0,
-         "azimutMax": 0}).reset_index(drop=True)
+         "azimutMax": 0, "Hauteur / sol": group["Hauteur / sol"]}).reset_index(drop=True)
 
     # operatorName=str(oper) # UNUSED
 
@@ -162,6 +162,11 @@ def createSitefiles(operators, oper):
     # flag=False # UNUSED
 
     sites=[]
+
+    # Rejected base stations.
+    # These stations are kept in site file, but are not present in the site file.
+    # E.g. a base station located underground (in a metro tunnel...).
+    rejected_stations = []
 
     # Calculating azimuths...
     for group in calAzimut.groups.keys():
@@ -178,12 +183,18 @@ def createSitefiles(operators, oper):
             "pointZone": []
         }
 
+        # Height above ground of the base station
+        hauteur_sol = test.iloc[0]["Hauteur / sol"]
+
+        # Rejected stations
+
         listazimut=list(test["Azimut"])
         listazimut.append(listazimut[0])
         #azimuttempo=0 # UNUSED
         lngsite = test.iloc[0]["Longitude"]
         latsite = test.iloc[0]["Latitude"]
         intersectionZone=[]
+
         if (pd.isna(test["Azimut"]).iloc[0] == False):
 
             listazimut = list(test["Azimut"])
@@ -228,7 +239,7 @@ def createSitefiles(operators, oper):
                     if (var2 >= 0) and (var2 not in intersectionZone):
                         intersectionZone.append(var2)
 
-            # calculate the distinaton on the direction of antenna
+            # calculate the destinaton of the direction of the antenna
             for azimut in list(test["Azimut"]):
                 if not isnan(azimut):
                     station["pointDestination"].append(
@@ -241,11 +252,23 @@ def createSitefiles(operators, oper):
                     station["pointZone"].append(
                         {"lat": latsite + (300 * math.pow(10, -3)) * cos(element * np.pi / 180),
                          "lng": lngsite + (300 * math.pow(10, -3)) * sin(element * np.pi / 180)})
-            sites.append(station)
+
+            # Keep or exclude the base station ?
+            if hauteur_sol >= 0:
+                sites.append(station)
+            else:
+                rejected_stations.append(station)
+                print('Rejected base station (id: {0}). Reason : underground.'.format(station['Identification_number']))
         else:
             carte.loc[(carte["Numero Cartoradio"] == supportnb) & (
                     carte["Systeme"] == system), ["azimutMax", "azimutMin"]] = [0, 360]
-            sites.append(station)
+
+            # Keep or exclude the base station ?
+            if hauteur_sol >= 0:
+                sites.append(station)
+            else:
+                print('Rejected base station (id: {0}). Reason : underground.'.format(station['Identification_number']))
+                rejected_stations.append(station)
 
     site_list_lat = baseStationLocation["Latitude"]
     site_list_lng = baseStationLocation["Longitude"]
@@ -262,7 +285,7 @@ def createSitefiles(operators, oper):
 
     print("done create the station table")
 
-    return site_zone, carte
+    return site_zone, carte, rejected_stations
 
 ###############################################################################################################
 

@@ -123,9 +123,13 @@ def createSite_json(listfiles,directory):
     # Creating JSON data based on the previous join between data from files.
     # No duplicates.
     Antennas = pd.DataFrame(
-        {"Numero du support": res["Numéro de support"], "Numero Cartoradio": res["Numéro Cartoradio"],
-         "Azimut": res["Azimut"], "Exploitant": res["Exploitant"],
-         "Systeme": res["Système"],"Longitude":res["Longitude"],"Latitude": res["Latitude"],"azimutMin":0,"azimutMax":0}).drop_duplicates()
+        {
+            "Numero du support": res["Numéro de support"], "Numero Cartoradio": res["Numéro Cartoradio"],
+            "Azimut": res["Azimut"], "Exploitant": res["Exploitant"],
+            "Systeme": res["Système"],"Longitude":res["Longitude"],"Latitude": res["Latitude"],"azimutMin": 0,
+            "azimutMax": 0, "Hauteur / sol": res["Hauteur / sol"]
+        }
+    ).drop_duplicates()
 
     # Grouping JSON data by antennas operators.
     operators=Antennas.groupby(["Exploitant"])
@@ -134,7 +138,7 @@ def createSite_json(listfiles,directory):
     # Creating dedicated files to each operator.
     for oper in operators.groups.keys():
         if oper in operatorNames:
-            site_zone, carte=createSitefiles(operators, oper)
+            site_zone, carte, rejected = createSitefiles(operators, oper)
 
             # Producing site CSV file.
             carte.to_csv(directory+"/sites" + "_" + oper + ".csv", sep='\t', encoding='ISO-8859-1')
@@ -142,6 +146,10 @@ def createSite_json(listfiles,directory):
             # Producing JSON site zone file.
             with open(directory+"/sites" + "_" + oper + "_" + "Zone" + ".json", 'w') as outfile:
                 json.dump(site_zone, outfile, indent=4, separators=(',', ': '), sort_keys=False)
+
+            # Producing excluded base station JSON file.
+            with open("{}/rejected_{}.json".format(directory, oper), "w") as rejected_file:
+                json.dump(rejected, rejected_file, indent=4, separators=(',', ': '), sort_keys=False)
 
 def Associate_cell(listfiles,directory):
     """Produces association JSON file, which contains cells information, from the Zk JSON file
