@@ -65,7 +65,7 @@ def parse_aof(path: str):
                 first = line[0]
                 l_len = len(line)
 
-                if state == 0:  # Initial state.
+                if state == 0:   # Initial state.
 
                     if first == '<AOF_Information_START>\n':
                         state = 1
@@ -84,7 +84,7 @@ def parse_aof(path: str):
                     else:
                         syntax_error(line_num, 'Invalid description start "{}"'.format(first))
 
-                elif state == 3:  # Description section skip.
+                elif state == 3:  # Getting phone ID, opening temporary files.
 
                     # if first == '<Description End>\n':
                     #    state = 4
@@ -102,12 +102,12 @@ def parse_aof(path: str):
 
                         state = 4
 
-                elif state == 4:
+                elif state == 4:  # Description section skip.
 
                     if first == '<Description End>\n':
                         state = 5
 
-                elif state == 5:  # Content section start.
+                elif state == 5:    # Content section start.
 
                     if first == '<Content Start>\n':
                         state = 6
@@ -123,15 +123,13 @@ def parse_aof(path: str):
                             syntax_error(line_num, "13 columns expected, {} found.".format(l_len))
 
                         msg_type = line[6]  # Message type.
-                        msg_time = line[1]  # Message timestamp
-                        msg_content = line[12]  # Message content.
 
                         # Check if the message type is valid.
                         if msg_type not in files.keys():
                             syntax_error(line_num, "Invalid message type : {}".format(msg_type))
 
                         # Adding the message to the corresponding list.
-                        files[msg_type].write('{0}\n0000 {1}\n'.format(msg_time, msg_content))
+                        files[msg_type].write('{0}\n0000 {1}\n'.format(line[1], line[12]))
 
                     elif first == 'GPS':
                         pass  # TODO Parse GPS message
@@ -158,6 +156,10 @@ def parse_aof(path: str):
         syntax_error(line_num, 'Unexpected End Of File, state={}.'.format(state))
 
     return phone_id
+
+def produce_pcap(path: str):
+    pass
+
 
 
 # class XcalMessage:
