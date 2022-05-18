@@ -11,4 +11,5 @@ def rel_dir(path: str):
 
 class TestXcalyzer(TestCase):
     def test_parse_aof(self):
-        xcz.parse_aof(rel_dir('../../donnees/DR10143732-M1.aof'))
+        conv = xcz.XcalConverter(rel_dir('../../donnees/DR10143732-M1.aof'))
+        conv.parse_aof()
