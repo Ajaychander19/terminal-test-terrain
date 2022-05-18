@@ -46,6 +46,12 @@ def syntax_error(line: int, msg: str):
 
 
 class XcalConverter:
+    """This class is used to analyze Accuver Xcal AOF file format. It provides few methods to
+    analyze and convert AOF files in PCAP file. An instance of this class can process one AOF
+    file. It can be used to create PCAP files associated with different Wireshark dissectors,
+    can merge several PCAP files into one PCAP file, and reorder PCPA file contents. It can also,
+    based on the ID of the user equipment used to create AOF file, manage file names.
+    """
     
     # Constants.
 
@@ -60,6 +66,11 @@ class XcalConverter:
     }
 
     def __init__(self, path: str):
+        """Class constructor.
+
+        Parameters:
+            path: path of the AOF file which will be analyzed.
+        """
         # self._files = {
         #     'BCCH:DL_SCH': None,
         #     'PCCH': None,
@@ -83,6 +94,15 @@ class XcalConverter:
         }
 
     def parse_aof(self):
+        """Parses the associated AOF file.
+
+        The parsing produce temporary files .txt files, one for each Wireshark
+        dissector. These files can be used by text2pcap.
+
+        Raises:
+            RuntimeError: if an error occurred during the analysis of the AOF file.
+        [WIP]
+        """
 
         state = 0  # Current automata state.
         line_num = 1  # Line number.
@@ -195,6 +215,18 @@ class XcalConverter:
             syntax_error(line_num, 'Unexpected End Of File, state={}.'.format(state))
 
     def produce_pcap(self, fkey: str):
+        """Produces a PCAP file following a given dissector key from TXT file with text2pcap. This key corresponds to
+        XcalConverter.DICT_FILES_NAMES dictionary keys. The function produces a temporary PCAP file
+        related to only one dissector, from a TXT file, corresponding to the key ; the temporary file name is the
+        string associated with this key in XcalConverter.DICT_FILES_NAMES.
+
+        Parameters:
+            fkey: the corresponding dissector key.
+
+        Raises:
+            RuntimeError: if fkey is invalid.
+            CalledProcessError: if text2pcap produces an error.
+        """
 
         # Controlling fkey.
         if fkey not in self.DICT_FILES_NAMES.keys():
@@ -215,8 +247,17 @@ class XcalConverter:
         # Calling text2pcap
         subprocess.check_call(t2p_argc)
 
-
     def reorder_pcap(self, fname: str, dest: str):
+        """Reorders a given PCAP temporary file with reordercap. Produces the resulting
+        PCAP temporary reordered file.
+
+        Parameters:
+            fname: the name of the temporary PCAP source file.
+            dest: the name of the temporary PCAP destination file which will be created.
+
+        Raises:
+            CalledProcessError: if reordercap produces an error.
+        """
 
         input_file = getPathText(fname)
         output_file = getPathText(dest)
@@ -232,8 +273,17 @@ class XcalConverter:
         # Calling reordercap
         subprocess.check_call(rcap_argc)
 
-    def merge_pcap(self, paths: list, dest: str):
+    def merge_pcap(self, names: list, dest: str):
+        """Concatenates several given PCAP temporary files into another given PCAP temporary file with mergecap.
 
+        Parameters:
+            names: name of temporary files to concatenate.
+            dest: name of the temporary output file.
+
+        Raises:
+            CalledProcessError: if mergecap produces an error.
+
+        """
         # Preparing mergecap
         output_file = getPathText(dest)
 
@@ -245,14 +295,26 @@ class XcalConverter:
         ]
 
         # Adding files paths to the argument list.
-        for p in paths:
-            mcap_argc.append(getPathText(p))
+        for n in names:
+            mcap_argc.append(getPathText(n))
 
         # Calling mergecap
         subprocess.check_call(mcap_argc)
 
     def get_file_name(self, fkey: str, ext: str) -> str:
+        """Associates a given key of XcalConverter.DICT_FILES_NAMES with the corresponding
+        temporary file name, from the phone_id attribute, and a given file extension.
 
+        Parameters:
+            fkey: key from XcalConverter.DICT_FILES_NAMES.
+            ext: file extension.
+
+        Returns:
+            The corresponding temporary file name.
+
+        Raises:
+            RuntimeError: if fkey is not present in XcalConverter.DICT_FILES_NAMES.
+        """
         # Controlling fkey.
         if fkey not in self.DICT_FILES_NAMES.keys():
             raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
@@ -260,6 +322,12 @@ class XcalConverter:
         return '{0}_{1}.{2}'.format(self.DICT_FILES_NAMES[fkey], self._phone_id, ext)
 
     def _get_phone_id(self):
+        """
+            Getter of the phone_id attribute associated to the AOF file.
+
+            Returns:
+                the phone ID attribute
+        """
         return self._phone_id
 
     # Class properties.
