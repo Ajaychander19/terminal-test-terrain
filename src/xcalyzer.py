@@ -203,10 +203,10 @@ class XcalConverter:
         input_txt = getPathText(self.get_file_name(fkey, 'txt'))
         output_pcap = getPathText(self.get_file_name(fkey, 'pcap'))
 
-        # Constructing text2pcap call.
+        # Preparing text2pcap call.
         t2p_argc = [
-            getWireshark('text2pcap'),          # Wireshark path.
-            '-t', '%F %T',                      # Time format to use in the pcap file.
+            getWireshark('text2pcap'),          # Wireshark command path.
+            '-t', '%F %H:%M:%S.',                      # Time format to use in the pcap file.
             input_txt,                          # Input .txt file.
             output_pcap,                        # Output .pcap file.
             '-l', str(get_dissector_num(fkey))  # Number of the dissector to be called.
@@ -216,16 +216,40 @@ class XcalConverter:
         subprocess.check_call(t2p_argc)
 
 
-    def reorder_pcap(self, fkey: str):
+    def reorder_pcap(self, fname: str, dest: str):
 
-        # Controlling fkey.
-        if fkey not in self.DICT_FILES_NAMES.keys():
-            raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
+        input_file = getPathText(fname)
+        output_file = getPathText(dest)
 
+        # Preparing reordercap call.
+        rcap_argc = [
+            getWireshark('reordercap'),     # Command path
+            '-n',                           # Produce a file only if a reordering has been done.
+            input_file,
+            output_file
+        ]
 
+        # Calling reordercap
+        subprocess.check_call(rcap_argc)
 
-    def merge_pcap(self, paths: list, dir: str):
-        pass    # TODO Merge several pcap files.
+    def merge_pcap(self, paths: list, dest: str):
+
+        # Preparing mergecap
+        output_file = getPathText(dest)
+
+        # Initial arguments list.
+        mcap_argc = [
+            getWireshark('mergecap'),
+            '-a',               # Concat files.
+            '-w', output_file   # File to write.
+        ]
+
+        # Adding files paths to the argument list.
+        for p in paths:
+            mcap_argc.append(getPathText(p))
+
+        # Calling mergecap
+        subprocess.check_call(mcap_argc)
 
     def get_file_name(self, fkey: str, ext: str) -> str:
 

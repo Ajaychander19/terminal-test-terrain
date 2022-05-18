@@ -13,6 +13,13 @@ def rel_dir(path: str):
 
 class TestXcalyzer(TestCase):
 
+    FKEYS = [
+        'temporary',  # FIXME Unknown code for this protocol.
+        'BCCH:DL_SCH', 'PCCH',
+        'DL CCCH', 'DL DCCH',
+        'UL CCCH', 'UL DCCH',
+    ]
+
     def setUp(self) -> None:
 
         # Removing files before each test.
@@ -34,12 +41,33 @@ class TestXcalyzer(TestCase):
         conv = xcz.XcalConverter(rel_dir('../../donnees/DR10143732-M1.aof'))
         conv.parse_aof()
 
-        fkeys = [
-            'temporary',  # FIXME Unknown code for this protocol.
-            'BCCH:DL_SCH', 'PCCH',
-            'DL CCCH', 'DL DCCH',
-            'UL CCCH', 'UL DCCH',
-        ]
-
-        for f in fkeys:
+        for f in self.FKEYS:
             conv.produce_pcap(f)
+
+    def test_merge_pcap(self):
+
+        conv = xcz.XcalConverter(rel_dir('../../donnees/DR10143732-M1.aof'))
+        conv.parse_aof()
+
+        files = []
+
+        for f in self.FKEYS:
+            conv.produce_pcap(f)
+            files.append(conv.get_file_name(f, 'pcap'))
+
+        conv.merge_pcap(files, 'test_merge.pcap')
+
+    def test_reorder_pcap(self):
+
+        conv = xcz.XcalConverter(rel_dir('../../donnees/DR10143732-M1.aof'))
+        conv.parse_aof()
+
+        files = []
+
+        for f in self.FKEYS:
+            conv.produce_pcap(f)
+            files.append(conv.get_file_name(f, 'pcap'))
+
+        conv.merge_pcap(files, 'test_merge.pcap')
+
+        conv.reorder_pcap('test_merge.pcap', 'test_merge_ord.pcap')
