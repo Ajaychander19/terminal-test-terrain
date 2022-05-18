@@ -1,6 +1,10 @@
 """This module is dedicated to the analysis of AOF files produced by Accuver Xcal."""
+import os.path
 
-from constantPath import getPathText
+from constantPath import getPathText, getWireshark
+
+import subprocess
+
 # Constants
 _DICT_DISSECTOR = {
     'temporary': 148,   # FIXME Unknown code for this protocol.
@@ -23,10 +27,6 @@ def read_line(f):
 
 def syntax_error(line: int, msg: str):
     raise RuntimeError('Error: line {0}, {1}'.format(line, msg))
-
-def produce_pcap(path: str):
-    pass
-
 
 
 # class XcalMessage:
@@ -189,12 +189,51 @@ class XcalConverter:
                         f.close()
 
         # Check if we are in the final state after finishing the parsing.
+        # NOTE: this code is reachable, despite PyCharm warnings
+        # You can for example remove <Content End> in the AOF file to execute it...
         if state != 7:
             syntax_error(line_num, 'Unexpected End Of File, state={}.'.format(state))
-        
 
-    def produce_dissect_file(self, dissect: str):
-        pass # _TODO Produce file for a particular dissector.
+    def produce_pcap(self, fkey: str):
+
+        # Controlling fkey.
+        if fkey not in self.DICT_FILES_NAMES.keys():
+            raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
+
+        input_txt = getPathText(self.get_file_name(fkey, 'txt'))
+        output_pcap = getPathText(self.get_file_name(fkey, 'pcap'))
+
+        # Constructing text2pcap call.
+        t2p_argc = [
+            getWireshark('text2pcap'),          # Wireshark path.
+            '-t', '%F %T',                      # Time format to use in the pcap file.
+            input_txt,                          # Input .txt file.
+            output_pcap,                        # Output .pcap file.
+            '-l', str(get_dissector_num(fkey))  # Number of the dissector to be called.
+        ]
+
+        # Calling text2pcap
+        subprocess.check_call(t2p_argc)
+
+
+    def reorder_pcap(self, fkey: str):
+
+        # Controlling fkey.
+        if fkey not in self.DICT_FILES_NAMES.keys():
+            raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
+
+
+
+    def merge_pcap(self, paths: list, dir: str):
+        pass    # TODO Merge several pcap files.
+
+    def get_file_name(self, fkey: str, ext: str) -> str:
+
+        # Controlling fkey.
+        if fkey not in self.DICT_FILES_NAMES.keys():
+            raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
+
+        return '{0}_{1}.{2}'.format(self.DICT_FILES_NAMES[fkey], self._phone_id, ext)
 
     def _get_phone_id(self):
         return self._phone_id
