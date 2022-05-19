@@ -7,7 +7,7 @@ import subprocess
 
 # Constants
 _DICT_DISSECTOR = {
-    'temporary': 148,   # FIXME Unknown code for this protocol.
+    'BCCH:BCH': 148,
     'BCCH:DL_SCH': 149,
     'PCCH': 150,
     'DL CCCH': 151,
@@ -72,7 +72,7 @@ class XcalConverter:
     # Constants.
 
     DICT_FILES_NAMES = {
-        'temporary': 'BCCH_BCH_148',   # FIXME Unknown code for this protocol.
+        'BCCH:BCH': 'BCCH_BCH_148',
         'BCCH:DL_SCH': 'BCCH_DL_149',
         'PCCH': 'PCCH_DL_150',
         'DL CCCH': 'CCCH_DL_151',
@@ -100,7 +100,7 @@ class XcalConverter:
         
         # File dictionnary.
         self._files = {
-            'temporary': None,  # FIXME Unknown code for this protocol.
+            'BCCH:BCH': None,
             'BCCH:DL_SCH': None,
             'PCCH': None,
             'DL CCCH': None,
@@ -189,20 +189,23 @@ class XcalConverter:
 
                     elif state == 6:  # Content parsing.
 
-                        if first == 'QCLTE_RRCMSG_V2':
+                        if first == 'QCLTE_RRCMSG_V2' or first == 'QCLTE_RRCMSG':
+
+                            is_v2 = first == 'QCLTE_RRCMSG_V2'
 
                             # Check if the line has a valid length.
                             if l_len < 13:
                                 syntax_error(line_num, "13 columns expected, {} found.".format(l_len))
 
-                            msg_type = line[6]  # Message type.
+                            msg_type = line[6 if is_v2 else 5]  # Message type.
 
                             # Check if the message type is valid.
                             if msg_type not in self._files.keys():
                                 syntax_error(line_num, "Invalid message type : {}".format(msg_type))
 
                             # Adding the message to the corresponding list.
-                            self._files[msg_type].write('{0}\n0000 {1}\n'.format(line[1], line[12]))
+                            self._files[msg_type].write(
+                                '{0}\n0000 {1}\n'.format(line[1], line[12 if is_v2 else 11]))
 
                         elif first == 'GPS':
                             pass  # TODO Parse GPS message

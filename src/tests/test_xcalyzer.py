@@ -14,10 +14,8 @@ def rel_dir(path: str):
 class TestXcalyzer(TestCase):
 
     FKEYS = [
-        'temporary',  # FIXME Unknown code for this protocol.
-        'BCCH:DL_SCH', 'PCCH',
-        'DL CCCH', 'DL DCCH',
-        'UL CCCH', 'UL DCCH',
+        'BCCH:BCH', 'BCCH:DL_SCH', 'PCCH',
+        'DL CCCH', 'DL DCCH', 'UL CCCH', 'UL DCCH'
     ]
 
     def setUp(self) -> None:
