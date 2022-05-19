@@ -17,11 +17,27 @@ _DICT_DISSECTOR = {
 }
 
 
-def get_dissector_num(diss_name: str):
+def get_dissector_num(diss_name: str) -> int:
+    """Associates a dissector name with the corresponding dissector number.
+
+    Parameters:
+        diss_name: the dissector name.
+
+    Returns:
+        The corresponding dissector number.
+    """
     return _DICT_DISSECTOR[diss_name]
 
 
-def read_line(f):
+def read_line(f) -> list:
+    """Read a line from an AOF file.
+
+    Parameters:
+        f: an AOF file.
+
+    Returns:
+        A list of values, following CSV separators found in the current line.
+    """
     return f.readline().split('|')
 
 
