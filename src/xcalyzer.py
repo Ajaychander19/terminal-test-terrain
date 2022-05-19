@@ -3,6 +3,11 @@ import os.path
 
 from constantPath import getPathText, getWireshark
 
+# Needed library : pycrate
+from pycrate_asn1dir import RRCLTE
+
+import binascii
+import json
 import subprocess
 
 # Constants
@@ -97,6 +102,13 @@ class XcalConverter:
 
         self._path = path
         self._phone_id = 'phone_1'        # FIXME Temporary ID
+        self._line_num = 1
+
+        self._last_lat = '0.0'
+        self._last_lng = '0.0'
+
+        self._pci = '0'
+        self._earfcn = '0'
         
         # File dictionnary.
         self._files = {
@@ -121,7 +133,6 @@ class XcalConverter:
         """
 
         state = 0  # Current automata state.
-        line_num = 1  # Line number.
 
         # Opening AOF file.
         with open(self._path, 'r') as aof:
@@ -142,7 +153,7 @@ class XcalConverter:
                         if first == '<AOF_Information_START>\n':
                             state = 1
                         else:
-                            syntax_error(line_num, 'Invalid file starting "{}"'.format(first))
+                            syntax_error(self._line_num, 'Invalid file starting "{}"'.format(first))
 
                     elif state == 1:  # Skipping AOF info section.
 
@@ -154,7 +165,7 @@ class XcalConverter:
                         if first == '<Description Start>\n':
                             state = 3
                         else:
-                            syntax_error(line_num, 'Invalid description start "{}"'.format(first))
+                            syntax_error(self._line_num, 'Invalid description start "{}"'.format(first))
 
                     elif state == 3:  # Getting phone ID, opening temporary files.
 
@@ -185,7 +196,7 @@ class XcalConverter:
                         if first == '<Content Start>\n':
                             state = 6
                         else:
-                            syntax_error(line_num, 'Invalid content start "{}"'.format(first))
+                            syntax_error(self._line_num, 'Invalid content start "{}"'.format(first))
 
                     elif state == 6:  # Content parsing.
 
@@ -195,17 +206,20 @@ class XcalConverter:
 
                             # Check if the line has a valid length.
                             if l_len < 13:
-                                syntax_error(line_num, "13 columns expected, {} found.".format(l_len))
+                                syntax_error(self._line_num, "13 columns expected, {} found.".format(l_len))
 
                             msg_type = line[6 if is_v2 else 5]  # Message type.
+                            payload = line[12 if is_v2 else 11] # Message payload.
 
                             # Check if the message type is valid.
                             if msg_type not in self._files.keys():
-                                syntax_error(line_num, "Invalid message type : {}".format(msg_type))
+                                syntax_error(self._line_num, "Invalid message type : {}".format(msg_type))
 
-                            # Adding the message to the corresponding list.
+                            # Adding the message to the corresponding file.
                             self._files[msg_type].write(
-                                '{0}\n0000 {1}\n'.format(line[1], line[12 if is_v2 else 11]))
+                                '{0}\n0000 {1}\n'.format(line[1], payload))
+
+                            #self.process_payload(msg_type, payload)
 
                         elif first == 'GPS':
                             pass  # TODO Parse GPS message
@@ -215,7 +229,7 @@ class XcalConverter:
                             state = 7  # Final state because of EOF.
 
                     line = read_line(aof)  # Next line.
-                    line_num += 1
+                    self._line_num += 1
 
             finally:
 
@@ -231,7 +245,83 @@ class XcalConverter:
         # NOTE: this code is reachable, despite PyCharm warnings
         # You can for example remove <Content End> in the AOF file to execute it...
         if state != 7:
-            syntax_error(line_num, 'Unexpected End Of File, state={}.'.format(state))
+            syntax_error(self._line_num, 'Unexpected End Of File, state={}.'.format(state))
+
+    def process_payload(self, msg_type: str, payload: str) -> dict:
+        # Extracting RRC message data.
+
+        # Choosing message object.
+        msg_obj = None
+        if msg_type == 'BCCH:DL_SCH':
+            msg_obj = RRCLTE.EUTRA_RRC_Definitions.BCCH_DL_SCH_Message
+        elif msg_type == 'UL DCCH':
+            msg_obj = RRCLTE.EUTRA_RRC_Definitions.UL_DCCH_Message
+        else:
+            return {}
+
+        # Loading payload...
+        msg_obj.from_uper(
+            binascii.unhexlify(''.join(payload.split(' ')).strip()))
+
+        # Decoding message data.
+        msg_data = json.loads(msg_obj.to_json())
+
+        # Processing message data.
+
+        packet_data = msg_data['message']['c1']
+
+        # If SIB1...
+        if 'systemInformationBlockType1' in packet_data.keys():
+
+            # Contains the cellID and the TAC.
+            cell_access_info = packet_data['systemInformationBlockType1']['cellAccessRelatedInfo']
+
+            # Contains PLMN's MCC and MNC.
+            plmn_info = cell_access_info['plmn-IdentityList'][0]['plmn-Identity']
+
+            return {
+                'TAC': cell_access_info['trackingAreaCode'],
+                'cellID': cell_access_info['cellIdentity'],
+                'PCI': self._pci,
+                'EARFCN': self._earfcn,
+                'geolocation': {
+                    'lat': self._last_lat,
+                    'lng': self._last_lng,
+                },
+                'mcc': ''.join([str(i) for i in plmn_info['mcc']]),
+                'mnc': ''.join([str(i) for i in plmn_info['mnc']]),
+            }
+
+        elif 'measurementReport' in packet_data.keys():     # If MeasurementReport...
+
+            meas_data \
+                = packet_data['measurementReport']['criticalExtensions']['c1']['measurementReport-r8']['measResults']
+
+            # Current cell measurement results.
+            pcell_result = meas_data['measResultPCell']
+
+            # Neighbours cells measurement result.
+            # FIXME Cells without neighbours can exist.
+            ncells_result = meas_data['measResultNeighCells']['measResultListEUTRA']
+            # Calculating neighborMax_RSRP.
+            ncells_max_rsrp = ncells_result[0]['measResult']['rsrpResult']
+
+            for ncell in ncells_result:
+                ncell_rsrp = ncell['measResult']['rsrpResult']
+                ncells_max_rsrp = max(ncells_max_rsrp, ncell_rsrp)
+
+            return {
+                'PCI': self._pci,
+                'EARFCN': self._earfcn,
+                'Geolocation': {
+                    'lat': self._last_lat,
+                    'lng': self._last_lng,
+                },
+                'RSRP': pcell_result['rsrpResult'],
+                'neighborMax_RSRP': ncells_max_rsrp,
+            }
+
+        return {}   # FIXME Temporary.
 
     def produce_pcap(self, fkey: str):
         """Produces a PCAP file following a given dissector key from TXT file with text2pcap. This key corresponds to
