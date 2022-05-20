@@ -1,5 +1,4 @@
 """This module is dedicated to the analysis of AOF files produced by Accuver Xcal."""
-import os.path
 
 from constantPath import getPathText, getWireshark, getfileName
 
@@ -8,7 +7,6 @@ from pycrate_asn1dir import RRCLTE
 
 import binascii
 import json
-import os.path
 import subprocess
 
 # Constants
@@ -113,7 +111,10 @@ class XcalConverter:
 
         self._mcc = None
         self._mnc = None
-        
+
+        self._last_payload = None
+        self._last_msg_type = None
+
         # File dictionnary.
         self._files = {
             'BCCH:BCH': None,
@@ -230,15 +231,26 @@ class XcalConverter:
                             self._files[msg_type].write(
                                 '{0}\n0000 {1}\n'.format(line[1], payload))
 
-                            processed_payload = self.process_payload(msg_type, payload)
+                            asn_payload = self.produce_asn1(msg_type, payload)
 
-                            if processed_payload:
-                                json_list.append(processed_payload)
+                            if asn_payload != {}:
+                                pdata = asn_payload['message']['c1']
+
+                                if 'measurementReport' in pdata.keys():
+                                    self._last_payload = asn_payload
+                                elif 'systemInformationBlockType1' in pdata.keys():
+                                    json_list.append(self.process_payload(asn_payload))
 
                         elif first == 'GPS':
 
                             self._last_lng = line[2]
                             self._last_lat = line[3]
+
+                            if self._last_payload:
+                                processed_payload = self.process_payload(self._last_payload)
+                                if processed_payload != {}:
+                                    json_list.append(processed_payload)
+
                             # TODO Parse GPS message
 
                         elif first == 'QCLTE_PSCELL':
@@ -267,7 +279,7 @@ class XcalConverter:
 
             json.dump(json_list, json_final, indent=4)
 
-    def process_payload(self, msg_type: str, payload: str) -> dict:
+    def produce_asn1(self, msg_type: str, payload: str):
         # Extracting RRC message data.
 
         # Choosing message object.
@@ -284,7 +296,10 @@ class XcalConverter:
             binascii.unhexlify(''.join(payload.split(' ')).strip()))
 
         # Decoding message data.
-        msg_data = json.loads(msg_obj.to_json())
+        return json.loads(msg_obj.to_json())
+
+
+    def process_payload(self, msg_data: dict) -> dict:
 
         # Processing message data.
 
