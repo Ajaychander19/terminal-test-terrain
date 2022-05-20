@@ -1,13 +1,14 @@
 """This module is dedicated to the analysis of AOF files produced by Accuver Xcal."""
 import os.path
 
-from constantPath import getPathText, getWireshark
+from constantPath import getPathText, getWireshark, getfileName
 
 # Needed library : pycrate
 from pycrate_asn1dir import RRCLTE
 
 import binascii
 import json
+import os.path
 import subprocess
 
 # Constants
@@ -109,6 +110,9 @@ class XcalConverter:
 
         self._pci = '0'
         self._earfcn = '0'
+
+        self._mcc = None
+        self._mnc = None
         
         # File dictionnary.
         self._files = {
@@ -134,8 +138,12 @@ class XcalConverter:
 
         state = 0  # Current automata state.
 
+        fname = getfileName(self._path)[0]
+
         # Opening AOF file.
-        with open(self._path, 'r') as aof:
+        with open(self._path, 'r') as aof, open('C_{}_tmp.json'.format(fname), 'w') as json_final:
+
+            json_list = []
 
             try:
 
@@ -204,6 +212,9 @@ class XcalConverter:
 
                             is_v2 = first == 'QCLTE_RRCMSG_V2'
 
+                            self._pci = line[8 if is_v2 else 7]
+                            self._earfcn = line[9 if is_v2 else 8]
+
                             # Check if the line has a valid length.
                             if l_len < 13:
                                 syntax_error(self._line_num, "13 columns expected, {} found.".format(l_len))
@@ -219,10 +230,17 @@ class XcalConverter:
                             self._files[msg_type].write(
                                 '{0}\n0000 {1}\n'.format(line[1], payload))
 
-                            #self.process_payload(msg_type, payload)
+                            processed_payload = self.process_payload(msg_type, payload)
+
+                            if processed_payload:
+                                json_list.append(processed_payload)
 
                         elif first == 'GPS':
-                            pass  # TODO Parse GPS message
+
+                            self._last_lng = line[2]
+                            self._last_lat = line[3]
+                            # TODO Parse GPS message
+
                         elif first == 'QCLTE_PSCELL':
                             pass  # TODO Parse PSCELL
                         elif first == '<Content End>\n':  # File ending.
@@ -241,11 +259,13 @@ class XcalConverter:
                     if f:
                         f.close()
 
-        # Check if we are in the final state after finishing the parsing.
-        # NOTE: this code is reachable, despite PyCharm warnings
-        # You can for example remove <Content End> in the AOF file to execute it...
-        if state != 7:
-            syntax_error(self._line_num, 'Unexpected End Of File, state={}.'.format(state))
+            # Check if we are in the final state after finishing the parsing.
+            # NOTE: this code is reachable, despite PyCharm warnings
+            # You can for example remove <Content End> in the AOF file to execute it...
+            if state != 7:
+                syntax_error(self._line_num, 'Unexpected End Of File, state={}.'.format(state))
+
+            json.dump(json_list, json_final, indent=4)
 
     def process_payload(self, msg_type: str, payload: str) -> dict:
         # Extracting RRC message data.
@@ -280,16 +300,18 @@ class XcalConverter:
             plmn_info = cell_access_info['plmn-IdentityList'][0]['plmn-Identity']
 
             return {
-                'TAC': cell_access_info['trackingAreaCode'],
-                'cellID': cell_access_info['cellIdentity'],
-                'PCI': self._pci,
-                'EARFCN': self._earfcn,
-                'geolocation': {
-                    'lat': self._last_lat,
-                    'lng': self._last_lng,
-                },
-                'mcc': ''.join([str(i) for i in plmn_info['mcc']]),
-                'mnc': ''.join([str(i) for i in plmn_info['mnc']]),
+                'SIB': {
+                    'TAC': cell_access_info['trackingAreaCode'],
+                    'CellID': cell_access_info['cellIdentity'],
+                    'PCI': self._pci,
+                    'EARFCN': self._earfcn,
+                    'geolocation': {
+                        'lat': self._last_lat,
+                        'lng': self._last_lng,
+                    },
+                    'mcc': ''.join([str(i) for i in plmn_info['mcc']]),
+                    'mnc': ''.join([str(i) for i in plmn_info['mnc']]),
+                }
             }
 
         elif 'measurementReport' in packet_data.keys():     # If MeasurementReport...
@@ -302,7 +324,12 @@ class XcalConverter:
 
             # Neighbours cells measurement result.
             # FIXME Cells without neighbours can exist.
+
+            if 'measResultNeighCells' not in meas_data.keys():
+                return {}
+
             ncells_result = meas_data['measResultNeighCells']['measResultListEUTRA']
+
             # Calculating neighborMax_RSRP.
             ncells_max_rsrp = ncells_result[0]['measResult']['rsrpResult']
 
@@ -311,17 +338,17 @@ class XcalConverter:
                 ncells_max_rsrp = max(ncells_max_rsrp, ncell_rsrp)
 
             return {
-                'PCI': self._pci,
-                'EARFCN': self._earfcn,
-                'Geolocation': {
-                    'lat': self._last_lat,
-                    'lng': self._last_lng,
-                },
-                'RSRP': pcell_result['rsrpResult'],
-                'neighborMax_RSRP': ncells_max_rsrp,
+                'Mesurement': {
+                    'PCI': self._pci,
+                    'EARFCN': self._earfcn,
+                    'Geolocation': {
+                        'lat': self._last_lat,
+                        'lng': self._last_lng,
+                    },
+                    'RSRP': pcell_result['rsrpResult'],
+                    'neighbourMax_RSRP': ncells_max_rsrp,
+                }
             }
-
-        return {}   # FIXME Temporary.
 
     def produce_pcap(self, fkey: str):
         """Produces a PCAP file following a given dissector key from TXT file with text2pcap. This key corresponds to
