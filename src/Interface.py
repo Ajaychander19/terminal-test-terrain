@@ -11,6 +11,8 @@ import webbrowser
 from tkinter import font
 from tkinter import messagebox, Canvas, BOTH
 
+import xcalyzer
+
 class CreateToolTip(object):
     """Creates a tooltip for a given widget."""
     def __init__(self, widget, text='widget info'):
@@ -103,13 +105,22 @@ class GUI(tkinter.Frame):
 
             self.changeColor('red')
             files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
-            if (len(files) !=0):
-                csvtoPcap(files,self.working_directory)
+
+            if len(files) != 0:
+                # csvtoPcap(files,self.working_directory)
+
+                for f in files:
+                    conv = xcalyzer.XcalConverter(f)
+                    conv.process(self.working_directory)
+
+                # Removing temporary files.
                 filelist = [f for f in os.listdir(getPathText(""))]
                 for f in filelist:
                     os.remove(os.path.join(getPathText(""), f))
+
             else:
                 messagebox.showinfo("Warning", "Select at least one file")
+
             self.changeColor('green')
 
         elif number == 3:              # Cartoradio conversion, producing site and zone files.

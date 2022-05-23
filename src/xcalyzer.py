@@ -124,6 +124,13 @@ class XcalConverter:
             'UL DCCH': None,
         }
 
+    def process(self, outdir: str):
+        self.parse_aof()
+        self.produce_pcaps()
+        self.merge_pcaps()
+        self.reorder_pcap()
+        self.finalize(outdir)
+
     def parse_aof(self):
         """Parses the associated AOF file.
 
@@ -425,7 +432,7 @@ class XcalConverter:
         shutil.copy2(getPathText(input_pcap), os.path.join(outdir, output_pcap))
 
         # Producing final JSON file.
-        output_json = 'C{0}_{1}_{2}_{3}.json'.format(self.mcc, self.mcc, getfileName(self._path), self.phone_id)
+        output_json = 'C{0}_{1}_{2}_{3}.json'.format(self.mcc, self.mnc, getfileName(self._path), self.phone_id)
         shutil.copy2(getPathText('json_tmp.json'), os.path.join(outdir, output_json))
 
     def _get_phone_id(self) -> str:
