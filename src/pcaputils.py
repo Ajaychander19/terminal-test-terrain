@@ -94,6 +94,7 @@ def merge_pcaps(names: list, dest: str):
     # Calling mergecap
     subprocess.check_call(mcap_argc)
 
+
 def produce_pcap(path: str, dest: str, diss_num: int):
     """Produces a PCAP file from a TXT file which contains packets data
     required in order to construct the PCAP file.

@@ -35,22 +35,28 @@ class TestXcalyzer(TestCase):
         conv.parse_aof()
 
     def test_produce_pcap(self):
-
         conv = xcz.XcalConverter(rel_dir('../../donnees/DR10143732-M1.aof'))
         conv.parse_aof()
         conv.produce_pcaps()
 
     def test_merge_pcap(self):
-
         conv = xcz.XcalConverter(rel_dir('../../donnees/DR10143732-M1.aof'))
         conv.parse_aof()
         conv.produce_pcaps()
         conv.merge_pcaps()
 
     def test_reorder_pcap(self):
-
         conv = xcz.XcalConverter(rel_dir('../../donnees/DR10143732-M1.aof'))
         conv.parse_aof()
         conv.produce_pcaps()
         conv.merge_pcaps()
         conv.reorder_pcap()
+
+    def test_finalize(self):
+        conv = xcz.XcalConverter(rel_dir('../../donnees/DR10143732-M1.aof'))
+        conv.parse_aof()
+        conv.produce_pcaps()
+        conv.merge_pcaps()
+        conv.reorder_pcap()
+        conv.finalize(r"C:\Users\killi\git\terminal-test-terrain\Mesures_tests")
+

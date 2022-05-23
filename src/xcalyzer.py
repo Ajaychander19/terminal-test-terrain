@@ -1,9 +1,11 @@
 """This module is dedicated to the analysis of AOF files produced by Accuver Xcal."""
 
-from constantPath import getPathText, getWireshark, getfileName
+from constantPath import getPathText, getfileName
 
 import json
-import subprocess
+import os
+import shutil
+
 import pcaputils
 
 # Constants
@@ -138,7 +140,7 @@ class XcalConverter:
         fname = getfileName(self._path)
 
         # Opening AOF file.
-        with open(self._path, 'r') as aof, open('C_{}_tmp.json'.format(fname), 'w') as json_final:
+        with open(self._path, 'r') as aof, open(getPathText('json_tmp.json'.format(fname)), 'w') as json_final:
 
             json_list = []
 
@@ -383,7 +385,6 @@ class XcalConverter:
     def merge_pcaps(self):
 
         pcaps_list = [self.get_file_name(fkey, 'pcap') for fkey in self.DICT_FILES_NAMES.keys()]
-        output_pcap = 'final_tmp.pcap'.format(self.mcc, self.mnc, getfileName(self._path))
 
         pcaputils.merge_pcaps(pcaps_list, 'final_tmp.pcap')
 
@@ -412,6 +413,20 @@ class XcalConverter:
             raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
 
         return '{0}_{1}.{2}'.format(self.DICT_FILES_NAMES[fkey], self._phone_id, ext)
+
+    def finalize(self, outdir: str):
+
+        # Producing final PCAP file.
+        output_pcap = '{0}_{1}_{2}.pcap'.format(self.mcc, self.mnc, self.phone_id)
+
+        # Choosing between ordered file if exists or non ordered file.
+        input_pcap = 'ord_final_tmp.pcap' if os.path.exists(getPathText('ord_final_tmp.pcap')) else 'final_tmp.pcap'
+
+        shutil.copy2(getPathText(input_pcap), os.path.join(outdir, output_pcap))
+
+        # Producing final JSON file.
+        output_json = 'C{0}_{1}_{2}_{3}.json'.format(self.mcc, self.mcc, getfileName(self._path), self.phone_id)
+        shutil.copy2(getPathText('json_tmp.json'), os.path.join(outdir, output_json))
 
     def _get_phone_id(self) -> str:
         """
