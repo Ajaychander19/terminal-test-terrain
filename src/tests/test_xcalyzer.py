@@ -38,34 +38,19 @@ class TestXcalyzer(TestCase):
 
         conv = xcz.XcalConverter(rel_dir('../../donnees/DR10143732-M1.aof'))
         conv.parse_aof()
-
-        for f in self.FKEYS:
-            conv.produce_pcap(f)
+        conv.produce_pcaps()
 
     def test_merge_pcap(self):
 
         conv = xcz.XcalConverter(rel_dir('../../donnees/DR10143732-M1.aof'))
         conv.parse_aof()
-
-        files = []
-
-        for f in self.FKEYS:
-            conv.produce_pcap(f)
-            files.append(conv.get_file_name(f, 'pcap'))
-
-        xcz.merge_pcap(files, 'test_merge.pcap')
+        conv.produce_pcaps()
+        conv.merge_pcaps()
 
     def test_reorder_pcap(self):
 
         conv = xcz.XcalConverter(rel_dir('../../donnees/DR10143732-M1.aof'))
         conv.parse_aof()
-
-        files = []
-
-        for f in self.FKEYS:
-            conv.produce_pcap(f)
-            files.append(conv.get_file_name(f, 'pcap'))
-
-        xcz.merge_pcap(files, 'test_merge.pcap')
-
-        xcz.reorder_pcap('test_merge.pcap', 'test_merge_ord.pcap')
+        conv.produce_pcaps()
+        conv.merge_pcaps()
+        conv.reorder_pcap()

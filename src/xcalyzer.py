@@ -2,12 +2,9 @@
 
 from constantPath import getPathText, getWireshark, getfileName
 
-# Needed library : pycrate
-from pycrate_asn1dir import RRCLTE
-
-import binascii
 import json
 import subprocess
+import pcaputils
 
 # Constants
 _DICT_DISSECTOR = {
@@ -63,81 +60,6 @@ def syntax_error(line: int, msg: str):
 #
 #     date = property(_get_date)
 #     data = property(_get_data)
-
-def produce_asn1(msg_type: str, payload: str):
-    # Extracting RRC message data.
-
-    # Choosing message object.
-    if msg_type == 'BCCH:DL_SCH':
-        msg_obj = RRCLTE.EUTRA_RRC_Definitions.BCCH_DL_SCH_Message
-    elif msg_type == 'UL DCCH':
-        msg_obj = RRCLTE.EUTRA_RRC_Definitions.UL_DCCH_Message
-    else:
-        return {}
-
-    # Loading payload...
-    msg_obj.from_uper(
-        binascii.unhexlify(''.join(payload.split(' ')).strip()))
-
-    # Decoding message data.
-    return json.loads(msg_obj.to_json())
-
-
-def reorder_pcap(fname: str, dest: str):
-    """Reorders a given PCAP temporary file with reordercap. Produces the resulting
-    PCAP temporary reordered file.
-
-    Parameters:
-        fname: the name of the temporary PCAP source file.
-        dest: the name of the temporary PCAP destination file which will be created.
-
-    Raises:
-        CalledProcessError: if reordercap produces an error.
-    """
-
-    input_file = getPathText(fname)
-    output_file = getPathText(dest)
-
-    # Preparing reordercap call.
-    rcap_argc = [
-        getWireshark('reordercap'),     # Command path
-        '-n',                           # Produce a file only if a reordering has been done.
-        input_file,
-        output_file
-    ]
-
-    # Calling reordercap
-    subprocess.check_call(rcap_argc)
-
-
-def merge_pcap(names: list, dest: str):
-    """Concatenates several given PCAP temporary files into another given PCAP temporary file with mergecap.
-
-    Parameters:
-        names: name of temporary files to concatenate.
-        dest: name of the temporary output file.
-
-    Raises:
-        CalledProcessError: if mergecap produces an error.
-
-    """
-    # Preparing mergecap
-    output_file = getPathText(dest)
-
-    # Initial arguments list.
-    mcap_argc = [
-        getWireshark('mergecap'),
-        '-a',               # Concat files.
-        '-w', output_file   # File to write.
-    ]
-
-    # Adding files paths to the argument list.
-    for n in names:
-        mcap_argc.append(getPathText(n))
-
-    # Calling mergecap
-    subprocess.check_call(mcap_argc)
-
 
 class XcalConverter:
     """This class is used to analyze Accuver Xcal AOF file format. It provides few methods to
@@ -305,7 +227,7 @@ class XcalConverter:
                             self._files[msg_type].write(
                                 '{0}\n0000 {1}\n'.format(line[1], payload))
 
-                            asn_payload = produce_asn1(msg_type, payload)
+                            asn_payload = pcaputils.produce_asn1(msg_type, payload)
 
                             if asn_payload != {}:
                                 pdata = asn_payload['message']['c1']
@@ -433,7 +355,7 @@ class XcalConverter:
                 }
             }
 
-    def produce_pcap(self, fkey: str):
+    def produce_pcaps(self):
         """Produces a PCAP file following a given dissector key from TXT file with text2pcap. This key corresponds to
         XcalConverter.DICT_FILES_NAMES dictionary keys. The function produces a temporary PCAP file
         related to only one dissector, from a TXT file, corresponding to the key ; the temporary file name is the
@@ -448,23 +370,28 @@ class XcalConverter:
         """
 
         # Controlling fkey.
-        if fkey not in self.DICT_FILES_NAMES.keys():
-            raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
+        # if fkey not in self.DICT_FILES_NAMES.keys():
+        #    raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
 
-        input_txt = getPathText(self.get_file_name(fkey, 'txt'))
-        output_pcap = getPathText(self.get_file_name(fkey, 'pcap'))
+        for fkey in self.DICT_FILES_NAMES.keys():
 
-        # Preparing text2pcap call.
-        t2p_argc = [
-            getWireshark('text2pcap'),          # Wireshark command path.
-            '-t', '%F %H:%M:%S.',                      # Time format to use in the pcap file.
-            input_txt,                          # Input .txt file.
-            output_pcap,                        # Output .pcap file.
-            '-l', str(get_dissector_num(fkey))  # Number of the dissector to be called.
-        ]
+            input_txt = getPathText(self.get_file_name(fkey, 'txt'))
+            output_pcap = getPathText(self.get_file_name(fkey, 'pcap'))
 
-        # Calling text2pcap
-        subprocess.check_call(t2p_argc)
+            pcaputils.produce_pcap(input_txt, output_pcap, _DICT_DISSECTOR[fkey])
+
+    def merge_pcaps(self):
+
+        pcaps_list = [self.get_file_name(fkey, 'pcap') for fkey in self.DICT_FILES_NAMES.keys()]
+        output_pcap = 'final_tmp.pcap'.format(self.mcc, self.mnc, getfileName(self._path))
+
+        pcaputils.merge_pcaps(pcaps_list, 'final_tmp.pcap')
+
+    def reorder_pcap(self):
+
+        output_pcap = 'C{0}_{1}_{2}.pcap'.format(self.mcc, self.mnc, getfileName(self._path))
+
+        pcaputils.reorder_pcap('final_tmp.pcap', 'ord_final_tmp.pcap')
 
     def get_file_name(self, fkey: str, ext: str) -> str:
         """Associates a given key of XcalConverter.DICT_FILES_NAMES with the corresponding
@@ -486,7 +413,7 @@ class XcalConverter:
 
         return '{0}_{1}.{2}'.format(self.DICT_FILES_NAMES[fkey], self._phone_id, ext)
 
-    def _get_phone_id(self):
+    def _get_phone_id(self) -> str:
         """
             Getter of the phone_id attribute associated to the AOF file.
 
@@ -495,5 +422,13 @@ class XcalConverter:
         """
         return self._phone_id
 
+    def _get_mcc(self) -> int:
+        return self._mcc
+
+    def _get_mnc(self) -> int:
+        return self._mnc
+
     # Class properties.
     phone_id = property(_get_phone_id)
+    mcc = property(_get_mcc)
+    mnc = property(_get_mnc)
