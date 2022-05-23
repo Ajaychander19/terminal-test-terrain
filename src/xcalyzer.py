@@ -314,6 +314,15 @@ class XcalConverter:
             # Contains PLMN's MCC and MNC.
             plmn_info = cell_access_info['plmn-IdentityList'][0]['plmn-Identity']
 
+            mcc = ''.join([str(i) for i in plmn_info['mcc']])
+            mnc = ''.join([str(i) for i in plmn_info['mnc']])
+
+            if not self._mcc:
+                self._mcc = mcc
+
+            if not self._mnc:
+                self._mnc = mnc
+
             return {
                 'SIB': {
                     'TAC': cell_access_info['trackingAreaCode'],
@@ -324,8 +333,8 @@ class XcalConverter:
                         'lat': self._last_lat,
                         'lng': self._last_lng,
                     },
-                    'mcc': ''.join([str(i) for i in plmn_info['mcc']]),
-                    'mnc': ''.join([str(i) for i in plmn_info['mnc']]),
+                    'mcc': mcc,
+                    'mnc': mnc,
                 }
             }
 
@@ -340,17 +349,22 @@ class XcalConverter:
             # Neighbours cells measurement result.
             # FIXME Cells without neighbours can exist.
 
-            if 'measResultNeighCells' not in meas_data.keys():
-                return {}
+            rsrp_offset = -1000
 
-            ncells_result = meas_data['measResultNeighCells']['measResultListEUTRA']
+            if 'measResultNeighCells' in meas_data.keys():
+                ncells_result = meas_data['measResultNeighCells']['measResultListEUTRA']
 
-            # Calculating neighborMax_RSRP.
-            ncells_max_rsrp = ncells_result[0]['measResult']['rsrpResult']
+                # Calculating neighborMax_RSRP.
+                ncells_max_rsrp = ncells_result[0]['measResult']['rsrpResult']
 
-            for ncell in ncells_result:
-                ncell_rsrp = ncell['measResult']['rsrpResult']
-                ncells_max_rsrp = max(ncells_max_rsrp, ncell_rsrp)
+                ncells_rsrps = []
+
+                for ncell in ncells_result:
+                    ncell_rsrp = ncell['measResult']['rsrpResult']
+                    ncells_rsrps.append(ncell_rsrp)
+                    ncells_max_rsrp = max(ncells_max_rsrp, ncell_rsrp)
+
+                rsrp_offset = (sum(ncells_rsrps) / len(ncells_rsrps)) - ncells_max_rsrp
 
             return {
                 'Mesurement': {
@@ -361,7 +375,7 @@ class XcalConverter:
                         'lng': self._last_lng,
                     },
                     'RSRP': pcell_result['rsrpResult'],
-                    'neighbourMax_RSRP': ncells_max_rsrp,
+                    'neighbourMax_RSRP': rsrp_offset,
                 }
             }
 
