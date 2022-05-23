@@ -64,6 +64,80 @@ def syntax_error(line: int, msg: str):
 #     date = property(_get_date)
 #     data = property(_get_data)
 
+def produce_asn1(msg_type: str, payload: str):
+    # Extracting RRC message data.
+
+    # Choosing message object.
+    if msg_type == 'BCCH:DL_SCH':
+        msg_obj = RRCLTE.EUTRA_RRC_Definitions.BCCH_DL_SCH_Message
+    elif msg_type == 'UL DCCH':
+        msg_obj = RRCLTE.EUTRA_RRC_Definitions.UL_DCCH_Message
+    else:
+        return {}
+
+    # Loading payload...
+    msg_obj.from_uper(
+        binascii.unhexlify(''.join(payload.split(' ')).strip()))
+
+    # Decoding message data.
+    return json.loads(msg_obj.to_json())
+
+
+def reorder_pcap(fname: str, dest: str):
+    """Reorders a given PCAP temporary file with reordercap. Produces the resulting
+    PCAP temporary reordered file.
+
+    Parameters:
+        fname: the name of the temporary PCAP source file.
+        dest: the name of the temporary PCAP destination file which will be created.
+
+    Raises:
+        CalledProcessError: if reordercap produces an error.
+    """
+
+    input_file = getPathText(fname)
+    output_file = getPathText(dest)
+
+    # Preparing reordercap call.
+    rcap_argc = [
+        getWireshark('reordercap'),     # Command path
+        '-n',                           # Produce a file only if a reordering has been done.
+        input_file,
+        output_file
+    ]
+
+    # Calling reordercap
+    subprocess.check_call(rcap_argc)
+
+
+def merge_pcap(names: list, dest: str):
+    """Concatenates several given PCAP temporary files into another given PCAP temporary file with mergecap.
+
+    Parameters:
+        names: name of temporary files to concatenate.
+        dest: name of the temporary output file.
+
+    Raises:
+        CalledProcessError: if mergecap produces an error.
+
+    """
+    # Preparing mergecap
+    output_file = getPathText(dest)
+
+    # Initial arguments list.
+    mcap_argc = [
+        getWireshark('mergecap'),
+        '-a',               # Concat files.
+        '-w', output_file   # File to write.
+    ]
+
+    # Adding files paths to the argument list.
+    for n in names:
+        mcap_argc.append(getPathText(n))
+
+    # Calling mergecap
+    subprocess.check_call(mcap_argc)
+
 
 class XcalConverter:
     """This class is used to analyze Accuver Xcal AOF file format. It provides few methods to
@@ -97,7 +171,7 @@ class XcalConverter:
         #     'DL DCCH': None,
         #     'UL DCCH': None,
         # }
-        #self._gps = []
+        # self._gps = []
 
         self._path = path
         self._phone_id = 'phone_1'        # FIXME Temporary ID
@@ -139,7 +213,7 @@ class XcalConverter:
 
         state = 0  # Current automata state.
 
-        fname = getfileName(self._path)[0]
+        fname = getfileName(self._path)
 
         # Opening AOF file.
         with open(self._path, 'r') as aof, open('C_{}_tmp.json'.format(fname), 'w') as json_final:
@@ -220,8 +294,8 @@ class XcalConverter:
                             if l_len < 13:
                                 syntax_error(self._line_num, "13 columns expected, {} found.".format(l_len))
 
-                            msg_type = line[6 if is_v2 else 5]  # Message type.
-                            payload = line[12 if is_v2 else 11] # Message payload.
+                            msg_type = line[6 if is_v2 else 5]      # Message type.
+                            payload = line[12 if is_v2 else 11]     # Message payload.
 
                             # Check if the message type is valid.
                             if msg_type not in self._files.keys():
@@ -231,7 +305,7 @@ class XcalConverter:
                             self._files[msg_type].write(
                                 '{0}\n0000 {1}\n'.format(line[1], payload))
 
-                            asn_payload = self.produce_asn1(msg_type, payload)
+                            asn_payload = produce_asn1(msg_type, payload)
 
                             if asn_payload != {}:
                                 pdata = asn_payload['message']['c1']
@@ -261,6 +335,8 @@ class XcalConverter:
                     line = read_line(aof)  # Next line.
                     self._line_num += 1
 
+                json.dump(json_list, json_final, indent=4)
+
             finally:
 
                 # Closing files.
@@ -276,28 +352,6 @@ class XcalConverter:
             # You can for example remove <Content End> in the AOF file to execute it...
             if state != 7:
                 syntax_error(self._line_num, 'Unexpected End Of File, state={}.'.format(state))
-
-            json.dump(json_list, json_final, indent=4)
-
-    def produce_asn1(self, msg_type: str, payload: str):
-        # Extracting RRC message data.
-
-        # Choosing message object.
-        msg_obj = None
-        if msg_type == 'BCCH:DL_SCH':
-            msg_obj = RRCLTE.EUTRA_RRC_Definitions.BCCH_DL_SCH_Message
-        elif msg_type == 'UL DCCH':
-            msg_obj = RRCLTE.EUTRA_RRC_Definitions.UL_DCCH_Message
-        else:
-            return {}
-
-        # Loading payload...
-        msg_obj.from_uper(
-            binascii.unhexlify(''.join(payload.split(' ')).strip()))
-
-        # Decoding message data.
-        return json.loads(msg_obj.to_json())
-
 
     def process_payload(self, msg_data: dict) -> dict:
 
@@ -411,60 +465,6 @@ class XcalConverter:
 
         # Calling text2pcap
         subprocess.check_call(t2p_argc)
-
-    def reorder_pcap(self, fname: str, dest: str):
-        """Reorders a given PCAP temporary file with reordercap. Produces the resulting
-        PCAP temporary reordered file.
-
-        Parameters:
-            fname: the name of the temporary PCAP source file.
-            dest: the name of the temporary PCAP destination file which will be created.
-
-        Raises:
-            CalledProcessError: if reordercap produces an error.
-        """
-
-        input_file = getPathText(fname)
-        output_file = getPathText(dest)
-
-        # Preparing reordercap call.
-        rcap_argc = [
-            getWireshark('reordercap'),     # Command path
-            '-n',                           # Produce a file only if a reordering has been done.
-            input_file,
-            output_file
-        ]
-
-        # Calling reordercap
-        subprocess.check_call(rcap_argc)
-
-    def merge_pcap(self, names: list, dest: str):
-        """Concatenates several given PCAP temporary files into another given PCAP temporary file with mergecap.
-
-        Parameters:
-            names: name of temporary files to concatenate.
-            dest: name of the temporary output file.
-
-        Raises:
-            CalledProcessError: if mergecap produces an error.
-
-        """
-        # Preparing mergecap
-        output_file = getPathText(dest)
-
-        # Initial arguments list.
-        mcap_argc = [
-            getWireshark('mergecap'),
-            '-a',               # Concat files.
-            '-w', output_file   # File to write.
-        ]
-
-        # Adding files paths to the argument list.
-        for n in names:
-            mcap_argc.append(getPathText(n))
-
-        # Calling mergecap
-        subprocess.check_call(mcap_argc)
 
     def get_file_name(self, fkey: str, ext: str) -> str:
         """Associates a given key of XcalConverter.DICT_FILES_NAMES with the corresponding

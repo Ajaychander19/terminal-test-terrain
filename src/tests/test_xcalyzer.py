@@ -53,7 +53,7 @@ class TestXcalyzer(TestCase):
             conv.produce_pcap(f)
             files.append(conv.get_file_name(f, 'pcap'))
 
-        conv.merge_pcap(files, 'test_merge.pcap')
+        xcz.merge_pcap(files, 'test_merge.pcap')
 
     def test_reorder_pcap(self):
 
@@ -66,6 +66,6 @@ class TestXcalyzer(TestCase):
             conv.produce_pcap(f)
             files.append(conv.get_file_name(f, 'pcap'))
 
-        conv.merge_pcap(files, 'test_merge.pcap')
+        xcz.merge_pcap(files, 'test_merge.pcap')
 
-        conv.reorder_pcap('test_merge.pcap', 'test_merge_ord.pcap')
+        xcz.reorder_pcap('test_merge.pcap', 'test_merge_ord.pcap')
