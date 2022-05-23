@@ -125,6 +125,19 @@ class XcalConverter:
         }
 
     def process(self, outdir: str):
+        """Processes the AOF file.
+
+        Calls the following subfunctions:
+            - parse_aof: parses the AOF file, and produces the JSON output file.
+            - produce_pcaps: produces a PCAP file for each Wireshark dissector used.
+            - merge_pcaps: merges PCAP files produced by produce_pcaps.
+            - reorder_pcap: reorder the produced PCAP file.
+            - finalize: produces final PCAP and JSON files.
+
+        Parameters:
+            outdir: output directory.
+
+        """
         self.parse_aof()
         self.produce_pcaps()
         self.merge_pcaps()
@@ -244,7 +257,7 @@ class XcalConverter:
                                 if 'measurementReport' in pdata.keys():
                                     self._last_payload = asn_payload
                                 elif 'systemInformationBlockType1' in pdata.keys():
-                                    json_list.append(self.process_payload(asn_payload))
+                                    json_list.append(self.process_asn1(asn_payload))
 
                         elif first == 'GPS':
 
@@ -252,11 +265,9 @@ class XcalConverter:
                             self._last_lat = line[3]
 
                             if self._last_payload:
-                                processed_payload = self.process_payload(self._last_payload)
+                                processed_payload = self.process_asn1(self._last_payload)
                                 if processed_payload != {}:
                                     json_list.append(processed_payload)
-
-                            # TODO Parse GPS message
 
                         elif first == 'QCLTE_PSCELL':
                             pass  # TODO Parse PSCELL
@@ -284,7 +295,18 @@ class XcalConverter:
             if state != 7:
                 syntax_error(self._line_num, 'Unexpected End Of File, state={}.'.format(state))
 
-    def process_payload(self, msg_data: dict) -> dict:
+    def process_asn1(self, msg_data: dict) -> dict:
+        """Processes an ASN1 dictionary associated to a message payload,
+        and produces the dictionary which corresponds to a 'Measurement' or
+        'SIB' entry in the JSON file.
+
+        Parameters:
+            msg_data: ASN1 dictionary.
+
+        Returns:
+            A dictionary structured following 'SIB' or 'Measurement' entries present in the JSON output file.
+
+        """
 
         # Processing message data.
 
@@ -332,7 +354,6 @@ class XcalConverter:
             pcell_result = meas_data['measResultPCell']
 
             # Neighbours cells measurement result.
-            # FIXME Cells without neighbours can exist.
 
             rsrp_offset = -1000
 
@@ -390,15 +411,16 @@ class XcalConverter:
             pcaputils.produce_pcap(input_txt, output_pcap, _DICT_DISSECTOR[fkey])
 
     def merge_pcaps(self):
+        """Merges temporary PCAP files into the file 'final_tmp.pcap'."""
 
         pcaps_list = [self.get_file_name(fkey, 'pcap') for fkey in self.DICT_FILES_NAMES.keys()]
 
         pcaputils.merge_pcaps(pcaps_list, 'final_tmp.pcap')
 
     def reorder_pcap(self):
-
-        output_pcap = 'C{0}_{1}_{2}.pcap'.format(self.mcc, self.mnc, getfileName(self._path))
-
+        """Reorders the file 'final_tmp.pcap'. If a reordering has been done, produces the file
+        'ord_final_tmp.pcap'.
+        """
         pcaputils.reorder_pcap('final_tmp.pcap', 'ord_final_tmp.pcap')
 
     def get_file_name(self, fkey: str, ext: str) -> str:
@@ -422,6 +444,17 @@ class XcalConverter:
         return '{0}_{1}.{2}'.format(self.DICT_FILES_NAMES[fkey], self._phone_id, ext)
 
     def finalize(self, outdir: str):
+        """Produces the final files in the output directory.
+
+        The produced files are MCC_MNC_ID.pcap, which contains all messages packets,
+        and CMCC_MNC_FNAME_ID.json, which contains all measurement and SIB information
+        used for the Cell Association Processing; here, MCC and MNC designate the MCC/MNC
+        of the current operator, ID the identifier used to designate the phone, and FNAME the
+        AOF file name parsed.
+
+        Parameters:
+            outdir: output directory.
+        """
 
         # Producing final PCAP file.
         output_pcap = '{0}_{1}_{2}.pcap'.format(self.mcc, self.mnc, self.phone_id)
