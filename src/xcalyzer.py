@@ -162,11 +162,12 @@ class XcalConverter:
         # Opening AOF file.
         with open(self._path, 'r') as aof, open(getPathText('json_tmp.json'.format(fname)), 'w') as json_final:
 
-            json_list = []
-
             try:
 
                 line = read_line(aof)  # Current line.
+
+                # Used to properly produce commas which separate JSON entries.
+                first_entry = True
 
                 # Parsing automata
                 while line[0] != '' and state != 7:
@@ -199,7 +200,7 @@ class XcalConverter:
                         # if first == '<Description End>\n':
                         #    state = 4
 
-                        # TODO Get phone ID.
+                        # TODO Get phone ID (and replace if condition).
                         if True:
 
                             self._phone_id = 'phone_1'
@@ -221,6 +222,10 @@ class XcalConverter:
                     elif state == 5:  # Content section start.
 
                         if first == '<Content Start>\n':
+
+                            # Final JSON opening character.
+                            json_final.write('[\n')
+
                             state = 6
                         else:
                             syntax_error(self._line_num, 'Invalid content start "{}"'.format(first))
@@ -257,7 +262,13 @@ class XcalConverter:
                                 if 'measurementReport' in pdata.keys():
                                     self._last_payload = asn_payload
                                 elif 'systemInformationBlockType1' in pdata.keys():
-                                    json_list.append(self.process_asn1(asn_payload))
+
+                                    if first_entry:
+                                        first_entry = False
+                                    else:
+                                        json_final.write(',\n')
+
+                                    self.produce_proc_asn1_json(asn_payload, json_final)
 
                         elif first == 'GPS':
 
@@ -265,9 +276,13 @@ class XcalConverter:
                             self._last_lat = line[3]
 
                             if self._last_payload:
-                                processed_payload = self.process_asn1(self._last_payload)
-                                if processed_payload != {}:
-                                    json_list.append(processed_payload)
+
+                                if first_entry:
+                                    first_entry = False
+                                else:
+                                    json_final.write(',\n')
+
+                                self.produce_proc_asn1_json(self._last_payload, json_final)
 
                         elif first == 'QCLTE_PSCELL':
                             pass  # TODO Parse PSCELL
@@ -276,8 +291,6 @@ class XcalConverter:
 
                     line = read_line(aof)  # Next line.
                     self._line_num += 1
-
-                json.dump(json_list, json_final, indent=4)
 
             finally:
 
@@ -294,6 +307,9 @@ class XcalConverter:
             # You can for example remove <Content End> in the AOF file to execute it...
             if state != 7:
                 syntax_error(self._line_num, 'Unexpected End Of File, state={}.'.format(state))
+
+            # Producing closing char in JSON file.
+            json_final.write('\n]\n')
 
     def process_asn1(self, msg_data: dict) -> dict:
         """Processes an ASN1 dictionary associated to a message payload,
@@ -386,19 +402,11 @@ class XcalConverter:
             }
 
     def produce_pcaps(self):
-        """Produces a PCAP file following a given dissector key from TXT file with text2pcap. This key corresponds to
-        XcalConverter.DICT_FILES_NAMES dictionary keys. The function produces a temporary PCAP file
-        related to only one dissector, from a TXT file, corresponding to the key ; the temporary file name is the
-        string associated with this key in XcalConverter.DICT_FILES_NAMES.
-
-        Parameters:
-            fkey: the corresponding dissector key.
+        """Produce PCAP files for each dissector from produced TXT files using text2pcap.
 
         Raises:
-            RuntimeError: if fkey is invalid.
             CalledProcessError: if text2pcap produces an error.
         """
-
         # Controlling fkey.
         # if fkey not in self.DICT_FILES_NAMES.keys():
         #    raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
@@ -411,15 +419,23 @@ class XcalConverter:
             pcaputils.produce_pcap(input_txt, output_pcap, _DICT_DISSECTOR[fkey])
 
     def merge_pcaps(self):
-        """Merges temporary PCAP files into the file 'final_tmp.pcap'."""
+        """Merges temporary PCAP files into the file 'final_tmp.pcap'.
+
+        Raises:
+            CalledProcessError: if mergecap produces an error.
+        """
 
         pcaps_list = [self.get_file_name(fkey, 'pcap') for fkey in self.DICT_FILES_NAMES.keys()]
 
         pcaputils.merge_pcaps(pcaps_list, 'final_tmp.pcap')
 
-    def reorder_pcap(self):
+    @staticmethod
+    def reorder_pcap():
         """Reorders the file 'final_tmp.pcap'. If a reordering has been done, produces the file
         'ord_final_tmp.pcap'.
+
+        Raises:
+            CalledProcessError: if reordercap produces an error.
         """
         pcaputils.reorder_pcap('final_tmp.pcap', 'ord_final_tmp.pcap')
 
@@ -467,6 +483,15 @@ class XcalConverter:
         # Producing final JSON file.
         output_json = 'C{0}_{1}_{2}_{3}.json'.format(self.mcc, self.mnc, getfileName(self._path), self.phone_id)
         shutil.copy2(getPathText('json_tmp.json'), os.path.join(outdir, output_json))
+
+    def produce_proc_asn1_json(self, asn1: dict, json_file):
+        asn1_json = json.dumps(self.process_asn1(asn1), indent=4)
+        prod_json = ''
+
+        for asn_line in asn1_json.splitlines(keepends=True):
+            prod_json += '    ' + asn_line
+
+        json_file.write(prod_json)
 
     def _get_phone_id(self) -> str:
         """
