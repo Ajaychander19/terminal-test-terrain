@@ -2,6 +2,7 @@ from unittest import TestCase
 
 import os
 import os.path
+import pathlib
 
 from .. import xcalyzer as xcz
 from ..constantPath import getPathText
@@ -58,5 +59,7 @@ class TestXcalyzer(TestCase):
         conv.produce_pcaps()
         conv.merge_pcaps()
         conv.reorder_pcap()
-        conv.finalize(r"C:\Users\killi\git\terminal-test-terrain\Mesures_tests")
+        conv.finalize(
+            os.path.join(
+                pathlib.Path(__file__).parent.parent.parent, 'Mesures_tests'))
 
