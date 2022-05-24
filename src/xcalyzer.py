@@ -485,6 +485,12 @@ class XcalConverter:
         shutil.copy2(getPathText('json_tmp.json'), os.path.join(outdir, output_json))
 
     def produce_proc_asn1_json(self, asn1: dict, json_file):
+        """Produces in the JSON file an ASN1 entry from a given ASN1 dictionary.
+
+        Parameters:
+            asn1: ASN1 dictionary.
+            json_file: JSON file to write in.
+        """
         asn1_json = json.dumps(self.process_asn1(asn1), indent=4)
         prod_json = ''
 
