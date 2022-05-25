@@ -3,6 +3,7 @@
 from constantPath import getPathText, getfileName
 
 import json
+import math
 import os
 import shutil
 
@@ -112,6 +113,8 @@ class XcalConverter:
 
         self._last_payload = None
         self._last_msg_type = None
+
+        self._rsrp = 0.0
 
         # File dictionnary.
         self._files = {
@@ -285,7 +288,16 @@ class XcalConverter:
                                 self.produce_proc_asn1_json(self._last_payload, json_final)
 
                         elif first == 'QCLTE_PSCELL':
-                            pass  # TODO Parse PSCELL
+
+                            if l_len < 6:
+                                syntax_error(self._line_num, "6 columns expected, {} found.".format(l_len))
+
+                            serving_rsrp = line[5]
+
+                            if serving_rsrp != '':
+                                self._rsrp = math.floor(140 + float(serving_rsrp)) + 1
+
+
                         elif first == '<Content End>\n':  # File ending.
                             state = 7  # Final state because of EOF.
 
@@ -379,14 +391,11 @@ class XcalConverter:
                 # Calculating neighborMax_RSRP.
                 ncells_max_rsrp = ncells_result[0]['measResult']['rsrpResult']
 
-                ncells_rsrps = []
-
                 for ncell in ncells_result:
                     ncell_rsrp = ncell['measResult']['rsrpResult']
-                    ncells_rsrps.append(ncell_rsrp)
                     ncells_max_rsrp = max(ncells_max_rsrp, ncell_rsrp)
 
-                rsrp_offset = (sum(ncells_rsrps) / len(ncells_rsrps)) - ncells_max_rsrp
+                rsrp_offset = self._rsrp - ncells_max_rsrp
 
             return {
                 'Mesurement': {
@@ -396,7 +405,7 @@ class XcalConverter:
                         'lat': self._last_lat,
                         'lng': self._last_lng,
                     },
-                    'RSRP': pcell_result['rsrpResult'],
+                    'RSRP': self._rsrp,     # pcell_result['rsrpResult'],
                     'neighbourMax_RSRP': rsrp_offset,
                 }
             }
