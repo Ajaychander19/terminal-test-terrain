@@ -42,7 +42,17 @@ var Tracking_area=L.layerGroup();
 var RSRP = L.layerGroup();
 var PCI =L.layerGroup();
 var hexlayer = L.hexbinLayer(hexbin_style()).hoverHandler(L.HexbinHoverHandler.tooltip()).addTo(map);
-var rsrplayer = L.hexbinLayer(hexbin_style(1,["black","MidnightBlue","Navy","DarkBlue", "MediumBlue","blue","RoyalBlue","DodgerBlue","DeepSkyBlue","LightSkyBlue", "Cyan", "PaleTurquoise","aquamarine","lightgreen","mediumaquamarine","GreenYellow","Lime","chartreuse","yellow","Gold", "orange","DarkOrange", "Coral", "Tomato","Crimson"])).hoverHandler(L.HexbinHoverHandler.tooltip()).addTo(map);
+
+var rsrplayer = L.hexbinLayer(hexbin_style(1,
+    [
+        "black","MidnightBlue","Navy","DarkBlue",
+        "MediumBlue","blue","RoyalBlue","DodgerBlue",
+        "DeepSkyBlue","LightSkyBlue", "Cyan", "PaleTurquoise",
+        "aquamarine","lightgreen","mediumaquamarine","GreenYellow",
+        "Lime","chartreuse","yellow","Gold", "orange",
+        "DarkOrange", "Coral", "Tomato","Crimson"
+    ])).hoverHandler(L.HexbinHoverHandler.tooltip()).addTo(map);
+
 var overlayers={}	
 var hexpoints=[]
 var rsrpValue_points=[]
@@ -75,18 +85,19 @@ function hexbin_style(colorDomain,colorRange){
     } else {
         return{
     
-        radius : 12,
-        opacity: 0,
-        duration: 200,
+            radius : 12,
+            opacity: 0,
+            duration: 200,
 
-        colorScaleExtent: [ 0, 96 ],
-        radiusScaleExtent: [ 1, undefined ],
-        colorDomain: "linear",
-        radiusDomain: null,
-        colorRange:colorRange,
-        radiusRange: [ 1, 12 ],
-        pointerEvents: 'all'
-        }}
+            colorScaleExtent: [ 0, 96 ],
+            radiusScaleExtent: [ 1, undefined ],
+            colorDomain: "linear",
+            radiusDomain: null,
+            colorRange:colorRange,
+            radiusRange: [ 1, 12 ],
+            pointerEvents: 'all'
+        }
+    }
 
 }
 
