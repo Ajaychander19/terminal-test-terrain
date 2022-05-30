@@ -198,7 +198,23 @@ class XcalConverter:
                         else:
                             syntax_error(self._line_num, 'Invalid description start "{}"'.format(first))
 
-                    elif state == 3:  # Getting phone ID, opening temporary files.
+                    elif state == 3:  # Description section skip.
+
+                        if first == '<Description End>\n':
+                            state = 4
+
+                    elif state == 4:  # Content section start.
+
+                        if first == '<Content Start>\n':
+
+                            # Final JSON opening character.
+                            json_final.write('[\n')
+
+                            state = 5
+                        else:
+                            syntax_error(self._line_num, 'Invalid content start "{}"'.format(first))
+
+                    elif state == 5:  # Getting phone ID, opening temporary files.
 
                         # if first == '<Description End>\n':
                         #    state = 4
@@ -215,23 +231,7 @@ class XcalConverter:
                                 )
                                 self._files[k] = open(path, 'w')
 
-                            state = 4
-
-                    elif state == 4:  # Description section skip.
-
-                        if first == '<Description End>\n':
-                            state = 5
-
-                    elif state == 5:  # Content section start.
-
-                        if first == '<Content Start>\n':
-
-                            # Final JSON opening character.
-                            json_final.write('[\n')
-
                             state = 6
-                        else:
-                            syntax_error(self._line_num, 'Invalid content start "{}"'.format(first))
 
                     elif state == 6:  # Content parsing.
 
@@ -296,7 +296,6 @@ class XcalConverter:
 
                             if serving_rsrp != '':
                                 self._rsrp = math.floor(140 + float(serving_rsrp)) + 1
-
 
                         elif first == '<Content End>\n':  # File ending.
                             state = 7  # Final state because of EOF.
