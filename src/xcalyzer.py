@@ -64,6 +64,22 @@ def syntax_error(line: int, msg: str):
 #     date = property(_get_date)
 #     data = property(_get_data)
 
+def produce_json(d: dict, json_file):
+    """Produces in the JSON file an ASN1 entry from a given ASN1 dictionary.
+
+    Parameters:
+        asn1: ASN1 dictionary.
+        json_file: JSON file to write in.
+    """
+    asn1_json = json.dumps(d, indent=4)
+    prod_json = ''
+
+    for asn_line in asn1_json.splitlines(keepends=True):
+        prod_json += '    ' + asn_line
+
+    json_file.write(prod_json)
+
+
 class XcalConverter:
     """This class is used to analyze Accuver Xcal AOF file format. It provides few methods to
     analyze and convert AOF files in PCAP file. An instance of this class can process one AOF
@@ -71,7 +87,7 @@ class XcalConverter:
     can merge several PCAP files into one PCAP file, and reorder PCPA file contents. It can also,
     based on the ID of the user equipment used to create AOF file, manage file names.
     """
-    
+
     # Constants.
 
     DICT_FILES_NAMES = {
@@ -108,8 +124,11 @@ class XcalConverter:
         self._pci = '0'
         self._earfcn = '0'
 
-        self._mcc = None
-        self._mnc = None
+        self._tac = '0'
+        self._cid = '0'
+
+        self._mcc = '0'
+        self._mnc = '0'
 
         self._last_payload = None
         self._last_msg_type = None
@@ -271,7 +290,22 @@ class XcalConverter:
                                     else:
                                         json_final.write(',\n')
 
-                                    self.produce_proc_asn1_json(asn_payload, json_final)
+                                    to_produce = {
+                                        'SIB': {
+                                            'TAC': self._tac,
+                                            'CellID': self._cid,
+                                            'PCI': self._pci,
+                                            'EARFCN': self._earfcn,
+                                            'geolocation': {
+                                                'lat': self._last_lat,
+                                                'lng': self._last_lng,
+                                            },
+                                            'mcc': self._mcc,
+                                            'mnc': self._mnc,
+                                        }
+                                    }
+
+                                    produce_json(to_produce, json_final)
 
                         elif first == 'GPS':
 
@@ -285,7 +319,20 @@ class XcalConverter:
                                 else:
                                     json_final.write(',\n')
 
-                                self.produce_proc_asn1_json(self._last_payload, json_final)
+                                to_produce =  {
+                                    'Mesurement': {
+                                        'PCI': self._pci,
+                                        'EARFCN': self._earfcn,
+                                        'Geolocation': {
+                                            'lat': self._last_lat,
+                                            'lng': self._last_lng,
+                                        },
+                                        'RSRP': self._rsrp,  # pcell_result['rsrpResult'],
+                                        'neighbourMax_RSRP': -1000,  # Non-necessary
+                                    }
+                                }
+
+                                produce_json(to_produce, json_final)
 
                         elif first == 'QCLTE_PSCELL':
 
@@ -296,6 +343,30 @@ class XcalConverter:
 
                             if serving_rsrp != '':
                                 self._rsrp = math.floor(140 + float(serving_rsrp)) + 1
+
+                        elif first == 'QCLTE_CELLINFO':
+
+                            if l_len < 16:
+                                syntax_error(self._line_num, "16 columns expected, {} found.".format(l_len))
+
+
+                            self._mcc = line[14]
+                            self._mnc = line[15]
+
+                            cid = int(line[9])
+                            if cid >= 268435456:
+                                syntax_error(self._line_num, 'CID should be lower than 268435456.')
+
+                            cid_str = '{0:08x}'.format(cid)
+                            self._cid = '{0}:{1}:{2}:{3}'.format(
+                                cid_str[0:2], cid_str[2:4], cid_str[4:6], cid_str[6:8])
+
+                            tac = int(line[12])
+                            if tac >= 65536:
+                                syntax_error(self._line_num, 'TAC should be lower than 65536')
+
+                            tac_str = '{0:04x}'.format(tac)
+                            self._tac = '{0}:{1}'.format(tac_str[0:2], tac_str[2:4])
 
                         elif first == '<Content End>\n':  # File ending.
                             state = 7  # Final state because of EOF.
@@ -321,93 +392,6 @@ class XcalConverter:
 
             # Producing closing char in JSON file.
             json_final.write('\n]\n')
-
-    def process_asn1(self, msg_data: dict) -> dict:
-        """Processes an ASN1 dictionary associated to a message payload,
-        and produces the dictionary which corresponds to a 'Measurement' or
-        'SIB' entry in the JSON file.
-
-        Parameters:
-            msg_data: ASN1 dictionary.
-
-        Returns:
-            A dictionary structured following 'SIB' or 'Measurement' entries present in the JSON output file.
-
-        """
-
-        # Processing message data.
-
-        packet_data = msg_data['message']['c1']
-
-        # If SIB1...
-        if 'systemInformationBlockType1' in packet_data.keys():
-
-            # Contains the cellID and the TAC.
-            cell_access_info = packet_data['systemInformationBlockType1']['cellAccessRelatedInfo']
-
-            # Contains PLMN's MCC and MNC.
-            plmn_info = cell_access_info['plmn-IdentityList'][0]['plmn-Identity']
-
-            mcc = ''.join([str(i) for i in plmn_info['mcc']])
-            mnc = ''.join([str(i) for i in plmn_info['mnc']])
-
-            if not self._mcc:
-                self._mcc = mcc
-
-            if not self._mnc:
-                self._mnc = mnc
-
-            return {
-                'SIB': {
-                    'TAC': cell_access_info['trackingAreaCode'],
-                    'CellID': cell_access_info['cellIdentity'],
-                    'PCI': self._pci,
-                    'EARFCN': self._earfcn,
-                    'geolocation': {
-                        'lat': self._last_lat,
-                        'lng': self._last_lng,
-                    },
-                    'mcc': mcc,
-                    'mnc': mnc,
-                }
-            }
-
-        elif 'measurementReport' in packet_data.keys():     # If MeasurementReport...
-
-            meas_data \
-                = packet_data['measurementReport']['criticalExtensions']['c1']['measurementReport-r8']['measResults']
-
-            # Current cell measurement results.
-            pcell_result = meas_data['measResultPCell']
-
-            # Neighbours cells measurement result.
-
-            rsrp_offset = -1000
-
-            if 'measResultNeighCells' in meas_data.keys():
-                ncells_result = meas_data['measResultNeighCells']['measResultListEUTRA']
-
-                # Calculating neighborMax_RSRP.
-                ncells_max_rsrp = ncells_result[0]['measResult']['rsrpResult']
-
-                for ncell in ncells_result:
-                    ncell_rsrp = ncell['measResult']['rsrpResult']
-                    ncells_max_rsrp = max(ncells_max_rsrp, ncell_rsrp)
-
-                rsrp_offset = self._rsrp - ncells_max_rsrp
-
-            return {
-                'Mesurement': {
-                    'PCI': self._pci,
-                    'EARFCN': self._earfcn,
-                    'Geolocation': {
-                        'lat': self._last_lat,
-                        'lng': self._last_lng,
-                    },
-                    'RSRP': self._rsrp,     # pcell_result['rsrpResult'],
-                    'neighbourMax_RSRP': rsrp_offset,
-                }
-            }
 
     def produce_pcaps(self):
         """Produce PCAP files for each dissector from produced TXT files using text2pcap.
@@ -491,21 +475,6 @@ class XcalConverter:
         # Producing final JSON file.
         output_json = 'C{0}_{1}_{2}_{3}.json'.format(self.mcc, self.mnc, getfileName(self._path), self.phone_id)
         shutil.copy2(getPathText('json_tmp.json'), os.path.join(outdir, output_json))
-
-    def produce_proc_asn1_json(self, asn1: dict, json_file):
-        """Produces in the JSON file an ASN1 entry from a given ASN1 dictionary.
-
-        Parameters:
-            asn1: ASN1 dictionary.
-            json_file: JSON file to write in.
-        """
-        asn1_json = json.dumps(self.process_asn1(asn1), indent=4)
-        prod_json = ''
-
-        for asn_line in asn1_json.splitlines(keepends=True):
-            prod_json += '    ' + asn_line
-
-        json_file.write(prod_json)
 
     def _get_phone_id(self) -> str:
         """
