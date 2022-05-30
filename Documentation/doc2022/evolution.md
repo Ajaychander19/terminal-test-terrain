@@ -5,7 +5,7 @@
 ### Objectif
 
 Analyser le fonctionnement du programme, comprendre son architecture.
-Introuduction au formats de fichier.
+Introduction aux formats de fichier.
 
 ### Programme
 
@@ -15,7 +15,7 @@ Programme d'analyse du réseau 4G, prend en charge le format Zk-Samp.
 
 1. **Configuration** : on choisit le répertoire de production des fichiers.
 2. **Field-test \*.csv to \*.pcap and \*.json conversion** : lecture du fichier Zk-Samp, décodage. Production de
-fichiers textes temporaires pour chaque dissecteurs Wireshark (= *parsers* de paquet). Appel de `text2pcap` pour en 
+fichiers textes temporaires pour chaque dissecteur Wireshark (= *parsers* de paquet). Appel de `text2pcap` pour en 
 faire des fichiers pcap. Fusion des fichiers temporaires `.pcap` avec `mergecap`. Ré-ordonnancement des paquets avec 
 `reordercap` par horodatage ; obtention du fichier `.pcap` final. Production fichier JSON temporaire depuis `.pcap` 
 final avec `tshark`. Ajout à ce fichier des données de géolocalisation ; production JSON `C_...`, contenant les données 
@@ -34,7 +34,7 @@ informations d'orientation des antennes, utiles pour calculer l'étendue de la c
 4. **Cell Association Processing** : calcul du fichier JSON d'association utilisé par l'interface de visualisation. 
 On lie les données du fichier `C_...` (RSRP, TAC, PCI...) avec celles du fichier `sites` (position, fréquences... 
 des stations de base). On utilise à cette étape l'algorithme de Voronoi pour produire la délimitation des cellules 4G 
-théoriques, en utilsant des groupements par PCI / EARFCN des données. Production d'un fichier `association` (JSON).
+théoriques, en utilisant des groupements par PCI / EARFCN des données. Production d'un fichier `association` (JSON).
 
 ### Bugfixes
 * Production NaN dans les géolocalisations dans les fichiers `Zone` : filtrage des NaN.
@@ -54,7 +54,7 @@ de fichier, version par exemple. Pas intéressant ici.
 * Description de fichier (`<Description Start>` -> `<Description End>`) : contient la description des message utilisés. 
 Chaque description est divisée en deux lignes : une ligne de nommage des messages de la forme 
 `NOM_MESSAGE|champ1|champ2|champ3|...|champN` et une ligne de typage `NOM_MESSAGE|type1|type2|type3|...|typeN`, 
-décrivant les types de chaque champs respectifs. 
+décrivant les types de chaque champ. 
 
     Formellement, une définition de message suit la syntaxe suivante :
 
@@ -65,12 +65,12 @@ décrivant les types de chaque champs respectifs.
     avec `<print_char>` désignant tout caractère imprimable, et `<newline>` un retour à la ligne. Pour rappel, l'exposant 
 `+` signifie que le symbole doit être présent au moins fois, `{n}` que le symbole se répète `n` fois exactement.
 
-    Sémantiquement, la seconde ligne doit contenir des types valides, et il doit y avoir avoir autant de champs déclarés
+    Sémantiquement, la seconde ligne doit contenir des types valides, et il doit y avoir autant de champs déclarés
 sur la première ligne que de types sur la seconde.
 
-    Cette partie présente un intêret à la lecture manuelle du fichier, pour la compréhension de sa structure. 
+    Cette partie présente un intérêt à la lecture manuelle du fichier, pour la compréhension de sa structure. 
 Le programme étant construit à priori sur l'hypothèse que les messages sont bien formés, cette partie ne présente 
-cependant pas d'intêret au niveau de l'analyse par le programme.
+cependant pas d'intérêt au niveau de l'analyse par le programme.
 
 * Contenu (`<Content Start>` -> `<Content End>`) : contient les messages enregistrés par Xcal. Chaque ligne débute par 
 le nom du message, les valeurs sont ensuite spécifiées, on utilise le séparateur `|`.
@@ -88,7 +88,7 @@ type de chaque champ doit correspondre au type donné pour ce champ dans la part
 
 ### Analyse sur la structure du fichier
 
-Dans le cadre du programme de visualisation, il n'est pas nécessaire de vérifier toute les contraintes syntaxiques et 
+Dans le cadre du programme de visualisation, il n'est pas nécessaire de vérifier toutes les contraintes syntaxiques et 
 sémantiques définies précédemment ; il suffira en fait d'analyser certains points précis de la structure du fichier, 
 servant de repère au programme.
 
@@ -97,14 +97,14 @@ Ces points seront les suivants :
 * On a vu qu'il y avait 3 parties : informations fichier, description et contenu. Les messages se trouvent dans la 
 partie contenu ; on utilisera donc les délimiteurs vus dans la partie précédente pour identifier les parties pertinentes
 à analyser. On choisira, même si cela n'est pas forcément nécessaire à l'analyse, de s'assurer du bon ordre des 
-parties : infomrations, puis description, puis contenu.
+parties : information, puis description, puis contenu.
 * On reconnaîtra les messages à analyser à leur nom, précisé en première colonne (exemple : `GPS` pour les données GPS, 
 `QCLTE_RRCMSG_V2` pour les messages RRC).
 * Pour exploiter le contenu des messages, on utilisera simplement le séparateur `|` pour découper le message sous forme de 
 liste.
 
 Les repères utilisés pour identifier les messages et les sections ont pour avantage de se trouver en première colonne du
-CSV : on utilsera donc les contenus des premières colonnes comme symboles d'analyse.
+CSV : on utilisera donc les contenus des premières colonnes comme symboles d'analyse.
 
 La structure du langage du fichier n'impliquant pas d'imbrication, et pouvant se lire sans retenir d'autre information
 que la section courante, on peut intuitivement dire que ce dernier et rationnel, donc analysable par un automate fini.
