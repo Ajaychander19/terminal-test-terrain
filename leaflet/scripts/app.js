@@ -35,12 +35,12 @@ var ColorChoice = 0;
 var layercontrol = L.control.layers(baseMaps,null,{ collapsed: false }).addTo(map);
 
 var siteserving = L.layerGroup();
-var Theory_Cell = L.layerGroup();
-var RSRP_offset= L.layerGroup();
-var base_station = L.layerGroup();
+var Theory_Cell = L.layerGroup();       // Voronoi cells layer.
+var RSRP_offset= L.layerGroup();        // RSRP offset layer
+var base_station = L.layerGroup();      // Base station layer.
 var Tracking_area=L.layerGroup();
-var RSRP = L.layerGroup();
-var PCI =L.layerGroup();
+var RSRP = L.layerGroup();              // RSRP hexagonal layer.
+var PCI =L.layerGroup();                // PCI GPS points
 var hexlayer = L.hexbinLayer(hexbin_style()).hoverHandler(L.HexbinHoverHandler.tooltip()).addTo(map);
 
 var rsrplayer = L.hexbinLayer(hexbin_style(1,

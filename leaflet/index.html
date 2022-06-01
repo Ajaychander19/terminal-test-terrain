@@ -141,7 +141,7 @@
 			<div>
 			{{if PCIs}}
 				{{each PCIs}}
-							<input type="checkbox" data-markerId="${MarkerId}" data-value="false" onclick="check_pci($(this), ${Title}, ${$value.pcis}, ${$value.earfcn})" value="${$pci}">${$value.pcis}+'_'${$value.earfcn}<br>
+							<input type="checkbox" data-markerId="${MarkerId}" data-value="false" onclick="check_pci($(this), ${Title}, ${$value.pcis}, ${$value.earfcn})" value="${$pci}">${$value.pcis} - ${$value.earfcn}<br>
 				{{/each}}
 			{{/if}}
 			</div>
