@@ -341,7 +341,7 @@ def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
             pci,earfcn=group
             rowNum,colsNum=(TACtable.get_group((tacTable)).groupby(["PCI", "EARFCN"])).get_group((group)).shape
             pointc=geometry.Point(0,0)
-            if rowNum>1:
+            if rowNum > 1:
                 for i in range(1,rowNum):
                     pointA =(TACtable.get_group((tacTable)).groupby(["PCI", "EARFCN"])).get_group((group)).iloc[i-1]["geolocation"]
                     pointc=pointA
@@ -366,12 +366,12 @@ def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
     for group, name in df.groupby(["cellID", "PCI"]):
         gr=df.groupby(["cellID", "PCI"]).get_group(group)
         ((tac, cellid),pci) = group
-        if gr.shape[0]> 250:
-            if  list(gr.iloc[[0]]["EARFCN"])[0] not in convex.keys():
-                convex[list(gr.iloc[[0]]["EARFCN"])[0]]=[]
-                convex[list(gr.iloc[[0]]["EARFCN"])[0]].append(gr)
-            else:
-                convex[list(gr.iloc[[0]]["EARFCN"])[0]].append(gr)
+        #if gr.shape[0]> 250:   # FIX affichages antennes ?
+        if  list(gr.iloc[[0]]["EARFCN"])[0] not in convex.keys():
+            convex[list(gr.iloc[[0]]["EARFCN"])[0]]=[]
+            convex[list(gr.iloc[[0]]["EARFCN"])[0]].append(gr)
+        else:
+            convex[list(gr.iloc[[0]]["EARFCN"])[0]].append(gr)
     earfcn = list(convex.keys())  # point Lat, lng
     surfacetable = pd.DataFrame()
 

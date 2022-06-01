@@ -130,7 +130,6 @@ class XcalConverter:
         self._mcc = '0'
         self._mnc = '0'
 
-        self._last_payload = None
         self._last_msg_type = None
 
         self._rsrp = 0.0
@@ -276,63 +275,30 @@ class XcalConverter:
                             self._files[msg_type].write(
                                 '{0}\n0000 {1}\n'.format(line[1], payload))
 
-                            asn_payload = pcaputils.produce_asn1(msg_type, payload)
-
-                            if asn_payload != {}:
-                                pdata = asn_payload['message']['c1']
-
-                                if 'measurementReport' in pdata.keys():
-                                    self._last_payload = asn_payload
-                                elif 'systemInformationBlockType1' in pdata.keys():
-
-                                    if first_entry:
-                                        first_entry = False
-                                    else:
-                                        json_final.write(',\n')
-
-                                    to_produce = {
-                                        'SIB': {
-                                            'TAC': self._tac,
-                                            'CellID': self._cid,
-                                            'PCI': self._pci,
-                                            'EARFCN': self._earfcn,
-                                            'geolocation': {
-                                                'lat': self._last_lat,
-                                                'lng': self._last_lng,
-                                            },
-                                            'mcc': self._mcc,
-                                            'mnc': self._mnc,
-                                        }
-                                    }
-
-                                    produce_json(to_produce, json_final)
-
                         elif first == 'GPS':
 
                             self._last_lng = line[2]
                             self._last_lat = line[3]
 
-                            if self._last_payload:
+                            if first_entry:
+                                first_entry = False
+                            else:
+                                json_final.write(',\n')
 
-                                if first_entry:
-                                    first_entry = False
-                                else:
-                                    json_final.write(',\n')
-
-                                to_produce =  {
-                                    'Mesurement': {
-                                        'PCI': self._pci,
-                                        'EARFCN': self._earfcn,
-                                        'Geolocation': {
-                                            'lat': self._last_lat,
-                                            'lng': self._last_lng,
-                                        },
-                                        'RSRP': self._rsrp,  # pcell_result['rsrpResult'],
-                                        'neighbourMax_RSRP': -1000,  # Non-necessary
-                                    }
+                            to_produce = {
+                                'Mesurement': {
+                                    'PCI': self._pci,
+                                    'EARFCN': self._earfcn,
+                                    'Geolocation': {
+                                        'lat': self._last_lat,
+                                        'lng': self._last_lng,
+                                    },
+                                    'RSRP': self._rsrp,  # pcell_result['rsrpResult'],
+                                    'neighbourMax_RSRP': -1000,  # Non-necessary
                                 }
+                            }
 
-                                produce_json(to_produce, json_final)
+                            produce_json(to_produce, json_final)
 
                         elif first == 'QCLTE_PSCELL':
 
@@ -349,9 +315,11 @@ class XcalConverter:
                             if l_len < 16:
                                 syntax_error(self._line_num, "16 columns expected, {} found.".format(l_len))
 
-
                             self._mcc = line[14]
                             self._mnc = line[15]
+
+                            self._pci = line[2]
+                            self._earfcn = line[3]
 
                             cid = int(line[9])
                             if cid >= 268435456:
@@ -367,6 +335,28 @@ class XcalConverter:
 
                             tac_str = '{0:04x}'.format(tac)
                             self._tac = '{0}:{1}'.format(tac_str[0:2], tac_str[2:4])
+
+                            if first_entry:
+                                first_entry = False
+                            else:
+                                json_final.write(',\n')
+
+                            to_produce = {
+                                'SIB': {
+                                    'TAC': self._tac,
+                                    'CellID': self._cid,
+                                    'PCI': self._pci,
+                                    'EARFCN': self._earfcn,
+                                    'geolocation': {
+                                        'lat': self._last_lat,
+                                        'lng': self._last_lng,
+                                    },
+                                    'mcc': self._mcc,
+                                    'mnc': self._mnc,
+                                }
+                            }
+
+                            produce_json(to_produce, json_final)
 
                         elif first == '<Content End>\n':  # File ending.
                             state = 7  # Final state because of EOF.
