@@ -43,7 +43,7 @@ théoriques, en utilisant des groupements par PCI / EARFCN des données. Product
 
 ### Objectif
 Analyse du format AOF d'Accuver Xcal. Pouvoir produire en fin de semaine une trace en format PCAP des messages LTE RRC 
-(SIB, MesurementReports...).
+(SIB, MeasurementReports...).
 
 ### Structure des fichiers AOF
 Les fichiers AOF sont écrits en CSV, avec pour séparateur le caractère `|`. Ils suivent la structure suivante :
@@ -69,7 +69,7 @@ décrivant les types de chaque champ.
 sur la première ligne que de types sur la seconde.
 
     Cette partie présente un intérêt à la lecture manuelle du fichier, pour la compréhension de sa structure. 
-Le programme étant construit à priori sur l'hypothèse que les messages sont bien formés, cette partie ne présente 
+Le programme étant construit a priori sur l'hypothèse que les messages sont bien formés, cette partie ne présente 
 cependant pas d'intérêt au niveau de l'analyse par le programme.
 
 * Contenu (`<Content Start>` -> `<Content End>`) : contient les messages enregistrés par Xcal. Chaque ligne débute par 
@@ -107,7 +107,7 @@ station de base et l'*User Equipment* (voir [ici](https://blogs.univ-poitiers.fr
 Les canaux correspondant aux fichiers sont :
 * `MAC-LTE-FRAMED` :
 * `BCCH.BCH` : sur Broadcast Control Channel, infos sur la cellule.
-* `BCCH.DL.SCH` : sur BCCH, Downlink Shared Channel, doonées de contrôle usager
+* `BCCH.DL.SCH` : sur BCCH, Downlink Shared Channel, données de contrôle usager
 * `DL.CCCH` : Downlink Common Control Channel, transmission de données de signalisation si DCCH non dispo (établissement
 * de connexion RRC par exemple).
 * `UL.CCCH` : Uplink Common Control Channel, transmission de données de signalisation si DCCH non dispo.
@@ -117,7 +117,7 @@ Les canaux correspondant aux fichiers sont :
 Ici, UL désigne une connexion *uplink*, c'est-à-dire de l'UE vers le réseau, et DL désigne une connexion *downlink*,
 c'est-à-dire du réseau vers l'UE.
 
-*(source: livre de la BU je ne sais plus lequel) (à modifier)*
+Source : Y. BOUGUEN, E. HARDOUIN, F. WOLFF, *LTE et les réseaux 4G*. Paris: Eyrolles, 2012, p. 87-88
 
 #### Conversion vers JSON
 
@@ -152,7 +152,7 @@ Les entrées `SIB` suivent la structure suivante :
 * `Geolocation` : géolocalisation, latitude `lat` et longitude `lng`.
 * `RSRP` : Reference signal received power, mesure logarithmique de la puissance reçue d'une fréquence d'une station de
 base, exprimée en dBm (décibels milliwatts).
-* `neighbourMax_RSRP`, différence entre le RSRP reçu et le RSRP de station de base voisne le plus fort. (non implémenté)
+* `neighbourMax_RSRP`, différence entre le RSRP reçu et le RSRP de station de base voisine le plus fort. (non implémenté)
 
 ```json
 {
@@ -231,14 +231,161 @@ Celui-ci exécutera des actions sémantiques au fur et à mesure de la reconnais
 ### Fonctionnalités ajoutées
 * Lecture du format AOF par le programme.
 * Processus de production plus concis, moins de fichiers intermédiaires, de meilleures performances de la fonctionnalité
-`Field-testing` en terme de vitesse et en terme de consommation mémoire.
+`Field-testing` en terme de vitesse et en termes de consommation mémoire.
 
 ### Bugfixes
-* "Bug du métro" : les cellules en tunnel profond, tranchée couverte ou station enterrée étaient prise en compte dans la
-modélisation originale des cellules théoriques, alors qu'elles émettent peu ou pas du tout vers l'extérieur. Elles ne
-sont donc plus pris en compte lors de la conversion Cartoradio, et sont donc stockées dans des fichiers séparés par
-opérateurs.
+* "Bug du métro" : les cellules en tunnel profond, tranchée couverte ou station enterrée des 2 lignes de métro étaient 
+prises en compte dans la modélisation originale des cellules théoriques, alors qu'elles émettent peu ou pas du tout vers
+l'extérieur. Elles ne sont donc plus pris en compte lors de la conversion Cartoradio, et sont donc stockées dans des
+fichiers séparés par opérateurs.
 * L'interface web ne visualisait pas correctement le RSRP.
-* Erreur d'affcihage dans la sélection des PCI par EARFCN.
+* Erreur d'affichage dans la sélection des PCI par EARFCN.
 
+## Semaine 4
 
+### Objectif
+* Trouver un format de fichier plus concis que le JSON.
+* Rechercher une solution de légende de heatmap.
+* Commencer à regarder les fonctionnalités à ajouter (si le temps).
+
+### Pourquoi un nouveau format de fichier ?
+
+Le format utilisé actuellement pour la production de fichiers est le JSON. Si le langage JSON est conçu comme étant
+facile à lire pour l'utilisateur, ce dernier a pour défaut principal de "s'étendre" beaucoup lorsqu'il s'agit de stocker
+de grandes quantités de données : la structuration imbriquée des données, et l'identification de chaque champ ajoute de
+la verbosité au fichier.
+
+Pour ces raisons, on souhaite mettre en place un format de fichier remplissant les qualités suivantes :
+
+* **Lisibilité** : l'utilisateur doit pouvoir lire et visualiser facilement le contenu du fichier.
+* **Extensibilité** : le format doit être facilement extensible, et notamment assurer en cas d'ajout la rétrocompatibilité avec
+les anciennes versions du logiciel.
+* **Décodabilité** : le fichier doit être facile à décoder. Il doit d'ailleurs être également simple à écrire.
+
+### Base du format : le format AOF.
+
+Le format AOF, vu précédemment, possède quelques atouts intéressants, rejoignant les qualités énumérées précédemment :
+
+* Il a une structure simple et est dérivé du format CSV : c'est donc un format de fichier relativement facile à
+analyser (**décodabilité**).
+* Le CSV permet d'afficher les résultats sur un tableur : le format AOF a pour avantage de spécifier sous cette forme
+les noms des champs et les types des champs de chaque message. Il est également relativement lisible sous forme de texte
+(**lisibilité**).
+* Il est facile d'étendre un tel format de fichier : en identifiant chaque entrée CSV avec un nom définissant le rôle de
+cette entrée, on peut choisir d'analyser les entrées intéressantes et d'ignorer les autres : on peut donc ajouter de
+nouveaux types d'entrées sans poser de problèmes de compatibilité. De même, il est possible d'ajouter les champs que
+l'on désire en fin de liste des champs sans problème, les anciennes versions du programme ne devraient pas dépasser
+l'ancienne taille de la liste des champs (**extensibilité**).
+
+### Proposition de syntaxe
+
+On propose formellement la syntaxe suivante, sous forme d'expression rationnelle 
+(on utilisera les 
+[expressions rationnelles Python](https://docs.python.org/3/library/re.html)):
+
+```regexp
+DEFINE\n
+(\w+\|\w+(\|\w+)*\n)*
+CONTENT\n
+(\w+\|\w*(\|\w*)*\n)*
+END\n*
+```
+
+Informellement, le contenu du fichier ressemble à ceci :
+
+```
+DEFINE
+nomEntree1|nomChamp1|nomChamp2|nomChamp3
+nomEntree2|nomChamp4|nomChamp5|nomChamp6|nomChamp7|nomChamp8
+nomEntree3|nomChamp9|nomChamp10
+CONTENT
+nomEntree1|10|test|50
+nomEntree2|never|gonna|give|you|up
+nomEntree1|10|test|50
+nomEntree3|3.14|42
+nomEntree3|56|8
+nomEntree2|never|gonna|let|you|down
+END
+```
+
+On a tout d'abord une partie de définition des données : de la même manière que pour le format AOF, on définit des
+types d'entrées par leur nom, puis par le nom de leur champ. Les noms doivent utiliser des caractères alphanumériques, 
+et peuvent également contenir le caractère `_`. On exige que les noms doivent contenir au moins un caractère, et que
+chaque définition doit contenir, en plus du nom d'entrée, au moins un champ. Chaque définition de champ est séparée par
+le caractère `|`. Il est possible d'avoir plusieurs définitions, séparées par un saut de ligne.
+
+À partir de `CONTENT` se trouve la partie contenu. Pour chaque entrée, on indique le nom de l'entrée, puis les valeurs.
+Les règles d'écriture des lignes sont les mêmes, si ce n'est qu'il est possible de ne pas spécifier de valeur pour les
+champs (en dehors du nom).
+
+Le fichier se termine par `END`. Il est possible d'avoir plusieurs sauts de ligne après le `END`.
+
+### Sémantique
+
+Le fichier suivant la notation CSV, celui-ci peut être visuellement représenté comme un tableau.
+
+*Informellement*, il est demandé de déclarer chaque type d'entrée dans la partie `DEFINE` et que chaque entrée de la
+partie `CONTENT` ait le même nombre de champs que dans sa déclaration de la partie `DEFINE`. On ne devra également pas
+retrouver deux fois la même déclaration dans la partie `DEFINE`.
+Cette partie est en réalité surtout utile pour la visualisation des données. Dans les faits, on ne fera pas de 
+vérification lors de la lecture et l'analyse des fichiers sur la partie `DEFINE`.
+
+*Note : possibilité dans certains cas d'entrées de tailles non définies. Les contraintes ne s'appliquent donc pas
+forcément.*
+
+Des règles sémantiques supplémentaires peuvent être utilisées suivant l'utilité du fichier.
+
+### Format et suggestions d'amélioration
+
+#### Organisation des données à afficher
+
+Actuellement, le programme affiche les données suivantes :
+
+* `Tracking Areas` : affiche la `Tracking Area` de chaque position, en utilisant
+pour chaque position un code couleur.
+* `PCI` : affiche le `PCI` associé a chaque position, en utilisant
+pour chaque position un code couleur.
+* `RSRP` : affiche une carte thermique des niveaux de signal RSRP, sous forme d'un pavage hexagonal, autour des mesures
+GPS.
+* `RSRP Offset` : affiche la différence entre le RSRP voisin le plus fort et le RSRP courant.
+***Régression possible sur cette fonctionnalité***.
+* Classement par EARFCN possible, affichage des cellules suivant les mesures.
+
+On souhaite ajouter les fonctionnalités suivantes : 
+
+* Sur les calques à pavage hexagonal : ajouter une légende (pas trouvé comment pour l'instant)
+* Visualisation du :
+  * `RSRQ` : rapport RSRP / RSRI, puis logarithme
+  * `RSSI` : puissance signal avec prise en compte du bruit et des interférences.
+  * `CINR` : rapport signal / (bruit, interférences).
+* Sélection selon `EARFCN` **ET** `PCI`.
+
+Les données d'entrées seront organisées probablement comme suit :
+
+| TIMESTAMP | EARFCN1 | PCI1 | RSRP1 | EARFCN2 | PCI2 | RSRP2 | EARFCN3 | PCI3 | RSRP3 | ... |
+|-----------|---------|------|-------|---------|------|-------|---------|------|-------|-----|
+| t0        | 3000    | 21   | -94   | 151     | 21   | -104  | 3000    | 37   | -155  | ... |
+| t1        | 151     | 21   | -87   | 3000    | 21   | -97   | 151     | 14   | -118  | ... |
+| t2        | 151     | 21   | -82   | 3000    | 21   | -92   | 151     | 14   | -108  | ... |
+| t3        | 3000    | 21   | -89   | 151     | 14   | -96   |         |      |       |     |
+
+Pour chaque entrée du tableau, on recevra un timestamp, ainsi qu'un nombre indéfini de champs décrivant les données
+mesurées en t1.
+
+À des fins de performances, et sachant que l'on souhaite sélectionner les informations à visualiser suivant
+le PCI et l'EARFCN, on trie les données par EARFCN / PCI :
+
+| TIMESTAMP | EARFCN | 151  | 151  | 3000 | 3000 |
+|-----------|--------|------|------|------|------|
+|           | PCI    | 14   | 21   | 21   | 37   |
+| t0        | RSRP   |      | -104 | -94  | -115 |
+| t1        | RSRP   | -118 | -87  | -97  |      |
+| t2        | RSRP   | -108 | -82  | -92  |      |
+| t3        | RSRP   | -96  | -89  |      |      |
+
+L'avantage de cette configuration est que la sélection EARFCN / PCI se fait en choisissant l'indice
+correspondant à la bonne paire : il est avec cet indice possible de récupérer uniquement les valeurs concernées.
+On notera le "renversement" effectué, les champs de mesures (ici RSRP) devenant des lignes.
+
+Si ici seules les mesures RSRP sont présentées, on peut appliquer ce principe aux autres mesures mentionnées plus tôt
+(RSRQ, RSSI, CINR...)
