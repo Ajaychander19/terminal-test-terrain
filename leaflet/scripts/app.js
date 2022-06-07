@@ -259,7 +259,7 @@ $(document).ready(function(){
 var selectList = document.createElement("select");
 var myDiv = document.getElementById("myDiv");
 selectList.className = "form-control selectpicker" ;
-selectList.id = "mySelect";
+selectList.id = "EARFCN_select";
 myDiv.appendChild(selectList);
 var array=[]
 array.push("None")
@@ -367,7 +367,7 @@ document.getElementById("Clear All").addEventListener("click", function(){
             // disable all layers except the PCI
 function disabledAllLayer(){
     // remove select
-    $('#mySelect').empty();
+    $('#EARFCN_select').empty();
     
     overlayers={}	
     hexpoints=[]

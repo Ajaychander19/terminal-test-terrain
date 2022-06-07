@@ -1,0 +1,19 @@
+body
+{
+    background-color: #d9edf7 !important;
+}
+
+#map
+{
+    float: left;
+    height: 83%;
+    width: 100%;
+    border: 2px solid #AAA;
+}
+
+#tool-div
+{
+    background-color: gray;
+    padding: 10px;
+    padding-top: 35px;
+}
