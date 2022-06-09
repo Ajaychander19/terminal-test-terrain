@@ -14,23 +14,28 @@ Programme d'analyse du réseau 4G, prend en charge le format Zk-Samp.
 4 étapes de fonctionnement :
 
 1. **Configuration** : on choisit le répertoire de production des fichiers.
+
+
 2. **Field-test \*.csv to \*.pcap and \*.json conversion** : lecture du fichier Zk-Samp, décodage. Production de
 fichiers textes temporaires pour chaque dissecteur Wireshark (= *parsers* de paquet). Appel de `text2pcap` pour en 
 faire des fichiers pcap. Fusion des fichiers temporaires `.pcap` avec `mergecap`. Ré-ordonnancement des paquets avec 
 `reordercap` par horodatage ; obtention du fichier `.pcap` final. Production fichier JSON temporaire depuis `.pcap` 
 final avec `tshark`. Ajout à ce fichier des données de géolocalisation ; production JSON `C_...`, contenant les données 
 des paquets SIB et de chaque mesure.
+
+
 3. **Cartoradio File Conversion** : production de fichiers "sites" et "zones" JSON pour chaque opérateur à partir de 
 fichiers CSV de Cartoradio. Les fichiers "sites" donnent des informations sur les stations de bases (numéro, exploitant,
 géoloc...), les fichier "zones" permettent la description des cellules associées. On se base sur 2 fichiers Cartoradio :
 `Antennes_Emetteurs_Bandes_Cartoradio.csv`, contenant des informations sur les identifiants de stations de base, leur 
 mise en service, les fréquences..., et `Sites_Cartoradio.csv` contenant les géolocalisations de ces stations de base, 
-les adresses, les terrains utilisés...
-On récupère les données de ces fichiers avec la bibliothèque `pandas`, permettant notamment d'organiser les données 
+les adresses, les terrains utilisés...  On récupère les données de ces fichiers avec la bibliothèque `pandas`, permettant notamment d'organiser les données 
 suivant  le modèle relationnel (`DataFrame`). On utilise alors une jointure naturelle pour lier les données, puis on les 
 groupe par opérateur. On génère pour chaque opérateur 2 fichiers : un fichier `sites` (CSV) qui contient les 
 informations de localisation et d'exploitant des stations de bases, et un fichier `Zone` (JSON) contenant les 
 informations d'orientation des antennes, utiles pour calculer l'étendue de la cellule 4G.
+
+
 4. **Cell Association Processing** : calcul du fichier JSON d'association utilisé par l'interface de visualisation. 
 On lie les données du fichier `C_...` (RSRP, TAC, PCI...) avec celles du fichier `sites` (position, fréquences... 
 des stations de base). On utilise à cette étape l'algorithme de Voronoi pour produire la délimitation des cellules 4G 
@@ -287,7 +292,7 @@ On propose formellement la syntaxe suivante, sous forme d'expression rationnelle
 DEFINE\n
 (\w+\|\w+(\|\w+)*\n)*
 CONTENT\n
-(\w+\|\w*(\|\w*)*\n)*
+(\w+\|(\w|\.)*(\|(\w|\.)*)*\n)*
 END\n*
 ```
 
@@ -389,3 +394,41 @@ On notera le "renversement" effectué, les champs de mesures (ici RSRP) devenant
 
 Si ici seules les mesures RSRP sont présentées, on peut appliquer ce principe aux autres mesures mentionnées plus tôt
 (RSRQ, RSSI, CINR...)
+
+## Semaine 5
+
+### Objectif
+Commencer à produire le nouveau format de fichier
+
+### Informations à visualiser
+
+On souhaite visualiser, en fonction du **PCI** et de l'**EARFCN** :
+* Le **RSRP**.
+* Le **RSRQ**.
+* Le **RSSI**.
+* Le **CINR**.
+* La position  **GPS**.
+* Les **TAC**.
+* Les **enveloppes convexes** (régression possible)
+
+Concernant les antennes :   
+* Les **numéros d'antenne**.
+* Les **positions d'antennes**
+* Les **cellules de Voronoï**
+* L'**orientation** des antennes.
+* Visualisation détaillée (pycrate ?)
+
+Initialement, on a dans le fichier AOF, on a par message:
+* Des mesures **GPS**.
+* Le **PCI**
+* Les **EARFCN** courants et voisins
+* Le **RSRP**.
+* Le **RSRQ**.
+* Le **RSSI**.
+
+Les fichiers Cartoradio contiennent :
+* `sites` : **position des antennes**, **lieu dit**, **adresse** (utiles comme "commentaire").
+* `antennes` : **azimuth**, **type système**, **hauteur**, **fréquences...**
+
+### Traitements sur les données
+
