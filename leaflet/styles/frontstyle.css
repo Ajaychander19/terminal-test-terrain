@@ -6,7 +6,7 @@ body
 #map
 {
     float: left;
-    height: 83%;
+    min-height: 550px;
     width: 100%;
     border: 2px solid #AAA;
 }
