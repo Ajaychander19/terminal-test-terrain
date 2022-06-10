@@ -1,3 +1,4 @@
+import unittest
 from unittest import TestCase
 
 import os
@@ -63,3 +64,5 @@ class TestXcalyzer(TestCase):
             os.path.join(
                 pathlib.Path(__file__).parent.parent.parent, 'Mesures_tests'))
 
+if __name__ == '__main__':
+    unittest.main()
