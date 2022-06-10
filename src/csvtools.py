@@ -6,7 +6,21 @@ class CSVReader:
     pass
 
 class CSVWriter:
+    """This class handles the writing of CSV-derivative files used in this program.
+
+    This class supports context managers, and can be used in a with ... as statement.
+    """
+
     def __init__(self, fname: str, header: dict):
+        """Class constructor.
+
+        Parameters:
+            fname: name of the file to write in.
+            header: dictionary which represents the DEFINE part of the file, with dictionary string keys as entries
+            identifiers and dictionary string list values as values of the entry.
+        """
+
+        # Controlling types.
 
         if type(fname) != str:
             raise TypeError('Invalid filename type, str type expected.')
@@ -18,6 +32,7 @@ class CSVWriter:
 
         self._file = None
 
+        # Testing header validity.
 
         for k in header.keys():
 
@@ -53,6 +68,9 @@ class CSVWriter:
         self._header = header
 
     def open_file(self):
+        """Opens the CSV file to write in.
+        If the CSV file doesn't exist, it will be created.
+        """
         self._file = open(self._fname, 'w')
 
         self._file.write('DEFINE\n')
@@ -73,10 +91,17 @@ class CSVWriter:
         self._file.write('CONTENT\n')
 
     def close_file(self):
+        """Closes the CSV file."""
         self._file.close()
 
     def write_row(self, row: list):
+        """Writes a row in the CONTENT part of the CSV file.
 
+        Parameters:
+            row: row to be written in the CSV file, as a list. The first element of this list must correspond to one of
+            the keys present in the header (DEFINE part). The following values must be strings, and must not contain
+            any spacing character other than space nor any vertical '|' character.
+        """
         rlen = len(row)
 
         # Checking row size.
@@ -113,10 +138,16 @@ class CSVWriter:
     # Getters
 
     def _get_filename(self):
+        """Returns:
+            The name of the file to be written.
+        """
         return self._fname
 
     def _get_header(self):
-        pass
+        """Returns :
+        A copy of the header dictionary.
+        """
+        return dict(self._header)
 
     # With ... as ... handling
 
