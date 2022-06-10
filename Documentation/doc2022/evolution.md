@@ -292,7 +292,7 @@ On propose formellement la syntaxe suivante, sous forme d'expression rationnelle
 DEFINE\n
 (\w+\|\w+(\|\w+)*\n)*
 CONTENT\n
-(\w+\|(\w|\.)*(\|(\w|\.)*)*\n)*
+(\w+\|([^\s\|]| )*(\|([^\s\|]| )*)*\n)*
 END\n*
 ```
 

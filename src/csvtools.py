@@ -7,9 +7,17 @@ class CSVReader:
 
 class CSVWriter:
     def __init__(self, fname: str, header: dict):
+
+        if type(fname) != str:
+            raise TypeError('Invalid filename type, str type expected.')
+
+        if type(header) != dict:
+            raise TypeError('Invalid header type, dict type expected.')
+
         self._fname = fname
 
         self._file = None
+
 
         for k in header.keys():
 
@@ -20,7 +28,7 @@ class CSVWriter:
 
             # Checking key syntax.
             if not re.fullmatch(r'\w+', str(k)):
-                raise RuntimeError("error : invalid key syntax : {} ".format(k))
+                raise RuntimeError("error : invalid key syntax : '{}'".format(k))
 
             row = header[k]
 
@@ -29,15 +37,18 @@ class CSVWriter:
             if trow != list:
                 raise TypeError('error : list type expected for file header, {} type found'.format(trow))
 
+            if len(row) == 0:
+                raise RuntimeError('error : field name list should contain at least one element.')
+
             for r in row:
                 # Checking column name types.
                 rtype = type(r)
-                if r != str:
-                    raise TypeError('error : str typr expected for field names, {} type found'.format(trow))
+                if rtype != str:
+                    raise TypeError('error : str type expected for field names, {} type found'.format(rtype))
 
                 # Checking column names syntax.
-                if not re.fullmatch(r'\w*', r):
-                    raise RuntimeError("error : invalid column name syntax : {} ".format(k))
+                if not re.fullmatch(r'\w+', r):
+                    raise RuntimeError("error : invalid column name syntax : '{}'".format(r))
 
         self._header = header
 
@@ -80,7 +91,7 @@ class CSVWriter:
 
         # Checking existence of the message type.
         if field_type not in self._header.keys():
-            raise RuntimeError("error : unknown field type : {}".format(field_type))
+            raise KeyError("error : unknown field type : {}".format(field_type))
 
         # Writing the row.
         for i in range(rlen):
@@ -88,7 +99,7 @@ class CSVWriter:
             s = str(row[i])
 
             # Checking value syntax.
-            if not re.fullmatch(r'(\w|\.)*', s):
+            if not re.fullmatch(r'([^\s\|]| )*', s):
                 raise RuntimeError("error : invalid value syntax : {}".format(field_type))
 
             self._file.write(s)
@@ -113,7 +124,7 @@ class CSVWriter:
         self.open_file()
         return self
 
-    def __exit__(self):
+    def __exit__(self, typ, val, trace):
         if self._file:
             self.close_file()
 
