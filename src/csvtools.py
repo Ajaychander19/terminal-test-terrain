@@ -124,7 +124,7 @@ class CSVWriter:
             s = str(row[i])
 
             # Checking value syntax.
-            if not re.fullmatch(r'([^\s\|]| )*', s):
+            if not re.fullmatch(r'([^\s|]| )*', s):
                 raise RuntimeError("error : invalid value syntax : {}".format(field_type))
 
             self._file.write(s)
