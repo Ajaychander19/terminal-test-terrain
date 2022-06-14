@@ -2,12 +2,17 @@
 
 from constantPath import getPathText, getfileName
 
+import datetime
 import json
 import math
 import os
 import shutil
+import itertools
 
 import pcaputils
+import csvtools
+
+import pandas as pd
 
 # Constants
 _DICT_DISSECTOR = {
@@ -49,20 +54,48 @@ def syntax_error(line: int, msg: str):
     raise RuntimeError('Error: line {0}, {1}'.format(line, msg))
 
 
-# class XcalMessage:
-#
-#     def __init__(self, date: str, data: str):
-#         self._date = date
-#         self._data = data
-#
-#     def _get_date(self):
-#         return self._date
-#
-#     def _get_data(self):
-#         return self._data
-#
-#     date = property(_get_date)
-#     data = property(_get_data)
+def extend_dict(d1: dict, d2: dict):
+    for k in d2.keys():
+        if k in d1.keys():
+            d1[k].extend(d2[k])
+        else:
+            d1[k] = d2[k]
+
+
+def append_dict(d1: dict, d2: dict):
+    for k in d2.keys():
+        if k not in d1.keys():
+            d1[k] = []
+        d1[k].append(d2[k])
+
+
+def get_tstamp(date: str) -> float:
+    return datetime.datetime.fromisoformat(date).timestamp()
+
+
+def generate_estimator(pos_a: (float, float), pos_b: (float, float), t1: float, t2: float):
+    delta_x = pos_b[0] - pos_a[0]
+    delta_y = pos_b[1] - pos_a[1]
+    delta_t = t2 - t1
+
+    if delta_t == 0:
+        return lambda t: pos_a
+    else:
+        return lambda t: (
+            ((t - t1) / delta_t) * delta_x + pos_a[0],
+            ((t - t1) / delta_t) * delta_y + pos_a[1]
+        )
+
+
+def estimate_pos(d: dict, est):
+    if d:
+        tstamps = d['timestamp']
+
+        for i in range(len(tstamps)):
+            pos = est(tstamps[i])
+            d['lat'][i] = pos[0]
+            d['lng'][i] = pos[1]
+
 
 def produce_json(d: dict, json_file):
     """Produces in the JSON file an ASN1 entry from a given ASN1 dictionary.
@@ -100,6 +133,24 @@ class XcalConverter:
         'UL DCCH': 'DCCH_UL_154'
     }
 
+    # CELLINFO dataframe structure.
+    _CINFO_DATAFRAME_DICT = {
+        'id': [], 'name': [], 'timestamp': [], 'lat': [],
+        'lng': [], 'tac': [], 'cid': [], 'mcc': [], 'mnc': []
+    }
+
+    # Serving EARFCN/PCI dataframe structure.
+    _SERV_DATAFRAME_DICT = {
+        'id': [], 'name': [], 'timestamp': [], 'lat': [],
+        'lng': [], 'earfcn': [], 'pci': []
+    }
+
+    # Measurement dataframe structure.
+    _MEAS_DATAFRAME_DICT = {
+        'id': [], 'meas_id': [], 'name': [], 'timestamp': [], 'lat': [],
+        'lng': [], 'earfcn': [], 'pci': [], 'meas_name': []
+    }
+
     def __init__(self, path: str):
         """Class constructor.
 
@@ -118,11 +169,29 @@ class XcalConverter:
         self._phone_id = 'phone_1'        # FIXME Temporary ID
         self._line_num = 1
 
-        self._last_lat = '0.0'
-        self._last_lng = '0.0'
+        self._last_pos = None
+        self._last_tstamp = 0.0
+        self._curr_pos = None
 
         self._pci = '0'
         self._earfcn = '0'
+
+        self._earfcns = []
+        self._pcis = []
+
+        self._tmp_cinfo_frame = {}
+        self._final_cinfo_frame = {}
+
+        self._tmp_serv_frame = {}
+        self._final_serv_frame = {}
+
+        self._tmp_meas_frame = {}
+        self._final_meas_frame = {}
+
+        self._final_frame = pd.DataFrame()
+
+        self._id = 0
+        self._meas_id = 0
 
         self._tac = '0'
         self._cid = '0'
@@ -181,7 +250,7 @@ class XcalConverter:
         fname = getfileName(self._path)
 
         # Opening AOF file.
-        with open(self._path, 'r') as aof, open(getPathText('json_tmp.json'.format(fname)), 'w') as json_final:
+        with open(self._path, 'r') as aof:
 
             try:
 
@@ -224,10 +293,6 @@ class XcalConverter:
                     elif state == 4:  # Content section start.
 
                         if first == '<Content Start>\n':
-
-                            # Final JSON opening character.
-                            json_final.write('[\n')
-
                             state = 5
                         else:
                             syntax_error(self._line_num, 'Invalid content start "{}"'.format(first))
@@ -253,12 +318,21 @@ class XcalConverter:
 
                     elif state == 6:  # Content parsing.
 
+                        tstamp = 0
+
+                        if first != '<Content End>\n':
+
+                            if l_len < 2:
+                                syntax_error(self._line_num, "2 columns minimum expected, {} found.".format(l_len))
+
+                            tstamp = get_tstamp(line[1])
+
                         if first == 'QCLTE_RRCMSG_V2' or first == 'QCLTE_RRCMSG':
 
                             is_v2 = first == 'QCLTE_RRCMSG_V2'
 
-                            self._pci = line[8 if is_v2 else 7]
-                            self._earfcn = line[9 if is_v2 else 8]
+                            #self._pci = line[8 if is_v2 else 7]
+                            #self._earfcn = line[9 if is_v2 else 8]
 
                             # Check if the line has a valid length.
                             if l_len < 13:
@@ -277,86 +351,136 @@ class XcalConverter:
 
                         elif first == 'GPS':
 
-                            self._last_lng = line[2]
-                            self._last_lat = line[3]
+                            curr_pos = (float(line[2]), float(line[3]))
 
-                            if first_entry:
-                                first_entry = False
-                            else:
-                                json_final.write(',\n')
+                            if not self._last_pos:
+                                self._last_pos = curr_pos
 
-                            to_produce = {
-                                'Mesurement': {
-                                    'PCI': self._pci,
-                                    'EARFCN': self._earfcn,
-                                    'Geolocation': {
-                                        'lat': self._last_lat,
-                                        'lng': self._last_lng,
-                                    },
-                                    'RSRP': self._rsrp,  # pcell_result['rsrpResult'],
-                                    'neighbourMax_RSRP': -1000,  # Non-necessary
-                                }
-                            }
+                            estimator = generate_estimator(self._last_pos, curr_pos, self._last_tstamp, tstamp)
 
-                            produce_json(to_produce, json_final)
+                            estimate_pos(self._tmp_meas_frame, estimator)
+                            estimate_pos(self._tmp_cinfo_frame, estimator)
+                            estimate_pos(self._tmp_serv_frame, estimator)
+
+                            extend_dict(self._final_cinfo_frame, self._tmp_cinfo_frame)
+                            extend_dict(self._final_meas_frame, self._tmp_meas_frame)
+                            extend_dict(self._final_serv_frame, self._tmp_serv_frame)
+
+                            self._tmp_meas_frame = {}
+                            self._tmp_cinfo_frame = {}
+                            self._tmp_serv_frame = {}
+
+                            self._last_pos = curr_pos
+
+                            # produce_json(to_produce, json_final)
 
                         elif first == 'QCLTE_PSCELL':
 
-                            if l_len < 6:
-                                syntax_error(self._line_num, "6 columns expected, {} found.".format(l_len))
+                            if l_len < 16:
+                                syntax_error(self._line_num, "16 columns expected, {} found.".format(l_len))
 
-                            serving_rsrp = line[5]
+                            serving_earfcn = int(line[2])
+                            serving_pci = int(line[4])
+                            serving_rsrp = float(line[5])
+                            serving_rsrq = float(line[10])
+                            serving_rssi = float(line[15])
 
-                            if serving_rsrp != '':
-                                self._rsrp = math.floor(140 + float(serving_rsrp)) + 1
+                            # TODO Calculate CINR
+                            serving_cinr = 0.0
+
+                            # Adding serving cell information.
+                            append_dict(
+                                self._tmp_serv_frame,
+                                {
+                                    'id': self._id, 'name': 'MEASURE_SERVING', 'timestamp': tstamp, 'lat': 0, 'lng': 0,
+                                    'earfcn': serving_earfcn, 'pci': serving_pci
+                                }
+                            )
+
+                            self._id += 1
+
+                            # Adding serving cell measurements.
+                            extend_dict(
+                                self._tmp_meas_frame,
+                                {
+                                    'id': [self._id + i for i in range(4)],
+                                    # 'meas_id': [self._meas_id] * 4,
+                                    'name': ['MEASUREMENT'] * 4,
+                                    'timestamp': 4 * [tstamp],
+                                    'lat': [None] * 4, 'lng': [None] * 4,
+                                    'earfcn': [serving_earfcn] * 4,
+                                    'pci': [serving_pci] * 4,
+                                    'meas_name': ['RSRP', 'RSQR', 'RSSI', 'CINR'],
+                                    'value': [serving_rsrp, serving_rsrq, serving_rssi, serving_cinr]
+                                }
+                            )
+
+                            self._id += 4
+
+                            # if serving_rsrp != '':
+                            #    self._rsrp = math.floor(140 + float(serving_rsrp)) + 1
 
                         elif first == 'QCLTE_CELLINFO':
 
                             if l_len < 16:
                                 syntax_error(self._line_num, "16 columns expected, {} found.".format(l_len))
 
-                            self._mcc = line[14]
-                            self._mnc = line[15]
+                            mcc = line[14]
+                            mnc = line[15]
 
-                            self._pci = line[2]
-                            self._earfcn = line[3]
+                            pci = line[2]
+                            earfcn = line[3]
 
                             cid = int(line[9])
-                            if cid >= 268435456:
+                            if cid > 0xFFFFFFFF:
                                 syntax_error(self._line_num, 'CID should be lower than 268435456.')
 
                             cid_str = '{0:08x}'.format(cid)
-                            self._cid = '{0}:{1}:{2}:{3}'.format(
+                            cid = '{0}:{1}:{2}:{3}'.format(
                                 cid_str[0:2], cid_str[2:4], cid_str[4:6], cid_str[6:8])
 
                             tac = int(line[12])
-                            if tac >= 65536:
+                            if tac > 0xFFFF:
                                 syntax_error(self._line_num, 'TAC should be lower than 65536')
 
                             tac_str = '{0:04x}'.format(tac)
-                            self._tac = '{0}:{1}'.format(tac_str[0:2], tac_str[2:4])
+                            tac = '{0}:{1}'.format(tac_str[0:2], tac_str[2:4])
 
-                            if first_entry:
-                                first_entry = False
-                            else:
-                                json_final.write(',\n')
-
-                            to_produce = {
-                                'SIB': {
-                                    'TAC': self._tac,
-                                    'CellID': self._cid,
-                                    'PCI': self._pci,
-                                    'EARFCN': self._earfcn,
-                                    'geolocation': {
-                                        'lat': self._last_lat,
-                                        'lng': self._last_lng,
-                                    },
-                                    'mcc': self._mcc,
-                                    'mnc': self._mnc,
+                            append_dict(
+                                self._tmp_cinfo_frame, {
+                                    'id': self._id, 'name': 'CELLINFO', 'timestamp': tstamp,
+                                    'lat': None, 'lng': None, 'tac': tac, 'cid': cid,
+                                    'mcc': mcc, 'mnc': mnc
                                 }
-                            }
+                            )
 
-                            produce_json(to_produce, json_final)
+                            self._id += 1
+
+                            # if first_entry:
+                            #     first_entry = False
+                            # else:
+                            #     json_final.write(',\n')
+
+                            # to_produce = {
+                            #     'SIB': {
+                            #         'TAC': self._tac,
+                            #         'CellID': self._cid,
+                            #         'PCI': self._pci,
+                            #         'EARFCN': self._earfcn,
+                            #         'geolocation': {
+                            #             'lat': self._last_lat,
+                            #             'lng': self._last_lng,
+                            #         },
+                            #         'mcc': self._mcc,
+                            #         'mnc': self._mnc,
+                            #     }
+                            # }
+
+                            # produce_json(to_produce, json_final)
+
+                        elif first == 'QCLTE_PNCELL':
+                            # TODO Produce PNCELL
+                            pass
 
                         elif first == '<Content End>\n':  # File ending.
                             state = 7  # Final state because of EOF.
@@ -380,8 +504,71 @@ class XcalConverter:
             if state != 7:
                 syntax_error(self._line_num, 'Unexpected End Of File, state={}.'.format(state))
 
+            file_df = self.process_data().sort_values(['id'])
+            print('ok')
             # Producing closing char in JSON file.
-            json_final.write('\n]\n')
+            # json_final.write('\n]\n')
+
+    def process_data(self):
+
+        # Processing data
+
+        # Ordering measurements columns by EARFCN / PCI
+
+        df_meas = pd.DataFrame(self._final_meas_frame)
+
+        # Classifiying measurements by EARFCN / PCI
+        gr_meas = df_meas.groupby(['earfcn', 'pci'])
+
+        # Storing EARFCNSs/ PCIs in a list.
+        for group in gr_meas.groups.keys():
+            self._earfcns.append(group[0])
+            self._pcis.append(group[1])
+
+        # Creating final measurements dataframe.
+        # final_meas = pd.DataFrame(columns=['id', 'name', 'timestamp', 'lat', 'lng'] + self._earfcns)
+
+        # Final measurement dictionnary.
+        meas_dict = {'id': [], 'name': [], 'timestamp': [], 'lat': [], 'lng': [], 'meas_name': []}
+
+        # Generating EARFCNs / PCIs
+        ep_list = list(zip(self._earfcns, self._pcis))
+        ep_list.sort()
+        meas_dict.update({ep: [] for ep in ep_list})
+
+        # Grouping measurements by IDs, produce data from these groups.
+        gr_meas = df_meas.groupby(['id'])
+
+        for gr_id in gr_meas.groups.keys():
+
+            gr_data = gr_meas.get_group(gr_id)
+
+            gr_name = gr_data.groupby(['meas_name'])
+
+            for gn_name in gr_name.groups:
+
+                gn_data = gr_name.get_group(gn_name)
+
+                first_entry = gn_data.iloc[0]
+
+                data_dict = {
+                    'id': gr_id, 'name': 'MEASUREMENT', 'timestamp': first_entry['timestamp'],
+                    'lat': first_entry['lat'], 'lng': first_entry['lng'], 'meas_name': gn_name
+                }
+                data_dict.update({ep: None for ep in ep_list})
+
+                for g in gn_data.iloc:
+                    data_dict[(g['earfcn'], g['pci'])] = g['value']
+
+                append_dict(meas_dict, data_dict)
+
+        final_meas_dataframe = pd.DataFrame(meas_dict)
+
+        return pd.concat([
+            pd.DataFrame(final_meas_dataframe),
+            pd.DataFrame(self._final_cinfo_frame),
+            pd.DataFrame(self._final_serv_frame)
+        ])
 
     def produce_pcaps(self):
         """Produce PCAP files for each dissector from produced TXT files using text2pcap.
