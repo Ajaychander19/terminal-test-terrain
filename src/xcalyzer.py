@@ -110,9 +110,15 @@ class XcalConverter:
         The parsing produce temporary files .txt files, one for each Wireshark
         dissector. These files can be used by text2pcap.
 
+        The first output CSV file is also produced by this function ; firstly, the AOF file syntax is checked.
+        The lengths of messages and the structure of the different sections of the file are checked. EARFCN / PCIs
+        couples are also referenced during this step. Then, during the second step, the file is re-read, and all
+        data inside it are processed, to make the EARFCNs and PCIs / Measurements tables.
+
+        The output file produced is written in CSV, with a syntax based on the AOF format.
+
         Raises:
             RuntimeError: if an error occurred during the analysis of the AOF file.
-        [WIP]
         """
 
         print('Parsing AOF file...')
@@ -128,6 +134,17 @@ class XcalConverter:
         print('CSV file produced.')
 
     def first_read(self):
+        """Does the first reading of the AOF file.
+
+        This function checks:
+            - The presence of each section of the file.
+            - The structure of messages (especially messages length).
+
+        This function also scans all EARFCNs/PCIs couples present in the file.
+
+        Raises:
+            RuntimeError: if the syntax of the file is invalid.
+        """
 
         line_num = 0    # Number of the line which is parsed.
 
@@ -301,6 +318,13 @@ class XcalConverter:
             self._data_dict.update({ep: [] for ep in ep_fields})
 
     def second_read(self):
+        """Reads a second time the AOF file and processes its data.
+
+        This function make the EARFCNs/PCIs correspondance with measurements, and also
+        includes cell information and serving cell messages.
+
+        Geolocations are calculated for each produced message between two GPS measurement using a linear estimator.
+        """
 
         # Re-opening AOF file
         with open(self._path) as aof:
@@ -355,7 +379,7 @@ class XcalConverter:
                     }
 
                     if last_meas_tstamp == tstamp:
-                        replace_data(self._data_dict, to_insert, last_meas_index, 4)
+                        fill_data(self._data_dict, to_insert, last_meas_index, 4)
                     else:
                         insert_data(self._data_dict, to_insert, 4)
                         last_meas_index = index
@@ -405,7 +429,7 @@ class XcalConverter:
                                 to_insert[(curr_earfcn, curr_pci)] = [curr_rsrp, curr_rsrq, curr_rssi, curr_cinr]
 
                     if last_meas_tstamp == tstamp:
-                        replace_data(self._data_dict, to_insert, last_meas_index, 3)
+                        fill_data(self._data_dict, to_insert, last_meas_index, 3)
                     else:
                         insert_data(self._data_dict, to_insert, 4)
                         last_meas_index = index
@@ -445,6 +469,7 @@ class XcalConverter:
                 line = read_line(aof)
 
     def produce_csv_file(self):
+        """Produces the CSV output file following the previous data processing."""
 
         csv_header = {
             'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
@@ -613,15 +638,43 @@ def read_line(f) -> list:
 
 
 def syntax_error(line: int, msg: str):
+    """Raises a syntax error.
+
+    Parameters:
+        line: line of the file where the error occured.
+        msg: error message.
+
+    Raises:
+        RuntimeError: the corresponding syntax error.
+    """
     raise RuntimeError('Error: line {0}, {1}'.format(line, msg))
 
 
 def insert_data(d1: dict, d2: dict, length: int):
+    """Insert data of a dictionary d2 in another dictionary d1.
+
+    Fields present in d1 but not in d2 will be completed with length None values.
+
+    Parameters:
+        d1: dictionary where the data will be inserted.
+        d2: dictionnary which contains data to be inserted.
+        length: length of data set to be inserted.
+    """
     for k in d1.keys():
         d1[k].extend([None] * length if k not in d2.keys() else d2[k])
 
 
-def replace_data(d1: dict, d2: dict, index: int, length: int):
+def fill_data(d1: dict, d2: dict, index: int, length: int):
+    """Fills rows from a dictionary d1 with rows in a dictionary d2 over length.
+
+    Values already present in d1 will not be replaced.
+
+    Parameters:
+        d1: dictionary to fill.
+        d2: dictionnary which contains data to be written in d1.
+        index: start index of the part to be filled in d1.
+        length: length of the part to be filled in d1.
+    """
     for k in d1.keys():
         if k in d2.keys():
             for i in range(index, index + length + 1):
@@ -630,10 +683,38 @@ def replace_data(d1: dict, d2: dict, index: int, length: int):
 
 
 def get_tstamp(date: str) -> float:
+    """Converts a POSIX date string to floating-point 64-bit timestamp.
+
+    Parameters:
+        date: POSIX formatted date string.
+
+    Returns:
+        The floating-point corresponding timestamp.
+    """
     return datetime.datetime.fromisoformat(date).timestamp()
 
 
 def generate_estimator(pos_a: (float, float), pos_b: (float, float), t1: float, t2: float):
+    """Generates a linear geolocation estimator.
+
+    Let pos_a and pos_b two geolocation measured at moments t_1 and t_2. The estimator is the
+    linear function f which contains (t_1, pos_a) and (t_2, pos_b). Given a timestamp t, the
+    corresponding geolocation found is f(t).
+
+    The calculation is the following, given pos_a, pos_b the two geolocation and t the timestamp:
+        f(t) = ((t - t1) / t2 - t1) * (pos_b - pos_a) + pos_a[0]
+    considering pos_a and pos_b as two-dimensional vectors.
+
+    Parameters:
+        pos_a: the starting position.
+        pos_b: the ending position.
+        t1: the starting timestamp.
+        t2: the ending timestamp.
+
+    Returns:
+        The corresponding estimator function, which takes as parameter a timestamp float and returns a float couple
+        which corresponds to the resulting position.
+    """
     delta_x = pos_b[0] - pos_a[0]
     delta_y = pos_b[1] - pos_a[1]
     delta_t = t2 - t1
@@ -645,13 +726,3 @@ def generate_estimator(pos_a: (float, float), pos_b: (float, float), t1: float, 
             ((t - t1) / delta_t) * delta_x + pos_a[0],
             ((t - t1) / delta_t) * delta_y + pos_a[1]
         )
-
-
-def estimate_pos(d: dict, est):
-    if d:
-        tstamps = d['timestamp']
-
-        for i in range(len(tstamps)):
-            pos = est(tstamps[i])
-            d['lat'][i] = pos[0]
-            d['lng'][i] = pos[1]
