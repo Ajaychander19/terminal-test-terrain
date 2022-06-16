@@ -3,16 +3,11 @@
 from constantPath import getPathText, getfileName
 
 import datetime
-import json
-import math
 import os
 import shutil
-import itertools
 
 import pcaputils
 import csvtools
-
-import pandas as pd
 
 # Constants
 _DICT_DISSECTOR = {
@@ -24,107 +19,6 @@ _DICT_DISSECTOR = {
     'DL DCCH': 153,
     'UL DCCH': 154
 }
-
-
-def get_dissector_num(diss_name: str) -> int:
-    """Associates a dissector name with the corresponding dissector number.
-
-    Parameters:
-        diss_name: the dissector name.
-
-    Returns:
-        The corresponding dissector number.
-    """
-    return _DICT_DISSECTOR[diss_name]
-
-
-def read_line(f) -> list:
-    """Read a line from an AOF file.
-
-    Parameters:
-        f: an AOF file.
-
-    Returns:
-        A list of values, following CSV separators found in the current line.
-    """
-    return f.readline().split('|')
-
-
-def syntax_error(line: int, msg: str):
-    raise RuntimeError('Error: line {0}, {1}'.format(line, msg))
-
-
-def extend_dict(d1: dict, d2: dict):
-    for k in d2.keys():
-        if k in d1.keys():
-            d1[k].extend(d2[k])
-        else:
-            d1[k] = d2[k]
-
-
-def append_dict(d1: dict, d2: dict):
-    for k in d2.keys():
-        if k not in d1.keys():
-            d1[k] = []
-        d1[k].append(d2[k])
-
-
-def insert_data(d1: dict, d2: dict, l: int):
-    for k in d1.keys():
-        d1[k].extend([None] * l if k not in d2.keys() else d2[k])
-
-
-def replace_data(d1: dict, d2: dict, index: int, l: int):
-    for k in d1.keys():
-        if k in d2.keys():
-            for i in range(index, index + l):
-                if d1[k][i] is None:
-                    d1[k][i] = d2[k][i - index]
-
-
-
-def get_tstamp(date: str) -> float:
-    return datetime.datetime.fromisoformat(date).timestamp()
-
-
-def generate_estimator(pos_a: (float, float), pos_b: (float, float), t1: float, t2: float):
-    delta_x = pos_b[0] - pos_a[0]
-    delta_y = pos_b[1] - pos_a[1]
-    delta_t = t2 - t1
-
-    if delta_t == 0:
-        return lambda t: pos_a
-    else:
-        return lambda t: (
-            ((t - t1) / delta_t) * delta_x + pos_a[0],
-            ((t - t1) / delta_t) * delta_y + pos_a[1]
-        )
-
-
-def estimate_pos(d: dict, est):
-    if d:
-        tstamps = d['timestamp']
-
-        for i in range(len(tstamps)):
-            pos = est(tstamps[i])
-            d['lat'][i] = pos[0]
-            d['lng'][i] = pos[1]
-
-
-def produce_json(d: dict, json_file):
-    """Produces in the JSON file an ASN1 entry from a given ASN1 dictionary.
-
-    Parameters:
-        asn1: ASN1 dictionary.
-        json_file: JSON file to write in.
-    """
-    asn1_json = json.dumps(d, indent=4)
-    prod_json = ''
-
-    for asn_line in asn1_json.splitlines(keepends=True):
-        prod_json += '    ' + asn_line
-
-    json_file.write(prod_json)
 
 
 class XcalConverter:
@@ -147,24 +41,6 @@ class XcalConverter:
         'UL DCCH': 'DCCH_UL_154'
     }
 
-    # CELLINFO dataframe structure.
-    _CINFO_DATAFRAME_DICT = {
-        'id': [], 'name': [], 'timestamp': [], 'lat': [],
-        'lng': [], 'tac': [], 'cid': [], 'mcc': [], 'mnc': []
-    }
-
-    # Serving EARFCN/PCI dataframe structure.
-    _SERV_DATAFRAME_DICT = {
-        'id': [], 'name': [], 'timestamp': [], 'lat': [],
-        'lng': [], 'earfcn': [], 'pci': []
-    }
-
-    # Measurement dataframe structure.
-    _MEAS_DATAFRAME_DICT = {
-        'id': [], 'meas_id': [], 'name': [], 'timestamp': [], 'lat': [],
-        'lng': [], 'earfcn': [], 'pci': [], 'meas_name': []
-    }
-
     def __init__(self, path: str):
         """Class constructor.
 
@@ -181,10 +57,6 @@ class XcalConverter:
 
         self._path = path
         self._phone_id = 'phone_1'  # FIXME Temporary ID
-        self._line_num = 1
-
-        self._pci = '0'
-        self._earfcn = '0'
 
         self._earfcns = []
         self._pcis = []
@@ -196,18 +68,10 @@ class XcalConverter:
             'meas_name': []                                     # Measurement
         }
 
-        self._id = 0
-        self._meas_id = 0
-
-        self._tac = '0'
-        self._cid = '0'
-
         self._mcc = None
         self._mnc = None
 
         self._content_start = 0
-
-        self._rsrp = 0.0
 
         # File dictionnary.
         self._files = {
@@ -251,10 +115,6 @@ class XcalConverter:
         [WIP]
         """
 
-        state = 0  # Current automata state.
-
-        fname = getfileName(self._path)
-
         print('Parsing AOF file...')
         self.first_read()
         print('AOF file parsing done.')
@@ -269,15 +129,14 @@ class XcalConverter:
 
     def first_read(self):
 
+        line_num = 0    # Number of the line which is parsed.
+
         # Opening AOF file.
         with open(self._path, 'r') as aof:
 
             try:
 
                 line = read_line(aof)  # Current line.
-
-                # Used to properly produce commas which separate JSON entries.
-                first_entry = True
 
                 state = 0
 
@@ -293,7 +152,7 @@ class XcalConverter:
                         if first == '<AOF_Information_START>\n':
                             state = 1
                         else:
-                            syntax_error(self._line_num, 'Invalid file starting "{}"'.format(first))
+                            syntax_error(line_num, 'Invalid file starting "{}"'.format(first))
 
                     elif state == 1:  # Skipping AOF info section.
 
@@ -305,7 +164,7 @@ class XcalConverter:
                         if first == '<Description Start>\n':
                             state = 3
                         else:
-                            syntax_error(self._line_num, 'Invalid description start "{}"'.format(first))
+                            syntax_error(line_num, 'Invalid description start "{}"'.format(first))
 
                     elif state == 3:  # Description section skip.
 
@@ -316,9 +175,9 @@ class XcalConverter:
 
                         if first == '<Content Start>\n':
                             state = 5
-                            self._content_start = self._line_num
+                            self._content_start = line_num
                         else:
-                            syntax_error(self._line_num, 'Invalid content start "{}"'.format(first))
+                            syntax_error(line_num, 'Invalid content start "{}"'.format(first))
 
                     elif state == 5:  # Getting phone ID, opening temporary files.
 
@@ -341,32 +200,25 @@ class XcalConverter:
 
                     elif state == 6:  # Content parsing.
 
-                        tstamp = 0
-
                         if first != '<Content End>\n':
 
                             if l_len < 2:
-                                syntax_error(self._line_num, "2 columns minimum expected, {} found.".format(l_len))
-
-                            tstamp = get_tstamp(line[1])
+                                syntax_error(line_num, "2 columns minimum expected, {} found.".format(l_len))
 
                         if first == 'QCLTE_RRCMSG_V2' or first == 'QCLTE_RRCMSG':
 
                             is_v2 = first == 'QCLTE_RRCMSG_V2'
 
-                            # self._pci = line[8 if is_v2 else 7]
-                            # self._earfcn = line[9 if is_v2 else 8]
-
                             # Check if the line has a valid length.
                             if l_len < 13:
-                                syntax_error(self._line_num, "13 columns expected, {} found.".format(l_len))
+                                syntax_error(line_num, "13 columns expected, {} found.".format(l_len))
 
                             msg_type = line[6 if is_v2 else 5]  # Message type.
                             payload = line[12 if is_v2 else 11]  # Message payload.
 
                             # Check if the message type is valid.
                             if msg_type not in self._files.keys():
-                                syntax_error(self._line_num, "Invalid message type : {}".format(msg_type))
+                                syntax_error(line_num, "Invalid message type : {}".format(msg_type))
 
                             # Adding the message to the corresponding file.
                             self._files[msg_type].write(
@@ -375,125 +227,33 @@ class XcalConverter:
                         elif first == 'GPS':
 
                             if l_len < 9:
-                                syntax_error(self._line_num, '8 columns expected, {} found.'.format(l_len))
-
-                            # produce_json(to_produce, json_final)
+                                syntax_error(line_num, '8 columns expected, {} found.'.format(l_len))
 
                         elif first == 'QCLTE_PSCELL':
 
                             if l_len < 16:
-                                syntax_error(self._line_num, "16 columns expected, {} found.".format(l_len))
+                                syntax_error(line_num, "16 columns expected, {} found.".format(l_len))
 
                             serving_earfcn = int(line[2])
                             serving_pci = int(line[4])
 
-                            # TODO Calculate CINR
-                            serving_cinr = 0.0
-                            #
-                            # # Adding serving cell information.
-                            # append_dict(
-                            #     self._tmp_serv_frame,
-                            #     {
-                            #         'id': self._id, 'name': 'MEASURE_SERVING', 'timestamp': tstamp, 'lat': 0, 'lng': 0,
-                            #         'earfcn': serving_earfcn, 'pci': serving_pci
-                            #     }
-                            # )
-                            #
-                            # self._id += 1
-                            #
-                            # # Adding serving cell measurements.
-                            # # extend_dict(
-                            # #     self._tmp_meas_frame,
-                            # #     {
-                            # #         'id': [self._id + i for i in range(4)],
-                            # #         # 'meas_id': [self._meas_id] * 4,
-                            # #         'name': ['MEASUREMENT'] * 4,
-                            # #         'timestamp': 4 * [tstamp],
-                            # #         'lat': [None] * 4, 'lng': [None] * 4,
-                            # #         'earfcn': [serving_earfcn] * 4,
-                            # #         'pci': [serving_pci] * 4,
-                            # #         'meas_name': ['RSRP', 'RSQR', 'RSSI', 'CINR'],
-                            # #         'value': [serving_rsrp, serving_rsrq, serving_rssi, serving_cinr]
-                            # #     }
-                            # # )
-                            #
                             if (serving_earfcn, serving_pci) not in zip(self._earfcns, self._pcis):
                                 self._earfcns.append(serving_earfcn)
                                 self._pcis.append(serving_pci)
 
-                            #
-                            # self._id += 4
-
-                            # if serving_rsrp != '':
-                            #    self._rsrp = math.floor(140 + float(serving_rsrp)) + 1
-
                         elif first == 'QCLTE_CELLINFO':
 
                             if l_len < 16:
-                                syntax_error(self._line_num, "16 columns expected, {} found.".format(l_len))
+                                syntax_error(line_num, "16 columns expected, {} found.".format(l_len))
 
                             if self._mcc is None:
                                 self._mcc = line[14]
                                 self._mnc = line[15]
 
-                            #
-                            # pci = line[2]
-                            # earfcn = line[3]
-                            #
-                            # cid = int(line[9])
-                            # if cid > 0xFFFFFFFF:
-                            #     syntax_error(self._line_num, 'CID should be lower than 268435456.')
-                            #
-                            # cid_str = '{0:08x}'.format(cid)
-                            # cid = '{0}:{1}:{2}:{3}'.format(
-                            #     cid_str[0:2], cid_str[2:4], cid_str[4:6], cid_str[6:8])
-                            #
-                            # tac = int(line[12])
-                            # if tac > 0xFFFF:
-                            #     syntax_error(self._line_num, 'TAC should be lower than 65536')
-                            #
-                            # tac_str = '{0:04x}'.format(tac)
-                            # tac = '{0}:{1}'.format(tac_str[0:2], tac_str[2:4])
-                            #
-                            # append_dict(
-                            #     self._tmp_cinfo_frame, {
-                            #         'id': self._id, 'name': 'CELLINFO', 'timestamp': tstamp,
-                            #         'lat': None, 'lng': None, 'tac': tac, 'cid': cid,
-                            #         'mcc': mcc, 'mnc': mnc
-                            #     }
-                            # )
-                            #
-                            # self._id += 1
-
-                            # if first_entry:
-                            #     first_entry = False
-                            # else:
-                            #     json_final.write(',\n')
-
-                            # to_produce = {
-                            #     'SIB': {
-                            #         'TAC': self._tac,
-                            #         'CellID': self._cid,
-                            #         'PCI': self._pci,
-                            #         'EARFCN': self._earfcn,
-                            #         'geolocation': {
-                            #             'lat': self._last_lat,
-                            #             'lng': self._last_lng,
-                            #         },
-                            #         'mcc': self._mcc,
-                            #         'mnc': self._mnc,
-                            #     }
-                            # }
-
-                            # produce_json(to_produce, json_final)
-
                         elif first == 'QCLTE_PNCELL':
 
                             if (l_len - 2) % 13 != 0:
-                                syntax_error(self._line_num, 'Line has an invalid length : {}'.format(l_len))
-
-                            if (l_len - 2) % 13 != 0:
-                                syntax_error(self._line_num, "Invalid PNCELL line.")
+                                syntax_error(line_num, "Invalid PNCELL line.")
 
                             curr_pci = 0
 
@@ -501,7 +261,6 @@ class XcalConverter:
 
                                 i2 = i - 2
                                 curr_cell = line[i]
-
 
                                 if not curr_cell == '':
 
@@ -518,7 +277,7 @@ class XcalConverter:
                             state = 7  # Final state because of EOF.
 
                     line = read_line(aof)  # Next line.
-                    self._line_num += 1
+                    line_num += 1
 
             finally:
 
@@ -534,7 +293,7 @@ class XcalConverter:
             # NOTE: this code is reachable, despite PyCharm warnings
             # You can for example remove <Content End> in the AOF file to execute it...
             if state != 7:
-                syntax_error(self._line_num, 'Unexpected End Of File, state={}.'.format(state))
+                syntax_error(line_num, 'Unexpected End Of File, state={}.'.format(state))
 
             # Producing EARFCN / PCI fields
             ep_fields = list(zip(self._earfcns, self._pcis))
@@ -548,7 +307,7 @@ class XcalConverter:
 
             # Goto content start.
             # The file structure had been checked a first time, so we don't need of the Description part.
-            for i in range(self._content_start):
+            for i in range(self._content_start + 1):
                 aof.readline()
 
             line = read_line(aof)
@@ -570,9 +329,6 @@ class XcalConverter:
 
                 if first != '<Content End>\n':
 
-                    if l_len < 2:
-                        syntax_error(self._line_num, "2 columns minimum expected, {} found.".format(l_len))
-
                     tstamp = get_tstamp(line[1])
 
                 if first == 'QCLTE_PSCELL':
@@ -583,12 +339,14 @@ class XcalConverter:
                     serving_rsrq = float(line[10])
                     serving_rssi = float(line[15])
 
-                    serving_cinr = 0.0  # TODO CINR
+                    serving_cinr = 1.0  # TODO CINR
 
                     insert_data(self._data_dict, {
                         'name': ['MEASURE_SERVING'], 'timestamp': [tstamp], 'lat': [None], 'lng': [None],
                         'earfcn': [serving_earfcn], 'pci': [serving_pci]
                     }, 1)
+
+                    index += 1
 
                     to_insert = {
                         'name': ['MEASUREMENT'] * 4, 'timestamp': [tstamp] * 4, 'lat': [None] * 4, 'lng': [None] * 4,
@@ -605,9 +363,6 @@ class XcalConverter:
                         last_meas_tstamp = tstamp
 
                 elif first == 'QCLTE_PNCELL':
-
-                    if (l_len - 2) % 13 != 0:
-                        syntax_error(self._line_num, "Invalid PNCELL line.")
 
                     curr_earfcn = 0
                     curr_pci = 0
@@ -650,7 +405,7 @@ class XcalConverter:
                                 to_insert[(curr_earfcn, curr_pci)] = [curr_rsrp, curr_rsrq, curr_rssi, curr_cinr]
 
                     if last_meas_tstamp == tstamp:
-                        replace_data(self._data_dict, to_insert, last_meas_index, 4)
+                        replace_data(self._data_dict, to_insert, last_meas_index, 3)
                     else:
                         insert_data(self._data_dict, to_insert, 4)
                         last_meas_index = index
@@ -660,8 +415,6 @@ class XcalConverter:
                 elif first == 'GPS':
 
                     curr_pos = (float(line[3]), float(line[2]))
-
-                    last_tstamp = 0.0
 
                     if last_gps_ind == -1:
                         last_pos = curr_pos
@@ -691,9 +444,6 @@ class XcalConverter:
 
                 line = read_line(aof)
 
-        #p = pd.DataFrame(self._data_dict)
-        #print('!!')
-
     def produce_csv_file(self):
 
         csv_header = {
@@ -704,19 +454,22 @@ class XcalConverter:
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
         }
 
+        tstamp_zero = self._data_dict['timestamp'][0]
+
         with csvtools.CSVWriter(getPathText('csv_tmp.csv'), csv_header) as csv_out:
 
             ep_list = list(zip(self._earfcns, self._pcis))
             ep_list.sort()
 
-            csv_out.write_row(['MEAS_EARFCNS'] + [self._data_dict[ep][0] for ep in ep_list])
-            csv_out.write_row(['MEAS_PCIS'] + [self._data_dict[ep][1] for ep in ep_list])
+            csv_out.write_row(['MEAS_EARFCNS'] + [''] * 4 + [ep[0] for ep in ep_list])
+            csv_out.write_row(['MEAS_PCIS'] + [''] * 4 + [ep[1] for ep in ep_list])
 
             for i in range(len(self._data_dict['name'])):
 
                 name = self._data_dict['name'][i]
                 to_write = [
-                    name, self._data_dict['timestamp'][i], self._data_dict['lat'][i], self._data_dict['lng'][i]
+                    name, self._data_dict['timestamp'][i] - tstamp_zero, self._data_dict['lat'][i],
+                    self._data_dict['lng'][i]
                 ]
 
                 if name == 'CELLINFO':
@@ -833,3 +586,72 @@ class XcalConverter:
     phone_id = property(_get_phone_id)
     mcc = property(_get_mcc)
     mnc = property(_get_mnc)
+
+
+def get_dissector_num(diss_name: str) -> int:
+    """Associates a dissector name with the corresponding dissector number.
+
+    Parameters:
+        diss_name: the dissector name.
+
+    Returns:
+        The corresponding dissector number.
+    """
+    return _DICT_DISSECTOR[diss_name]
+
+
+def read_line(f) -> list:
+    """Read a line from an AOF file.
+
+    Parameters:
+        f: an AOF file.
+
+    Returns:
+        A list of values, following CSV separators found in the current line.
+    """
+    return f.readline().split('|')
+
+
+def syntax_error(line: int, msg: str):
+    raise RuntimeError('Error: line {0}, {1}'.format(line, msg))
+
+
+def insert_data(d1: dict, d2: dict, length: int):
+    for k in d1.keys():
+        d1[k].extend([None] * length if k not in d2.keys() else d2[k])
+
+
+def replace_data(d1: dict, d2: dict, index: int, length: int):
+    for k in d1.keys():
+        if k in d2.keys():
+            for i in range(index, index + length + 1):
+                if d1[k][i] is None:
+                    d1[k][i] = d2[k][i - index]
+
+
+def get_tstamp(date: str) -> float:
+    return datetime.datetime.fromisoformat(date).timestamp()
+
+
+def generate_estimator(pos_a: (float, float), pos_b: (float, float), t1: float, t2: float):
+    delta_x = pos_b[0] - pos_a[0]
+    delta_y = pos_b[1] - pos_a[1]
+    delta_t = t2 - t1
+
+    if delta_t == 0:
+        return lambda t: pos_a
+    else:
+        return lambda t: (
+            ((t - t1) / delta_t) * delta_x + pos_a[0],
+            ((t - t1) / delta_t) * delta_y + pos_a[1]
+        )
+
+
+def estimate_pos(d: dict, est):
+    if d:
+        tstamps = d['timestamp']
+
+        for i in range(len(tstamps)):
+            pos = est(tstamps[i])
+            d['lat'][i] = pos[0]
+            d['lng'][i] = pos[1]
