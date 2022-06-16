@@ -85,7 +85,7 @@ class XcalConverter:
         }
 
     def process(self, outdir: str):
-        """Processes the AO0F file.
+        """Processes the AOF file.
 
         Calls the following subfunctions:
             - parse_aof: parses the AOF file, and produces the JSON output file.
@@ -198,9 +198,6 @@ class XcalConverter:
 
                     elif state == 5:  # Getting phone ID, opening temporary files.
 
-                        # if first == '<Description End>\n':
-                        #    state = 4
-
                         # TODO Get phone ID (and replace if condition).
                         if True:
 
@@ -251,6 +248,7 @@ class XcalConverter:
                             if l_len < 16:
                                 syntax_error(line_num, "16 columns expected, {} found.".format(l_len))
 
+                            # Store serving EARFCN/PCI couple for the step two.
                             serving_earfcn = int(line[2])
                             serving_pci = int(line[4])
 
@@ -263,6 +261,7 @@ class XcalConverter:
                             if l_len < 16:
                                 syntax_error(line_num, "16 columns expected, {} found.".format(l_len))
 
+                            # Storing MCC / MNC to use them to produce the name of the output CSV file.
                             if self._mcc is None:
                                 self._mcc = line[14]
                                 self._mnc = line[15]
@@ -272,20 +271,25 @@ class XcalConverter:
                             if (l_len - 2) % 13 != 0:
                                 syntax_error(line_num, "Invalid PNCELL line.")
 
+                            # Storing neighbours EARFCN/PCI couples for the step two.
+
                             curr_pci = 0
 
+                            # Reading the whole line to find EARFCNs and PCIs...
                             for i in range(2, l_len):
 
                                 i2 = i - 2
                                 curr_cell = line[i]
 
+                                # Avoid empty cells at the end of the line.
                                 if not curr_cell == '':
 
-                                    if i2 % 13 == 0:  # PCI
+                                    if i2 % 13 == 0:    # PCI
                                         curr_pci = int(curr_cell)
-                                    elif i2 % 13 == 1:
+                                    elif i2 % 13 == 1:  # EARFCN
                                         curr_earfcn = int(curr_cell)
 
+                                        # Storing EARFCNs and PCIs
                                         if (curr_earfcn, curr_pci) not in list(zip(self._earfcns, self._pcis)):
                                             self._earfcns.append(curr_earfcn)
                                             self._pcis.append(curr_pci)
@@ -336,14 +340,15 @@ class XcalConverter:
 
             line = read_line(aof)
 
-            last_meas_index = -1
-            last_meas_tstamp = -1
+            last_meas_index = -1        # Index of the last measurement.
+            last_meas_tstamp = -1       # Timestamp of the last measurement.
 
-            index = 0
+            index = 0   # Current index;
 
-            last_gps_ind = -1
+            last_gps_ind = -1       # Index of the last GPS estimation group.
             last_pos = (0.0, 0.0)
 
+            # Reading the file line per line...
             while line[0] != '':
 
                 l_len = len(line)
@@ -357,14 +362,17 @@ class XcalConverter:
 
                 if first == 'QCLTE_PSCELL':
 
+                    # Reading data for serving cell.
                     serving_earfcn = int(line[2])
                     serving_pci = int(line[4])
                     serving_rsrp = float(line[5])
                     serving_rsrq = float(line[10])
                     serving_rssi = float(line[15])
 
+                    # Calculating CINR
                     serving_cinr = 1.0  # TODO CINR
 
+                    # Inserting serving ERAFCN / PCI.
                     insert_data(self._data_dict, {
                         'name': ['MEASURE_SERVING'], 'timestamp': [tstamp], 'lat': [None], 'lng': [None],
                         'earfcn': [serving_earfcn], 'pci': [serving_pci]
@@ -372,6 +380,7 @@ class XcalConverter:
 
                     index += 1
 
+                    # Inserting measurement data.
                     to_insert = {
                         'name': ['MEASUREMENT'] * 4, 'timestamp': [tstamp] * 4, 'lat': [None] * 4, 'lng': [None] * 4,
                         'meas_name': ['RSRP', 'RSRQ', 'RSSI', 'CINR'],
@@ -379,8 +388,13 @@ class XcalConverter:
                     }
 
                     if last_meas_tstamp == tstamp:
+
+                        # If a measurement with the same timestamp exists, completing this measurement.
                         fill_data(self._data_dict, to_insert, last_meas_index, 4)
+
                     else:
+
+                        # Inserting a new measurement.
                         insert_data(self._data_dict, to_insert, 4)
                         last_meas_index = index
                         index += 4
@@ -388,6 +402,7 @@ class XcalConverter:
 
                 elif first == 'QCLTE_PNCELL':
 
+                    # Multiple measurements.
                     curr_earfcn = 0
                     curr_pci = 0
                     curr_rsrp = None
@@ -398,6 +413,7 @@ class XcalConverter:
                         'meas_name': ['RSRP', 'RSRQ', 'RSSI', 'CINR']
                     }
 
+                    # Reading measurements...
                     for i in range(2, l_len):
 
                         i2 = i - 2
@@ -405,32 +421,39 @@ class XcalConverter:
 
                         if curr_cell != '':
 
-                            if i2 % 13 == 0:  # PCI
+                            if i2 % 13 == 0:    # PCI
 
                                 curr_pci = int(curr_cell)
 
-                            elif i2 % 13 == 1:
+                            elif i2 % 13 == 1:  # EARFCN
 
                                 curr_earfcn = int(curr_cell)
 
-                            elif i2 % 13 == 2:
+                            elif i2 % 13 == 2:  # RSRP
 
                                 curr_rsrp = float(curr_cell)
 
-                            elif i2 % 13 == 5:
+                            elif i2 % 13 == 5:  # RSRQ
 
                                 curr_rsrq = float(curr_cell)
 
-                            elif i2 % 13 == 8:
+                            elif i2 % 13 == 8:  # RSSI
 
                                 curr_rssi = float(curr_cell)
+
+                                # Calculting CINR.
                                 curr_cinr = 0.0  # TODO Calculate CINR
 
                                 to_insert[(curr_earfcn, curr_pci)] = [curr_rsrp, curr_rsrq, curr_rssi, curr_cinr]
 
                     if last_meas_tstamp == tstamp:
+
+                        # If a measurement with the same timestamp exists, completing this measurement.
                         fill_data(self._data_dict, to_insert, last_meas_index, 3)
+
                     else:
+
+                        # Inserting a new measurement.
                         insert_data(self._data_dict, to_insert, 4)
                         last_meas_index = index
                         index += 4
@@ -438,8 +461,10 @@ class XcalConverter:
 
                 elif first == 'GPS':
 
+                    # Current geolocation.
                     curr_pos = (float(line[3]), float(line[2]))
 
+                    # If the GPS message is the first, completing the last geolocation with it.
                     if last_gps_ind == -1:
                         last_pos = curr_pos
                         last_tstamp = tstamp
@@ -448,6 +473,7 @@ class XcalConverter:
 
                     estimator = generate_estimator(last_pos, curr_pos, last_tstamp, tstamp)
 
+                    # Applying the estimator on the geolocation group.
                     for i in range(last_gps_ind + 1, index):
                         pos = estimator(self._data_dict['timestamp'][i])
                         self._data_dict['lat'][i] = pos[0]
@@ -479,32 +505,37 @@ class XcalConverter:
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
         }
 
+        # First timestamp.
         tstamp_zero = self._data_dict['timestamp'][0]
 
         with csvtools.CSVWriter(getPathText('csv_tmp.csv'), csv_header) as csv_out:
 
+            # Lists of EARFCN/PCI couples.
             ep_list = list(zip(self._earfcns, self._pcis))
             ep_list.sort()
 
+            # Writing couples in the file.
             csv_out.write_row(['MEAS_EARFCNS'] + [''] * 4 + [ep[0] for ep in ep_list])
             csv_out.write_row(['MEAS_PCIS'] + [''] * 4 + [ep[1] for ep in ep_list])
 
+            # Writing data in the CSV file.
             for i in range(len(self._data_dict['name'])):
 
+                # Common fields.
                 name = self._data_dict['name'][i]
                 to_write = [
                     name, self._data_dict['timestamp'][i] - tstamp_zero, self._data_dict['lat'][i],
                     self._data_dict['lng'][i]
                 ]
 
-                if name == 'CELLINFO':
+                if name == 'CELLINFO':              # Cell information fields.
                     to_write.extend([
                         self._data_dict['earfcn'][i], self._data_dict['pci'][i], self._data_dict['tac'][i],
                         self._data_dict['cid'][i], self._data_dict['mcc'][i], self._data_dict['mnc'][i]
                     ])
-                elif name == 'MEASURE_SERVING':
+                elif name == 'MEASURE_SERVING':     # Serving cell information fields.
                     to_write.extend([self._data_dict['earfcn'][i], self._data_dict['pci'][i]])
-                elif name == 'MEASUREMENT':
+                elif name == 'MEASUREMENT':         # Measurement field.
                     to_write.append(self._data_dict['meas_name'][i])
                     to_write.extend([self._data_dict[ep][i] for ep in ep_list])
 
@@ -704,6 +735,8 @@ def generate_estimator(pos_a: (float, float), pos_b: (float, float), t1: float, 
     The calculation is the following, given pos_a, pos_b the two geolocation and t the timestamp:
         f(t) = ((t - t1) / t2 - t1) * (pos_b - pos_a) + pos_a[0]
     considering pos_a and pos_b as two-dimensional vectors.
+
+    If pos_a = pos_b, f(t) = t for all t.
 
     Parameters:
         pos_a: the starting position.
