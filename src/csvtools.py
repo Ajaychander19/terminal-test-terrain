@@ -121,7 +121,7 @@ class CSVWriter:
         # Writing the row.
         for i in range(rlen):
 
-            s = str(row[i])
+            s = str(row[i]) if row[i] is not None else ''
 
             # Checking value syntax.
             if not re.fullmatch(r'([^\s|]| )*', s):

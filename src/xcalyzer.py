@@ -202,8 +202,8 @@ class XcalConverter:
         self._tac = '0'
         self._cid = '0'
 
-        self._mcc = '0'
-        self._mnc = '0'
+        self._mcc = None
+        self._mnc = None
 
         self._content_start = 0
 
@@ -255,12 +255,17 @@ class XcalConverter:
 
         fname = getfileName(self._path)
 
+        print('Parsing AOF file...')
         self.first_read()
-        print('first_read')
+        print('AOF file parsing done.')
+
+        print('Data processing...')
         self.second_read()
-        print('second_read')
-        # Producing closing char in JSON file.
-        # json_final.write('\n]\n')
+        print('Data processing done.')
+
+        print('Producing CSV file...')
+        self.produce_csv_file()
+        print('CSV file produced.')
 
     def first_read(self):
 
@@ -282,7 +287,6 @@ class XcalConverter:
                     # First word of the line.
                     first = line[0]
                     l_len = len(line)
-
 
                     if state == 0:  # Initial state.
 
@@ -413,8 +417,10 @@ class XcalConverter:
                             # #     }
                             # # )
                             #
-                            self._earfcns.append(serving_earfcn)
-                            self._pcis.append(serving_pci)
+                            if (serving_earfcn, serving_pci) not in zip(self._earfcns, self._pcis):
+                                self._earfcns.append(serving_earfcn)
+                                self._pcis.append(serving_pci)
+
                             #
                             # self._id += 4
 
@@ -426,8 +432,10 @@ class XcalConverter:
                             if l_len < 16:
                                 syntax_error(self._line_num, "16 columns expected, {} found.".format(l_len))
 
-                            # mcc = line[14]
-                            # mnc = line[15]
+                            if self._mcc is None:
+                                self._mcc = line[14]
+                                self._mnc = line[15]
+
                             #
                             # pci = line[2]
                             # earfcn = line[3]
@@ -487,18 +495,24 @@ class XcalConverter:
                             if (l_len - 2) % 13 != 0:
                                 syntax_error(self._line_num, "Invalid PNCELL line.")
 
+                            curr_pci = 0
+
                             for i in range(2, l_len):
 
                                 i2 = i - 2
                                 curr_cell = line[i]
 
+
                                 if not curr_cell == '':
+
                                     if i2 % 13 == 0:  # PCI
                                         curr_pci = int(curr_cell)
-                                        self._pcis.append(curr_pci)
                                     elif i2 % 13 == 1:
                                         curr_earfcn = int(curr_cell)
-                                        self._earfcns.append(curr_earfcn)
+
+                                        if (curr_earfcn, curr_pci) not in list(zip(self._earfcns, self._pcis)):
+                                            self._earfcns.append(curr_earfcn)
+                                            self._pcis.append(curr_pci)
 
                         elif first == '<Content End>\n':  # File ending.
                             state = 7  # Final state because of EOF.
@@ -677,70 +691,46 @@ class XcalConverter:
 
                 line = read_line(aof)
 
-        print('ok0')
-        p = pd.DataFrame(self._data_dict)
-        print('ok')
+        #p = pd.DataFrame(self._data_dict)
+        #print('!!')
 
-    def process_data(self):
+    def produce_csv_file(self):
 
-        # Processing data
+        csv_header = {
+            'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
+            'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
+            'CELLINFO': ['Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'],
+            'MEASURE_SERVING': ['Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI'],
+            'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
+        }
 
-        # Ordering measurements columns by EARFCN / PCI
+        with csvtools.CSVWriter(getPathText('csv_tmp.csv'), csv_header) as csv_out:
 
-        df_meas = pd.DataFrame(self._final_meas_frame)
+            ep_list = list(zip(self._earfcns, self._pcis))
+            ep_list.sort()
 
-        # Classifiying measurements by EARFCN / PCI
-        gr_meas = df_meas.groupby(['earfcn', 'pci'])
+            csv_out.write_row(['MEAS_EARFCNS'] + [self._data_dict[ep][0] for ep in ep_list])
+            csv_out.write_row(['MEAS_PCIS'] + [self._data_dict[ep][1] for ep in ep_list])
 
-        # Storing EARFCNSs/ PCIs in a list.
-        for group in gr_meas.groups.keys():
-            self._earfcns.append(group[0])
-            self._pcis.append(group[1])
+            for i in range(len(self._data_dict['name'])):
 
-        # Creating final measurements dataframe.
-        # final_meas = pd.DataFrame(columns=['id', 'name', 'timestamp', 'lat', 'lng'] + self._earfcns)
+                name = self._data_dict['name'][i]
+                to_write = [
+                    name, self._data_dict['timestamp'][i], self._data_dict['lat'][i], self._data_dict['lng'][i]
+                ]
 
-        # Final measurement dictionnary.
-        meas_dict = {'id': [], 'name': [], 'timestamp': [], 'lat': [], 'lng': [], 'meas_name': []}
+                if name == 'CELLINFO':
+                    to_write.extend([
+                        self._data_dict['earfcn'][i], self._data_dict['pci'][i], self._data_dict['tac'][i],
+                        self._data_dict['cid'][i], self._data_dict['mcc'][i], self._data_dict['mnc'][i]
+                    ])
+                elif name == 'MEASURE_SERVING':
+                    to_write.extend([self._data_dict['earfcn'][i], self._data_dict['pci'][i]])
+                elif name == 'MEASUREMENT':
+                    to_write.append(self._data_dict['meas_name'][i])
+                    to_write.extend([self._data_dict[ep][i] for ep in ep_list])
 
-        # Generating EARFCNs / PCIs
-        ep_list = list(zip(self._earfcns, self._pcis))
-        ep_list.sort()
-        meas_dict.update({ep: [] for ep in ep_list})
-
-        # Grouping measurements by IDs, produce data from these groups.
-        gr_meas = df_meas.groupby(['id'])
-
-        for gr_id in gr_meas.groups.keys():
-
-            gr_data = gr_meas.get_group(gr_id)
-
-            gr_name = gr_data.groupby(['meas_name'])
-
-            for gn_name in gr_name.groups:
-
-                gn_data = gr_name.get_group(gn_name)
-
-                first_entry = gn_data.iloc[0]
-
-                data_dict = {
-                    'id': gr_id, 'name': 'MEASUREMENT', 'timestamp': first_entry['timestamp'],
-                    'lat': first_entry['lat'], 'lng': first_entry['lng'], 'meas_name': gn_name
-                }
-                data_dict.update({ep: None for ep in ep_list})
-
-                for g in gn_data.iloc:
-                    data_dict[(g['earfcn'], g['pci'])] = g['value']
-
-                append_dict(meas_dict, data_dict)
-
-        final_meas_dataframe = pd.DataFrame(meas_dict)
-
-        return pd.concat([
-            pd.DataFrame(final_meas_dataframe),
-            pd.DataFrame(self._final_cinfo_frame),
-            pd.DataFrame(self._final_serv_frame)
-        ])
+                csv_out.write_row(to_write)
 
     def produce_pcaps(self):
         """Produce PCAP files for each dissector from produced TXT files using text2pcap.
@@ -821,8 +811,8 @@ class XcalConverter:
         shutil.copy2(getPathText(input_pcap), os.path.join(outdir, output_pcap))
 
         # Producing final JSON file.
-        output_json = 'C{0}_{1}_{2}_{3}.json'.format(self.mcc, self.mnc, getfileName(self._path), self.phone_id)
-        shutil.copy2(getPathText('json_tmp.json'), os.path.join(outdir, output_json))
+        output_json = 'C{0}_{1}_{2}_{3}.csv'.format(self.mcc, self.mnc, getfileName(self._path), self.phone_id)
+        shutil.copy2(getPathText('csv_tmp.csv'), os.path.join(outdir, output_json))
 
     def _get_phone_id(self) -> str:
         """
