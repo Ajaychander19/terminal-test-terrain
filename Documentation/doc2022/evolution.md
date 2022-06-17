@@ -292,7 +292,7 @@ On propose formellement la syntaxe suivante, sous forme d'expression rationnelle
 DEFINE\n
 (\w+\|\w+(\|\w+)*\n)*
 CONTENT\n
-(\w+\|([^\s\|]| )*(\|([^\s\|]| )*)*\n)*
+(\w+\|([^\s|]| )*(\|([^\s|]| )*)*\n)*
 END\n*
 ```
 
@@ -395,7 +395,7 @@ On notera le "renversement" effectué, les champs de mesures (ici RSRP) devenant
 Si ici seules les mesures RSRP sont présentées, on peut appliquer ce principe aux autres mesures mentionnées plus tôt
 (RSRQ, RSSI, CINR...)
 
-## Semaine 5
+## Semaine 5 et 6
 
 ### Objectif
 Commencer à produire le nouveau format de fichier
@@ -431,4 +431,24 @@ Les fichiers Cartoradio contiennent :
 * `antennes` : **azimuth**, **type système**, **hauteur**, **fréquences...**
 
 ### Traitements sur les données
+
+#### AOF vers CSV
+
+À partir du fichier AOF, on réorganise les données de mesures par EARFCN/PCI. On analyse une première fois le fichier
+AOF pour récupérer les couples EARFCN/PCI, puis on re-parcourt une deuxième fois le fichier pour compléter le jeu de
+données de sortie suivant la structure par couples EARFCN / PCI donnée plus haut.
+
+Si deux mesures m1 et m2 sont prises au même moment (même timestamp), alors :
+* Les mesures de m1 par EARFCN / PCI présents sont conservées.
+* Les mesures de m2 par EARFCN / PCI non présents dans m1 sont ajoutées à m1.
+* Les mesures de m2 par EARFCN / PCI présents aussi dans m1 ne sont pas gardées.
+
+On définit dans le fichier les entrées suivants :
+* `MEAS_EARFCNS|NA|NA|NA|NA|EARFCN1|EARFCN2|EARFCN3|etc` : EARFCNs trouvés.
+* `MEAS_PCIS|NA|NA|NA|NA|PCI1|PCI2|PCI3|etc` : PCIs trouvés.
+* `CELLINFO|Timestamp|Lat|Lng|EARFCN|PCI|TAC|CID|MCC|MNC` : informations sur une cellule (TAC, CID, PLMN).
+* `MEASURE_SERVING|Timestamp|Lat|Lng|Serving_EARFCN|Serving_PCI` : EARFCN / PCI de la cellule courante.
+* `MEASUREMENT|Timestamp|Lat|Lng|Measurement_Name|Values`  : mesures radio, par couples EARFCNs/PCIs. Actuellement,
+RSRP, RSRQ, RSSI et CINR possibles.
+
 
