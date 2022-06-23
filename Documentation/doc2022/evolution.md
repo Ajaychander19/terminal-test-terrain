@@ -395,7 +395,7 @@ On notera le "renversement" effectué, les champs de mesures (ici RSRP) devenant
 Si ici seules les mesures RSRP sont présentées, on peut appliquer ce principe aux autres mesures mentionnées plus tôt
 (RSRQ, RSSI, CINR...)
 
-## Semaine 5 et 6
+## Semaine 5, 6 et 7
 
 ### Objectif
 Commencer à produire le nouveau format de fichier
@@ -448,7 +448,11 @@ On définit dans le fichier les entrées suivants :
 * `MEAS_PCIS|NA|NA|NA|NA|PCI1|PCI2|PCI3|etc` : PCIs trouvés.
 * `CELLINFO|Timestamp|Lat|Lng|EARFCN|PCI|TAC|CID|MCC|MNC` : informations sur une cellule (TAC, CID, PLMN).
 * `MEASURE_SERVING|Timestamp|Lat|Lng|Serving_EARFCN|Serving_PCI` : EARFCN / PCI de la cellule courante.
-* `MEASUREMENT|Timestamp|Lat|Lng|Measurement_Name|Values`  : mesures radio, par couples EARFCNs/PCIs. Actuellement,
+* `MEASUREMENT|Timestamp|Lat|Lng|Measurement_Name|Values` : mesures radio, par couples EARFCNs/PCIs. Actuellement,
 RSRP, RSRQ, RSSI et CINR possibles.
 
+### Cartoradio vers CSV
+
+En l'état actuel : CSV -> jointure entre le fichier Sites et le fichier Antenne sur le numéro 
+Cartoradio et le numéro de support.
 

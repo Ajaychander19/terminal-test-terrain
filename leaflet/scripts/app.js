@@ -430,17 +430,15 @@ function getZones(sitefile, boundMap){
                 for (var i=0;i<sitefile[0].zone.length;i++) {
                     getZones(sitefile[0].zone[i], boundMap)
                 }
-                            
-            }
-        else{
-            for (var j=0;j<sitefile[0].arrayPoint.length;j++){
-                if (turf.booleanContains(box_map, turf.point([sitefile[0].arrayPoint[j].Longitude, sitefile[0].arrayPoint[j].Latitude]))){
-                    
-                    
-                    sites_tempor.push(sitefile[0].arrayPoint[j])
+            } else{
+                for (var j=0;j<sitefile[0].arrayPoint.length;j++){
+                    if (turf.booleanContains(box_map, turf.point([sitefile[0].arrayPoint[j].Longitude, sitefile[0].arrayPoint[j].Latitude]))){
+
+
+                        sites_tempor.push(sitefile[0].arrayPoint[j])
+                    }
                 }
             }
-        }
         }
         if (sites_tempor.length !=0){
             sites_inZone = sites_tempor
@@ -889,20 +887,32 @@ function check_pci($this,par1,par2,earfcns){
                     var polylist=[]
                     pointcell.concavepoly.features.forEach(function(item){
                         polygonconvex.push([item.geometry.coordinates[0],item.geometry.coordinates[1]])
-                    })
-                    concaves=turf.polygon([polygonconvex])
-                    pointcell.border.features.forEach(function(item){	
-                        borderconvex.push([item.geometry.coordinates[0],item.geometry.coordinates[1]])
-                        
+
+                        //borderconvex.push([item.geometry.coordinates[0],item.geometry.coordinates[1]])
+
                         if ($("#toggle_withoutTraces").is(':checked')==true){
                             L.marker([item.geometry.coordinates[1],item.geometry.coordinates[0]])
                             .bindPopup(cellKey +" "+item.property.toString()).addTo(tempLayer);
                         }
-                        
-                        
+
+
                         pointB = new L.LatLng(item.geometry.coordinates[1],item.geometry.coordinates[0])
-                        
+
                         polylist.push([markerObject[$this.attr('data-markerId')]["layer"]._latlng,pointB])
+                    })
+                    concaves=turf.polygon([polygonconvex])
+                    pointcell.border.features.forEach(function(item){	
+//                        borderconvex.push([item.geometry.coordinates[0],item.geometry.coordinates[1]])
+//
+//                        if ($("#toggle_withoutTraces").is(':checked')==true){
+//                            L.marker([item.geometry.coordinates[1],item.geometry.coordinates[0]])
+//                            .bindPopup(cellKey +" "+item.property.toString()).addTo(tempLayer);
+//                        }
+//
+//
+//                        pointB = new L.LatLng(item.geometry.coordinates[1],item.geometry.coordinates[0])
+//
+//                        polylist.push([markerObject[$this.attr('data-markerId')]["layer"]._latlng,pointB])
                         
                     })
                     
