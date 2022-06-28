@@ -21,7 +21,8 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
     siteant = siteant[[
         'Numéro de support', 'Numéro Cartoradio', 'Numéro de Station',
         'Exploitant', "Numéro d'antenne", 'Directivité', 'Azimut', 'Système',
-        'Latitude', 'Longitude', 'Hauteur en m', 'Adresse', 'Commune'
+        'Latitude', 'Longitude', 'Hauteur en m', 'Adresse', 'Commune', 'Début',
+        'Fin', 'Unité'
     ]]
 
     # Removing useless entries, keeping only directive LTE antennas.
@@ -34,7 +35,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
     header = {
         'ANTENNA': [
             'Support_Number', 'Cartoradio_Number', 'Lat', 'Lng', 'Height', 'Info_Addr', 'Info_Municipality',
-            'Ant_Number', 'Dest_Lat', 'Dest_Lng', 'Azimuth', 'AzimuthMin', 'AzimuthMax'
+            'Ant_Number', 'Dest_Lat', 'Dest_Lng', 'Azimuth', 'AzimuthMin', 'AzimuthMax', 'MinFreq', 'MaxFreq'
         ],
         'DELIMITER': ['Support_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng']
     }
@@ -52,86 +53,111 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
             for sta in station_groups.groups.keys():
 
                 station_group = station_groups.get_group(sta).sort_values('Azimut')
-                station_group = station_groups.get_group(sta).sort_values('Azimut').to_dict('list')
-                slen = len(station_group['Exploitant'])
+
+                azimuths = station_group['Azimut'].drop_duplicates().reset_index(drop=True)
+                az_count = len(azimuths)
+
+                station_group = station_group.to_dict('list')
 
                 out = rej_file if station_group['Hauteur en m'][0] < 0 else out_file
 
-                # Inserting ANTENNA entry.
-                azimuths = station_group['Azimut']
+                delimiters = {'supp_num': [], 'lat': [], 'lng': [], 'del_lat': [], 'del_lng': []}
 
-                delimiters = {'supp_num': [], 'lat': [], 'lng': [], 'azimuth': []}
+                az_assoc = {}
 
                 last_az_max = 0
                 az_min_zero = 0
 
-                for i in range(slen):
+                az_min, az_max = None, None
 
-                    if not station_group['Hauteur en m'][0] < 0:
+                for i in range(az_count):
+                    curr_az = azimuths[i]
 
-                        # Calculating min azimuth and max azimuth.
-                        azimuth = azimuths[i]
-                        az_min, az_max = None, None
+                    if az_count == 1:
+                        az_min = curr_az - 60
+                        az_max = curr_az + 60
+                    elif az_count > 1 and i == az_count - 1:
+                        az_min = last_az_max
+                        az_max = az_min_zero + 360
+                    elif az_count > 1 and i == 0:
+                        az_min = min(
+                            (curr_az + azimuths[az_count - 1] - 360) / 2,
+                            (curr_az + azimuths[i + 1]) / 2
+                        )
+                        az_max = max(
+                            (curr_az + azimuths[az_count - 1] - 360) / 2,
+                            (curr_az + azimuths[i + 1]) / 2
+                        )
+                        az_min_zero = az_min
+                    elif az_count > 1 and i > 0:
+                        az_min = min((curr_az + azimuths[i - 1]) / 2, (curr_az + azimuths[i + 1]) / 2)
+                        az_max = max((curr_az + azimuths[i - 1]) / 2, (curr_az + azimuths[i + 1]) / 2)
 
-                        if slen == 1:
-                            az_min = azimuth - 60
-                            az_max = azimuth + 60
-                        elif slen > 1 and i == slen - 1:
-                            az_min = last_az_max
-                            az_max = az_min_zero + 360
-                        elif slen > 1 and i == 0:
-                            az_min = min((azimuth + azimuths[slen - 1] - 360) / 2, (azimuth + azimuths[i + 1]) / 2)
-                            az_max = min((azimuth + azimuths[slen - 1] - 360) / 2, (azimuth + azimuths[i + 1]) / 2)
-                            az_min_zero = az_min
-                        elif slen > 1 and i > 0:
-                            az_min = min((azimuth + azimuths[i - 1]) / 2, (azimuth + azimuths[i + 1]) / 2)
-                            az_max = max((azimuth + azimuths[i - 1]) / 2, (azimuth + azimuths[i + 1]) / 2)
+                    last_az_max = az_max
 
-                        supp_num = station_group['Numéro de support'][i]
+                    az_assoc[curr_az] = (az_min, az_max)
 
-                        last_az_max = az_max
+                az_delimited = []
 
-                        lat, lng = station_group['Latitude'][i], station_group['Longitude'][i]
+                for i in range(len(station_group['Numéro Cartoradio'])):
 
-                        if not (az_min is None or az_max is None):
-                            if az_min % 360 not in delimiters['azimuth'] and az_min >= 0 and az_min % 360 != azimuth:
-                                insert_data(
-                                    delimiters,
-                                    {
-                                        'supp_num': [supp_num], 'lat': [lat], 'lng': [lng],
-                                        'azimuth': [az_min]
-                                    },
-                                    1
-                                )
-                            if az_max % 360 not in delimiters['azimuth'] and az_max >= 0 and az_max % 360 != azimuth:
-                                insert_data(
-                                    delimiters,
-                                    {
-                                        'supp_num': [supp_num], 'lat': [lat], 'lng': [lng],
-                                        'azimuth': [az_max]
-                                    },
-                                    1
-                                )
+                    ant_az = station_group['Azimut'][i]
+
+                    supp_num = station_group['Numéro de support'][i]
+
+                    lat = station_group['Latitude'][i]
+                    lng = station_group['Longitude'][i]
+
+                    ant_az_min = az_assoc[ant_az][0]
+                    ant_az_max = az_assoc[ant_az][1]
+
+                    freq_unit = station_group['Unité'][i]
+                    beg_freq = calculate_freq(station_group['Début'][i], freq_unit)
+                    end_freq = calculate_freq(station_group['Fin'][i], freq_unit)
 
                     out.write_row([
                         'ANTENNA', supp_num, station_group['Numéro Cartoradio'][i],
-                        lat, lng, station_group['Hauteur en m'][i], station_group['Adresse'][i], station_group['Commune'][i],
-                        station_group["Numéro d'antenne"][i],
-                        lat + 0.0005 * math.cos(azimuth * np.pi / 180),
-                        lng + 0.0005 * math.sin(azimuth * np.pi / 180),
-                        station_group['Azimut'][i], az_min, az_max    # TODO Calculate pointDest and pointZone
+                        lat, lng, station_group['Hauteur en m'][i], station_group['Adresse'][i],
+                        station_group['Commune'][i], station_group["Numéro d'antenne"][i],
+                        lat + 0.0005 * math.cos(ant_az * np.pi / 180),
+                        lng + 0.0005 * math.sin(ant_az * np.pi / 180),
+                        ant_az, ant_az_min, ant_az_max, beg_freq, end_freq
                     ])
 
-                dels = [
-                    calculate_delimiters(
-                        delimiters['lat'][i], delimiters['lng'][i], delimiters['azimuth'][i]
-                    ) for i in range(len(delimiters['azimuth']))
-                ]
+                    if ant_az_min % 360 not in az_delimited:
+                        az_delimited.append(ant_az_min % 360)
+                        del_coords = calculate_delimiters(lat, lng, ant_az_min)
+                        insert_data(
+                            delimiters,
+                            {
+                                'supp_num': [supp_num],
+                                'lat': [lat],
+                                'lng': [lng],
+                                'del_lat': [del_coords[0]],
+                                'del_lng': [del_coords[1]]
+                            },
+                            1
+                        )
 
-                for i in range(len(dels)):
+                    if ant_az_max % 360 not in az_delimited:
+                        az_delimited.append(ant_az_max % 360)
+                        del_coords = calculate_delimiters(lat, lng, ant_az_max)
+                        insert_data(
+                            delimiters,
+                            {
+                                'supp_num': [supp_num],
+                                'lat': [lat],
+                                'lng': [lng],
+                                'del_lat': [del_coords[0]],
+                                'del_lng': [del_coords[1]]
+                            },
+                            1
+                        )
+
+                for i in range(len(delimiters['supp_num'])):
                     out.write_row(
                         ['DELIMITER', delimiters['supp_num'][i], delimiters['lat'][i],
-                         delimiters['lng'][i], dels[i][0], dels[i][1]]
+                         delimiters['lng'][i], delimiters['del_lat'][i], delimiters['del_lng'][i]]
                     )
 
 
@@ -147,3 +173,14 @@ def calculate_delimiters(lat: float, lng: float, azimuth: float) -> (float, floa
         lat + 0.3 * math.cos(azimuth * np.pi / 180),
         lng + 0.3 * math.sin(azimuth * np.pi / 180)
     )
+
+
+def calculate_freq(val: float, unit: str) -> float:
+    if unit == 'KHz':
+        return val * 0.001
+    elif unit == 'MHz':
+        return val
+    elif unit == 'GHz':
+        return val * 1000.0
+    else:
+        raise ValueError('Invalid unit : {}.'.format(unit))
