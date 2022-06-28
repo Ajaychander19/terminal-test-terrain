@@ -21,7 +21,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
     siteant = siteant[[
         'Numéro de support', 'Numéro Cartoradio', 'Numéro de Station',
         'Exploitant', "Numéro d'antenne", 'Directivité', 'Azimut', 'Système',
-        'Latitude', 'Longitude', 'Hauteur en m', 'Adresse', 'Commune', 'Début',
+        'Latitude', 'Longitude', 'Hauteur / sol', 'Adresse', 'Commune', 'Début',
         'Fin', 'Unité'
     ]]
 
@@ -59,7 +59,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
 
                 station_group = station_group.to_dict('list')
 
-                out = rej_file if station_group['Hauteur en m'][0] < 0 else out_file
+                out = rej_file if station_group['Hauteur / sol'][0] < 0 else out_file
 
                 delimiters = {'supp_num': [], 'lat': [], 'lng': [], 'del_lat': [], 'del_lng': []}
 
@@ -117,7 +117,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
 
                     out.write_row([
                         'ANTENNA', supp_num, station_group['Numéro Cartoradio'][i],
-                        lat, lng, station_group['Hauteur en m'][i], station_group['Adresse'][i],
+                        lat, lng, station_group['Hauteur / sol'][i], station_group['Adresse'][i],
                         station_group['Commune'][i], station_group["Numéro d'antenne"][i],
                         lat + 0.0005 * math.cos(ant_az * np.pi / 180),
                         lng + 0.0005 * math.sin(ant_az * np.pi / 180),
