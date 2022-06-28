@@ -1,3 +1,5 @@
+"""This module contains functions used to process Cartoradio files."""
+
 from dictutils import insert_data
 
 import numpy as np
@@ -9,6 +11,20 @@ import math
 
 
 def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
+    """Processes Cartoradio files.
+
+    Cartoradio files processing takes two input files, typically named "Sites_Cartoradio" and
+    "Antennes_Emetteurs_Frequences_Cartoradio", which contain respectively base station geolocation, and base station
+    antennas, frequencies, directivity.
+
+    The function uses only directive LTE antennas, and produce in the output file information about the antennas and the
+    delimitation of their sectors. Data are produced in a CSV-like format based on the Accuver Open Format.
+
+    Parameters:
+        sitefile_path: path of the "Sites" file.
+        antfile_path: path of the "Antennas" file.
+        output_dir: path of the output file.
+    """
 
     # Initial CSV import
     sitesdf = pd.read_csv(sitefile_path, sep=';', encoding='ISO-8859-1')
