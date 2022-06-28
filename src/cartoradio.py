@@ -27,8 +27,14 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
     """
 
     # Initial CSV import
+    print('Reading {} data...'.format(sitefile_path), end=' ')
     sitesdf = pd.read_csv(sitefile_path, sep=';', encoding='ISO-8859-1')
+    print('read.')
+    print('Reading {} data...'.format(antfile_path), end=' ')
     antdf = pd.read_csv(antfile_path, sep=';', encoding='ISO-8859-1')
+    print('read.')
+
+    print('Preparing data...', end=' ')
 
     # Join between sitesdf and antdf
     siteant = pd.merge(sitesdf, antdf, left_on='Numéro du support', right_on='Numéro de support')
@@ -40,6 +46,8 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
         'Latitude', 'Longitude', 'Hauteur / sol', 'Adresse', 'Commune', 'Début',
         'Fin', 'Unité'
     ]]
+
+    print('done.')
 
     # Removing useless entries, keeping only directive LTE antennas.
     siteant = siteant[is_system_valid(siteant['Système']) & (siteant['Directivité'] == 'Directif')]
@@ -58,6 +66,8 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
 
     # Reading input data by operator.
     for op in op_groups.groups.keys():
+
+        print('Operator {}.'.format(op))
 
         # Opening sites and rejected file.
         with csvtools.CSVWriter('{0}/sites_{1}.csv'.format(output_dir, op), header) as out_file, \
@@ -84,6 +94,9 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
 
                 # Choosing to keep or reject the station following if the station is underground or not.
                 out = rej_file if station_group_dict['Hauteur / sol'][0] < 0 else out_file
+
+                if station_group_dict['Hauteur / sol'][0] < 0:
+                    print('Rejected base station {} (reason: underground).'.format(supp_num))
 
                 # Delimitation lines of sectors.
                 delimiters = {'supp_num': [], 'lat': [], 'lng': [], 'del_lat': [], 'del_lng': []}
@@ -205,6 +218,10 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
                         ['DELIMITER', delimiters['supp_num'][i], delimiters['lat'][i],
                          delimiters['lng'][i], delimiters['del_lat'][i], delimiters['del_lng'][i]]
                     )
+
+        print('Done for {}.'.format(op))
+
+    print('Cartoradio processing done.')
 
 
 def is_system_valid(ser: pd.Series) -> pd.Series:
