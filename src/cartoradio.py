@@ -33,7 +33,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
 
     # Output CSV file header
     header = {
-        'ANTENNA': [
+        'BS_ANTENNA': [
             'Support_Number', 'Cartoradio_Number', 'Lat', 'Lng', 'Height', 'Info_Addr', 'Info_Municipality',
             'Ant_Number', 'Dest_Lat', 'Dest_Lng', 'Azimuth', 'AzimuthMin', 'AzimuthMax', 'MinFreq', 'MaxFreq'
         ],
@@ -116,7 +116,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
                     end_freq = calculate_freq(station_group['Fin'][i], freq_unit)
 
                     out.write_row([
-                        'ANTENNA', supp_num, station_group['Numéro Cartoradio'][i],
+                        'BS_ANTENNA', supp_num, station_group['Numéro Cartoradio'][i],
                         lat, lng, station_group['Hauteur / sol'][i], station_group['Adresse'][i],
                         station_group['Commune'][i], station_group["Numéro d'antenne"][i],
                         lat + 0.0005 * math.cos(ant_az * np.pi / 180),
