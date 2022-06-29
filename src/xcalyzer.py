@@ -370,9 +370,6 @@ class XcalConverter:
                     serving_rsrq = float(line[10])
                     serving_rssi = float(line[15])
 
-                    # Calculating CINR
-                    serving_cinr = 1.0  # TODO CINR
-
                     # Inserting serving ERAFCN / PCI.
                     insert_data(self._data_dict, {
                         'name': ['MEASURE_SERVING'], 'timestamp': [tstamp], 'lat': [None], 'lng': [None],
@@ -383,22 +380,22 @@ class XcalConverter:
 
                     # Inserting measurement data.
                     to_insert = {
-                        'name': ['MEASUREMENT'] * 4, 'timestamp': [tstamp] * 4, 'lat': [None] * 4, 'lng': [None] * 4,
-                        'meas_name': ['RSRP', 'RSRQ', 'RSSI', 'CINR'],
-                        (serving_earfcn, serving_pci): [serving_rsrp, serving_rsrq, serving_rssi, serving_cinr],
+                        'name': ['MEASUREMENT'] * 3, 'timestamp': [tstamp] * 3, 'lat': [None] * 3, 'lng': [None] * 3,
+                        'meas_name': ['RSRP', 'RSRQ', 'RSSI'],
+                        (serving_earfcn, serving_pci): [serving_rsrp, serving_rsrq, serving_rssi],
                     }
 
                     if last_meas_tstamp == tstamp:
 
                         # If a measurement with the same timestamp exists, completing this measurement.
-                        fill_data(self._data_dict, to_insert, last_meas_index, 4)
+                        fill_data(self._data_dict, to_insert, last_meas_index, 3)
 
                     else:
 
                         # Inserting a new measurement.
-                        insert_data(self._data_dict, to_insert, 4)
+                        insert_data(self._data_dict, to_insert, 3)
                         last_meas_index = index
-                        index += 4
+                        index += 3
                         last_meas_tstamp = tstamp
 
                 elif first == 'QCLTE_PNCELL':
@@ -410,8 +407,8 @@ class XcalConverter:
                     curr_rsrq = None
 
                     to_insert = {
-                        'name': ['MEASUREMENT'] * 4, 'timestamp': [tstamp] * 4, 'lat': [None] * 4, 'lng': [None] * 4,
-                        'meas_name': ['RSRP', 'RSRQ', 'RSSI', 'CINR']
+                        'name': ['MEASUREMENT'] * 3, 'timestamp': [tstamp] * 3, 'lat': [None] * 3, 'lng': [None] * 3,
+                        'meas_name': ['RSRP', 'RSRQ', 'RSSI']
                     }
 
                     # Reading measurements...
@@ -442,22 +439,20 @@ class XcalConverter:
 
                                 curr_rssi = float(curr_cell)
 
-                                # Calculting CINR.
-                                curr_cinr = 0.0  # TODO Calculate CINR
-
-                                to_insert[(curr_earfcn, curr_pci)] = [curr_rsrp, curr_rsrq, curr_rssi, curr_cinr]
+                                to_insert[(curr_earfcn, curr_pci)] = [curr_rsrp, curr_rsrq, curr_rssi]
 
                     if last_meas_tstamp == tstamp:
 
                         # If a measurement with the same timestamp exists, completing this measurement.
+
                         fill_data(self._data_dict, to_insert, last_meas_index, 3)
 
                     else:
 
                         # Inserting a new measurement.
-                        insert_data(self._data_dict, to_insert, 4)
+                        insert_data(self._data_dict, to_insert, 3)
                         last_meas_index = index
-                        index += 4
+                        index += 3
                         last_meas_tstamp = tstamp
 
                 elif first == 'GPS':

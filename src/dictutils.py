@@ -25,6 +25,6 @@ def fill_data(d1: dict, d2: dict, index: int, length: int):
     """
     for k in d1.keys():
         if k in d2.keys():
-            for i in range(index, index + length + 1):
+            for i in range(index, index + length):
                 if d1[k][i] is None:
                     d1[k][i] = d2[k][i - index]
