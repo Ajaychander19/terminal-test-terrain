@@ -220,5 +220,52 @@ class TestCSVWriter(TestCase):
             writer.write_row(['RSRP', '-68', '-58', '-40', '', '-58'])
 
 
+class TestCSVReader(TestCase):
+
+    def test_correct1(self):
+        with csv.CSVReader(rel_dir('../../Mesures_tests/tests/csv_reader/correct1.csv')) as crd:
+            assert crd.read_line() == ['CONTENT1', 'truc', 'bidule', 'chouette.123']
+            assert crd.read_line() == ['CONTENT2', '-89', '10.2458']
+
+    def test_correct2(self):
+        with csv.CSVReader(rel_dir('../../Mesures_tests/tests/csv_reader/correct2.csv')) as crd:
+            assert crd.read_line() == ['CONTENT1', '', '', 'chouette.123']
+            assert crd.read_line() == ['CONTENT1', '30', '', '50.123']
+
+    def test_header1(self):
+        with csv.CSVReader(rel_dir('../../Mesures_tests/tests/csv_reader/correct1.csv')) as crd:
+            assert crd.get_header() == {
+                'CONTENT1': ['A', 'b', 'C_D'],
+                'CONTENT2': ['a', '123_4']
+            }
+
+    def test_header2(self):
+        with csv.CSVReader(rel_dir('../../Mesures_tests/tests/csv_reader/correct2.csv')) as crd:
+            assert crd.get_header() == {
+                'CONTENT1': ['123', '456', '789'],
+                'CONT_ENT2': ['truc']
+            }
+
+    def test_invalid_key(self):
+        self.assertRaises(
+            RuntimeError, lambda: csv.CSVReader(
+                rel_dir('../../Mesures_tests/tests/csv_reader/inv_key.csv')).open_file())
+
+    def test_invalid_key_syntax(self):
+        self.assertRaises(
+            RuntimeError, lambda: csv.CSVReader(
+                rel_dir('../../Mesures_tests/tests/csv_reader/inv_key_synt.csv')).open_file())
+
+    def test_invalid_field(self):
+        self.assertRaises(
+            RuntimeError, lambda: csv.CSVReader(
+                rel_dir('../../Mesures_tests/tests/csv_reader/inv_field.csv')).open_file())
+
+    def test_invalid_value(self):
+        self.assertRaises(
+            RuntimeError, lambda: csv.CSVReader(
+                rel_dir('../../Mesures_tests/tests/csv_reader/inv_value.csv')).open_file())
+
+
 if __name__ == '__main__':
     unittest.main()

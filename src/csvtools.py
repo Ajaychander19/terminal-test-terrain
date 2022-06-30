@@ -2,8 +2,11 @@
 
 import re
 
-class CSVReader:
-    pass
+# Constants
+# Regular expressions.
+REGEX_KEYS_NAMES = r'\w+'
+REGEX_VALUES = r'([^\s|]| )*'
+
 
 class CSVWriter:
     """This class handles the writing of CSV-derivative files used in this program.
@@ -42,7 +45,7 @@ class CSVWriter:
                 raise TypeError("error : str type expected for key, {} found.".format(ktype))
 
             # Checking key syntax.
-            if not re.fullmatch(r'\w+', str(k)):
+            if not re.fullmatch(REGEX_KEYS_NAMES, str(k)):
                 raise RuntimeError("error : invalid key syntax : '{}'".format(k))
 
             row = header[k]
@@ -62,7 +65,7 @@ class CSVWriter:
                     raise TypeError('error : str type expected for field names, {} type found'.format(rtype))
 
                 # Checking column names syntax.
-                if not re.fullmatch(r'\w+', r):
+                if not re.fullmatch(REGEX_KEYS_NAMES, r):
                     raise RuntimeError("error : invalid column name syntax : '{}'".format(r))
 
         self._header = header
@@ -111,7 +114,7 @@ class CSVWriter:
         field_type = row[0]
 
         # Checking syntax of the field type.
-        if not re.fullmatch(r'\w+', field_type):
+        if not re.fullmatch(REGEX_KEYS_NAMES, field_type):
             raise RuntimeError("error : invalid field type syntax : {} ".format(field_type))
 
         # Checking existence of the message type.
@@ -124,7 +127,7 @@ class CSVWriter:
             s = str(row[i]) if row[i] is not None else ''
 
             # Checking value syntax.
-            if not re.fullmatch(r'([^\s|]| )*', s):
+            if not re.fullmatch(REGEX_VALUES, s):
                 raise RuntimeError("error : invalid value syntax : {}".format(field_type))
 
             self._file.write(s)
@@ -161,3 +164,112 @@ class CSVWriter:
 
     filename = property(_get_filename)
     header = property(_get_header)
+
+
+class CSVReader:
+
+    def __init__(self, fname):
+        self._fname = fname
+        self._file = None
+        self._header = {}
+
+    def open_file(self):
+
+        with open(self._fname) as file:
+            state = 0
+
+            line = file.readline().split('|')
+            llen = len(line)
+
+            if llen == 0:
+                raise RuntimeError('error : empty file.')
+
+            line_num = 1
+            first = line[0]
+            entry_counter = 0
+
+            while first != '':
+
+                if state == 0:
+
+                    if first == 'DEFINE\n':
+                        state = 1
+                    else:
+                        raise RuntimeError("error : file must begin with 'DEFINE'")
+
+                elif state == 1:
+
+                    if first == 'CONTENT\n':
+                        if entry_counter == 0:
+                            raise RuntimeError("error : no entry type defined.")
+                        state = 2
+                    else:
+
+                        entry_counter += 1
+
+                        key = ''
+
+                        for i in range(llen):
+
+                            cols = line[i].strip()
+
+                            if i == 0:
+                                if not re.fullmatch(REGEX_KEYS_NAMES, cols):
+                                    raise RuntimeError(
+                                        "error : line {0} : invalid key syntax : {1}".format(line_num, cols))
+                                self._header[cols] = []
+                                key = cols
+                            else:
+                                if not re.fullmatch(REGEX_KEYS_NAMES, cols):
+                                    raise RuntimeError(
+                                        "error : line {0} : invalid field syntax : {1}".format(line_num, cols))
+                                self._header[key].append(cols)
+
+                elif state == 2:
+
+                    for i in range(llen):
+
+                        cols = line[i].strip()
+
+                        if i == 0:
+
+                            if not re.fullmatch(REGEX_KEYS_NAMES, cols):
+                                raise RuntimeError(
+                                    "error : line {0} : invalid key syntax : {1}".format(line_num, cols))
+
+                            if cols not in self._header.keys():
+                                raise RuntimeError("error : invalid key : {}".format(cols))
+
+                        else:
+
+                            if not re.fullmatch(REGEX_VALUES, cols):
+                                raise RuntimeError(
+                                    'error : line {0} : invalid value syntax : {1}'.format(line_num, cols))
+
+                line_num += 1
+                line = file.readline().split('|')
+                llen = len(line)
+                first = line[0]
+
+        self._file = open(self._fname)
+
+        first = self._file.readline().split('|')[0]
+        while first != 'CONTENT\n':
+            first = self._file.readline().split('|')[0]
+
+    def read_line(self) -> list:
+        return [col.strip() for col in self._file.readline().split('|')]
+
+    def get_header(self) -> dict:
+        return dict(self._header)
+
+    def close_file(self):
+        self._file.close()
+
+    def __enter__(self):
+        self.open_file()
+        return self
+
+    def __exit__(self, typ, val, trace):
+        if self._file:
+            self.close_file()
