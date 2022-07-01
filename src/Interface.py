@@ -68,7 +68,7 @@ class GUI(tkinter.Frame):
         self.defaultPath.pack(padx=5, pady=5)
 
         self.pcap_conversion = tkinter.Button(self, command=lambda: self.button_click(2),
-                                              text="Field-test *.csv to *.pcap \n and *.json conversion",
+                                              text="Field-test *.csv to *.pcap \n and AOF-like *.csv conversion",
                                               font=boldFont, background='light green')
         self.pcap_conversion.configure(height=3, width=25)
         self.pcap_conversion.pack(padx=5, pady=5)

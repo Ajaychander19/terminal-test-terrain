@@ -266,6 +266,12 @@ class TestCSVReader(TestCase):
             RuntimeError, lambda: csv.CSVReader(
                 rel_dir('../../Mesures_tests/tests/csv_reader/inv_value.csv')).open_file())
 
+    def test_terminate(self):
+        with csv.CSVReader(rel_dir('../../Mesures_tests/tests/csv_reader/correct1.csv')) as c:
+            line = c.read_line()
+            while line != ['']:
+                line = c.read_line()
+
 
 if __name__ == '__main__':
     unittest.main()
