@@ -455,17 +455,30 @@ class XcalConverter:
                         index += 3
                         last_meas_tstamp = tstamp
 
-                elif first == 'GPS':
+                elif first == 'QCLTE_CELLINFO':
+
+                    insert_data(self._data_dict, {
+                        'name': ['CELLINFO'], 'timestamp': [tstamp], 'lat': [None], 'lng': [None],
+                        'earfcn': [line[3]], 'pci': [line[2]], 'tac': [line[12]], 'cid': [line[9]],
+                        'mcc': [line[14]], 'mnc': [line[15]]
+                    }, 1)
+
+                    index += 1
+
+                new_line = read_line(aof)
+
+                if first == 'GPS' or new_line == ['']:
 
                     # Current geolocation.
-                    curr_pos = (float(line[3]), float(line[2]))
+                    if first == 'GPS':
+                        curr_pos = (float(line[3]), float(line[2]))
 
-                    # If the GPS message is the first, completing the last geolocation with it.
-                    if last_gps_ind == -1:
-                        last_pos = curr_pos
-                        last_tstamp = tstamp
-                    else:
-                        last_tstamp = self._data_dict['timestamp'][last_gps_ind]
+                        # If the GPS message is the first, completing the last geolocation with it.
+                        if last_gps_ind == -1:
+                            last_pos = curr_pos
+                            last_tstamp = tstamp
+                        else:
+                            last_tstamp = self._data_dict['timestamp'][last_gps_ind]
 
                     estimator = generate_estimator(last_pos, curr_pos, last_tstamp, tstamp)
 
@@ -478,17 +491,9 @@ class XcalConverter:
                     last_gps_ind = index - 1
                     last_pos = curr_pos
 
-                elif first == 'QCLTE_CELLINFO':
+                line = new_line
 
-                    insert_data(self._data_dict, {
-                        'name': ['CELLINFO'], 'timestamp': [tstamp], 'lat': [None], 'lng': [None],
-                        'earfcn': [line[3]], 'pci': [line[2]], 'tac': [line[12]], 'cid': [line[9]],
-                        'mcc': [line[14]], 'mnc': [line[15]]
-                    }, 1)
-
-                    index += 1
-
-                line = read_line(aof)
+            pass
 
     def produce_csv_file(self):
         """Produces the CSV output file following the previous data processing."""
