@@ -17,7 +17,7 @@ class MyTestCase(TestCase):
                 asc.CellAssociator._HEADER
         ) as out:
             assoc = asc.CellAssociator(
-                rel_dir('../../Mesures_tests/C208_10_DR10143732-M1_phone_1.csv'),
+                rel_dir('../../Mesures_tests/C208_10_DR10143732-M1_nz_phone_1.csv'),
                 rel_dir('../../Mesures_tests/sites_SFR.csv'),
                 rel_dir('../../Mesures_tests/tests/assoc/out_init_read.csv')
             )
@@ -29,7 +29,7 @@ class MyTestCase(TestCase):
                 asc.CellAssociator._HEADER
         ) as out:
             assoc = asc.CellAssociator(
-                rel_dir('../../Mesures_tests/C208_10_DR10143732-M1_phone_1.csv'),
+                rel_dir('../../Mesures_tests/C208_10_DR10143732-M1_nz_phone_1.csv'),
                 rel_dir('../../Mesures_tests/sites_SFR.csv'),
                 rel_dir('../../Mesures_tests/tests/assoc/out_init_read.csv')
             )
@@ -41,7 +41,7 @@ class MyTestCase(TestCase):
                 asc.CellAssociator._HEADER
         ) as out:
             assoc = asc.CellAssociator(
-                rel_dir('../../Mesures_tests/C208_10_DR10143732-M1_phone_1.csv'),
+                rel_dir('../../Mesures_tests/C208_10_DR10143732-M1_nz_phone_1.csv'),
                 rel_dir('../../Mesures_tests/sites_SFR.csv'),
                 rel_dir('../../Mesures_tests/tests/assoc/out_init_read.csv')
             )

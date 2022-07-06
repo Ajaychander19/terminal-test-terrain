@@ -188,17 +188,30 @@ class CellAssociator:
 
         vor = sp.Voronoi(bs_coords)
 
-        # sp.voronoi_plot_2d(vor)
-        # plt.show()
+        bs_vor = {'Lat': [], 'Lng': [], 'Vor': []}
 
-        bs_vor = {
-            'Lat': [x for (x, y) in bs_coords],
-            'Lng': [y for (x, y) in bs_coords],
-            'Vor': vor.point_region
-        }
+        for i in range(len(vor.points)):
+            point = vor.points[i]
+            p_reg = vor.point_region[i]
+            region = vor.regions[p_reg]
+            if -1 not in region and region:
+                insert_data(bs_vor, {
+                    'Lat': [point[0]],
+                    'Lng': [point[1]],
+                    'Vor': [p_reg]
+                }, 1)
+
+        # bs_vor = {
+        #     'Lat': [x for (x, y) in vor.points],
+        #     'Lng': [y for (x, y) in vor.points],
+        #     'Vor': vor.point_region
+        # }
 
         ant_vor_sectors = pd.merge(self._antennas, pd.DataFrame(bs_vor), on=['Lat', 'Lng']).drop_duplicates(
             ['Cartoradio_Number', 'Ant_Number'])
+
+        # PLOT
+        sp.voronoi_plot_2d(vor)
 
         #ats_dict = ant_vor_sectors.to_dict('list')
 
@@ -218,7 +231,7 @@ class CellAssociator:
 
         v_weight = np.vectorize(weight)
         v_sigma = np.vectorize(calc_sigma)
-        v_psi = np.vectorize(calc_psi)
+        v_psi = np.vectorize(lambda x: 1.0 if x else 0.0)
         v_theta = np.vectorize(calc_theta)
         v_belongs = np.vectorize(belongs)
         v_valid = np.vectorize(is_valid)
@@ -250,31 +263,46 @@ class CellAssociator:
 
                 if vor_shape.intersects(hulls[gr_key]):
 
+                    # PLOT
+                    x, y = vor_shape.exterior.xy
+                    plt.plot(x, y)
+                    x, y = hulls[gr_key].exterior.xy if type(hulls[gr_key]) != geom.LineString else hulls[gr_key].xy
+                    plt.plot(x, y)
+                    x, y = [k[0] for k in groups[gr_key]], [k[1] for k in groups[gr_key]]
+                    plt.scatter(x, y, s=0.25)
+
+
                     points_belongs = v_belongs(points_lat, points_lng, vor_shape)
 
-                    for i in range(vlen):
+                    for i in range(vlen):   # j
 
                         az_min = vgroup['AzimuthMin'][i]
                         az_max = vgroup['AzimuthMax'][i]
 
-                        sigma = np.sum(v_sigma(angles, weights, az_min, az_max, card))
-                        psi = np.sum(v_psi(angles, weights, az_min, az_max, card, points_belongs))
-                        theta_values[
-                            (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], gr_key)
-                        ] = calc_theta(sigma, psi)
+                        sigma_sum = v_sigma(angles, weights, az_min, az_max)
+                        sigma = np.sum(sigma_sum) / card
+                        psi_sum = v_psi(points_belongs) * sigma_sum
+                        psi = np.sum(psi_sum) / card
+                        theta = calc_theta(sigma, psi)
+                        if not theta == 0.0:
+                            theta_values[
+                                (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], gr_key)
+                            ] = (sigma, psi, theta)
 
-                else:
-                    for i in range(vlen):
-                        theta_values[(vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], gr_key)] = 0.0
-
-            theta_argmax = max(theta_values, key=lambda k: theta_values[k])
-            theta_max = theta_values[theta_argmax]
-            del theta_values[theta_argmax]
-            theta_array = np.array([theta_values[k] for k in theta_values.keys()])
-
-            if np.all(v_valid(theta_max, theta_array, 0.08)):
-                k = (theta_argmax[0], theta_argmax[1])
-
+            if theta_values:
+                print(theta_values)
+                # theta_argmax = max(theta_values, key=lambda k: theta_values[k])
+                # theta_max = theta_values[theta_argmax]
+                # theta_argmax = [k for k in theta_values.keys()]
+                # theta_array = np.array([theta_values[k] for k in theta_values.keys()])
+                #
+                # if theta_array.size > 0:
+                #     valids = v_valid(theta_max, theta_array, 0.08)
+                #     if valids.size > 0:
+                #         if np.all(valids):
+                #             print(theta_argmax)
+        #PLOT
+        plt.show()
 
     def write_outfile(self):
         pass
@@ -284,17 +312,13 @@ def weight(rsrp: float) -> float:
     if rsrp <= -100:
         return 0.15
     elif -100 < rsrp < -80:
-        return 0.9
+        return 0.6
     else:
         return 1.0
 
 
-def calc_sigma(a: float, w: float, az_min: float, az_max: float, card: int):
-    return w * (1.0 if az_min < a < az_max else 0.0) / float(card)
-
-
-def calc_psi(a: float, w: float, az_min: float, az_max: float, card: int, belongs_sector: bool):
-    return w * (1.0 if az_min < a < az_max and belongs_sector else 0.0) / float(card)
+def calc_sigma(a: float, w: float, az_min: float, az_max: float):
+    return w * (1.0 if az_min < a < az_max else 0.0)
 
 
 def calc_theta(sigma: float, psi: float) -> float:
@@ -305,8 +329,8 @@ def belongs(x: float, y: float, shape: geom.Polygon) -> bool:
     return shape.contains(geom.Point(x, y))
 
 
-def is_valid(theta_max: float, other_theta: float, const: float) -> bool:
-    if theta_max == 0:
+def is_valid(theta_max: float, other_theta: float, const: float):
+    if theta_max == 0.0 or other_theta / theta_max == 0.0:
         return True
     else:
         return np.abs(np.log10(other_theta / theta_max)) > const
