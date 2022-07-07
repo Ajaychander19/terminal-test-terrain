@@ -180,7 +180,7 @@ class CellAssociator:
 
     def _process_geometry(self):
 
-        assocs = {}
+        assocs = {'Cartoradio_Number' : [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': []}
 
         # Calculating Voronoi cells.
 
@@ -211,7 +211,7 @@ class CellAssociator:
             ['Cartoradio_Number', 'Ant_Number'])
 
         # PLOT
-        sp.voronoi_plot_2d(vor)
+        # sp.voronoi_plot_2d(vor)
 
         #ats_dict = ant_vor_sectors.to_dict('list')
 
@@ -236,7 +236,6 @@ class CellAssociator:
         v_belongs = np.vectorize(belongs)
         v_valid = np.vectorize(is_valid)
 
-
         vor_groups = ant_vor_sectors.groupby(['Vor'])
 
         for gr_key in gr_keys:      # n
@@ -245,32 +244,43 @@ class CellAssociator:
             theta_values = {}
 
             point_group = point_groups.get_group(gr_key)
-
-            points_lat = point_group['Lat'].to_numpy()
-            points_lng = point_group['Lng'].to_numpy()
             points_rsrps = point_group['RSRP'].to_numpy()
+
             card = len(point_group)
 
-            angles = np.arctan2(points_lat, points_lng)
             weights = v_weight(points_rsrps)
 
-            for vor_key in vor_groups.groups.keys(): # i
+            for vor_key in vor_groups.groups.keys():    # i
 
                 vgroup = vor_groups.get_group(vor_key)
                 vlen = len(vgroup)
                 vgroup = vgroup.to_dict('list')
                 vor_shape = geom.Polygon(vor.vertices[vor.regions[vor_key]])
+                linear_vor = geom.LinearRing(vor_shape.exterior.coords)
+                vlat = vgroup['Lat'][0]
+                vlng = vgroup['Lng'][0]
+
+                interp = linear_vor.interpolate(
+                    linear_vor.project(geom.Point(vlat, vlng)))
+                dist = np.sqrt(((vlat - interp.x) ** 2 + (interp.y - vlng) ** 2))
+
+                points_lat = point_group['Lat'].to_numpy()
+                points_lng = point_group['Lng'].to_numpy()
+
+                dirs_north = (points_lat - vlat) * (np.pi / 180)
+                dirs_east = (points_lng - vlng) * (np.pi / 180) * np.cos(vlat / 180 * np.pi)
+
+                angles = np.arctan2(dirs_east, dirs_north)
 
                 if vor_shape.intersects(hulls[gr_key]):
 
                     # PLOT
-                    x, y = vor_shape.exterior.xy
-                    plt.plot(x, y)
-                    x, y = hulls[gr_key].exterior.xy if type(hulls[gr_key]) != geom.LineString else hulls[gr_key].xy
-                    plt.plot(x, y)
-                    x, y = [k[0] for k in groups[gr_key]], [k[1] for k in groups[gr_key]]
-                    plt.scatter(x, y, s=0.25)
-
+                    # x, y = vor_shape.exterior.xy
+                    # plt.plot(x, y)
+                    # x, y = hulls[gr_key].exterior.xy if type(hulls[gr_key]) != geom.LineString else hulls[gr_key].xy
+                    # plt.plot(x, y)
+                    # x, y = [k[0] for k in groups[gr_key]], [k[1] for k in groups[gr_key]]
+                    # plt.scatter(x, y, s=0.25)
 
                     points_belongs = v_belongs(points_lat, points_lng, vor_shape)
 
@@ -286,22 +296,38 @@ class CellAssociator:
                         theta = calc_theta(sigma, psi)
                         if not theta == 0.0:
                             theta_values[
-                                (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], gr_key)
+                                (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], dist, gr_key)
                             ] = (sigma, psi, theta)
 
             if theta_values:
-                print(theta_values)
-                # theta_argmax = max(theta_values, key=lambda k: theta_values[k])
-                # theta_max = theta_values[theta_argmax]
-                # theta_argmax = [k for k in theta_values.keys()]
-                # theta_array = np.array([theta_values[k] for k in theta_values.keys()])
-                #
-                # if theta_array.size > 0:
-                #     valids = v_valid(theta_max, theta_array, 0.08)
-                #     if valids.size > 0:
-                #         if np.all(valids):
-                #             print(theta_argmax)
+                #print(theta_values)
+                theta_argmax = max(theta_values, key=lambda k: theta_values[k])
+                theta_max = theta_values[theta_argmax]
+                theta_argmax = [k for k in theta_values.keys()]
+                theta_array = np.array([theta_values[k] for k in theta_values.keys()])
+
+                if theta_array.size > 0:
+                    valids = v_valid(theta_max, theta_array, 0.08)
+                    if valids.size > 0:
+                        if np.all(valids):
+                            min_dist = theta_argmax[0][2]
+                            argmin_dist = 0
+
+                            for i, selected in enumerate(theta_argmax):
+                                dst = selected[2]
+                                if dst < min_dist:
+                                    min_dist = dst
+                                    argmin_dist = i
+
+                            insert_data(assocs, {
+                                'Cartoradio_Number': [theta_argmax[argmin_dist][0]],
+                                'Ant_Number': [theta_argmax[argmin_dist][1]],
+                                'TAC': [theta_argmax[argmin_dist][2][0]], 'CID': [theta_argmax[argmin_dist][2][1]],
+                                'EARFCN': [theta_argmax[argmin_dist][2][2]], 'PCI': [theta_argmax[argmin_dist][2][3]]
+                            }, 1)
+
         #PLOT
+        df = pd.DataFrame(assocs)
         plt.show()
 
     def write_outfile(self):
@@ -330,7 +356,7 @@ def belongs(x: float, y: float, shape: geom.Polygon) -> bool:
 
 
 def is_valid(theta_max: float, other_theta: float, const: float):
-    if theta_max == 0.0 or other_theta / theta_max == 0.0:
+    if theta_max == 0.0 or other_theta / theta_max == 0.0 or theta_max == other_theta:
         return True
     else:
         return np.abs(np.log10(other_theta / theta_max)) > const
