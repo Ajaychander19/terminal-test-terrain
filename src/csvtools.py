@@ -209,42 +209,48 @@ class CSVReader:
 
                         key = ''
 
+                        if llen < 2:
+                            raise RuntimeError('error : line {0} : no field defined.')
+
                         for i in range(llen):
 
-                            cols = line[i].strip()
+                            col = line[i].strip()
 
                             if i == 0:
-                                if not re.fullmatch(REGEX_KEYS_NAMES, cols):
+                                if not re.fullmatch(REGEX_KEYS_NAMES, col):
                                     raise RuntimeError(
-                                        "error : line {0} : invalid key syntax : {1}".format(line_num, cols))
-                                self._header[cols] = []
-                                key = cols
+                                        "error : line {0} : invalid key syntax : {1}".format(line_num, col))
+                                self._header[col] = []
+                                key = col
                             else:
-                                if not re.fullmatch(REGEX_KEYS_NAMES, cols):
+                                if not re.fullmatch(REGEX_KEYS_NAMES, col):
                                     raise RuntimeError(
-                                        "error : line {0} : invalid field syntax : {1}".format(line_num, cols))
-                                self._header[key].append(cols)
+                                        "error : line {0} : invalid field syntax : {1}".format(line_num, col))
+                                self._header[key].append(col)
 
                 elif state == 2:
 
                     for i in range(llen):
 
-                        cols = line[i].strip()
+                        col = line[i].strip()
 
                         if i == 0:
 
-                            if not re.fullmatch(REGEX_KEYS_NAMES, cols):
-                                raise RuntimeError(
-                                    "error : line {0} : invalid key syntax : {1}".format(line_num, cols))
+                            if llen < 2:
+                                raise RuntimeError('error : line {0} : no value found .')
 
-                            if cols not in self._header.keys():
-                                raise RuntimeError("error : invalid key : {}".format(cols))
+                            if not re.fullmatch(REGEX_KEYS_NAMES, col):
+                                raise RuntimeError(
+                                    "error : line {0} : invalid key syntax : {1}".format(line_num, col))
+
+                            if col not in self._header.keys():
+                                raise RuntimeError("error : invalid key : {}".format(col))
 
                         else:
 
-                            if not re.fullmatch(REGEX_VALUES, cols):
+                            if not re.fullmatch(REGEX_VALUES, col):
                                 raise RuntimeError(
-                                    'error : line {0} : invalid value syntax : {1}'.format(line_num, cols))
+                                    'error : line {0} : invalid value syntax : {1}'.format(line_num, col))
 
                 line_num += 1
                 line = file.readline().split('|')
