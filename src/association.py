@@ -21,35 +21,37 @@ class CellAssociator:
     }
 
     def __init__(self, in_meas: str, in_sites: str, outdir: str):
-        self._in_sites = in_sites
-        self._in_meas = in_meas
-        self._outdir = outdir
-        self._point_assoc = None
-        self._antennas = None
 
-    def process_data(self):
-        pass
+        self._in_sites = in_sites   # Sites file path.
+        self._in_meas = in_meas     # Measurements file path.
+        self._outdir = outdir       # Output file directory.
+        self._point_assoc = None    # Association between points and measurements.
+        self._antennas = None       # Antennas
 
     def _initial_read(self, out_wr: csvt.CSVWriter):
 
-        # Last recorded EARFCN / PCI.
+        # Last recorded EARFCN / PCI (used to associate measurements to points).
         last_earfcn = None
         last_pci = None
 
+        # Serving cell infos.
         serving_dict = {'Timestamp': [], 'Lat': [], 'Lng': [], 'EARFCN': [], 'PCI': []}
+
+        # Measurement infos.
         measurements = {'Timestamp': [], 'RSRP': [], 'RSRQ': [], 'RSSI': []}
 
-        # Reading measurement file.
+        # Found cells information (SIB1).
+        cellinfo_dict = {'EARFCN': [], 'PCI': [], 'TAC': [], 'CID': []}
+
+        # EARFCNs / PCIs
+        earpcis = []
+
+        # Reading measurement file...
         with csvt.CSVReader(self._in_meas) as meas:
 
-            cellinfo_dict = {'EARFCN': [], 'PCI': [], 'TAC': [], 'CID': []}
-            earpcis = []
-
-            line = meas.read_line()
-
-            prev_tstamp = None
-
-            meas_count = 0
+            line = meas.read_line()     # Current line.
+            prev_tstamp = None          # Previous measurement timestamp.
+            meas_count = 0              # Measurement count.
 
             while line != ['']:
 
@@ -81,7 +83,7 @@ class CellAssociator:
                     last_earfcn = int(line[4])
                     last_pci = int(line[5])
 
-                # Registering EARFCN / PCI...
+                # Registering EARFCN / PCI couples...
                 elif line[0] == 'MEAS_EARFCNS':
 
                     if len(line) < 6:
@@ -100,6 +102,7 @@ class CellAssociator:
 
                     earpcis = [(int(i), int(j)) for (i, j) in zip(line[5:], lineb[5:])]
 
+                    # Writing couples in file...
                     out_wr.write_row(line)
                     out_wr.write_row(lineb)
 
@@ -115,12 +118,21 @@ class CellAssociator:
                     if last_earfcn is None or last_pci is None:
                         raise RuntimeError('error: MEASUREMENT encountered before MEASURE_SERVING.')
 
+                    # Associating measurements to points...
                     meas_name = line[4]
+
                     if meas_name == 'RSRP' or meas_name == 'RSRQ' or meas_name == 'RSSI':
+
+                        # Corresponding index of the measurement following current EARFCN / PCI
                         meas_index = earpcis.index((last_earfcn, last_pci)) + 5
+
+                        # Measurement value.
                         val = float(line[meas_index]) if line[meas_index] != '' else None
+
+                        # Current measurement timestamp.
                         tstamp = float(line[1])
 
+                        # Choosing where to insert data...
                         to_insert = {
                             'Timestamp': [float(line[1])],
                             'RSRP': [val] if meas_name == 'RSRP' else [None],
@@ -128,16 +140,18 @@ class CellAssociator:
                             'RSSI': [val] if meas_name == 'RSSI' else [None],
                         }
 
+                        # Timestamp change -> point change...
                         if tstamp != prev_tstamp:
 
                             insert_data(measurements, to_insert, 1)
                             prev_tstamp = tstamp
                             meas_count += 1
 
-                        else:
+                        else:   # otherwise merging previous measurement and new measurement.
 
                             fill_data(measurements, to_insert, meas_count - 1, 1)
 
+                    # Copying measurement line into the output file (=/= point association !!!)
                     out_wr.write_row(line)
 
                 elif line[0] == 'MEAS_PCIS':
@@ -157,21 +171,22 @@ class CellAssociator:
                 on=['Timestamp']
             ).drop_duplicates(subset=['Timestamp']).sort_values(['Timestamp'])
 
-            pass
-
     def _read_antennas(self, out_wr: csvt.CSVWriter):
 
+        # Antennas data
         antennas_dict = {
             'Cartoradio_Number': [], 'Ant_Number': [], 'Lat': [], 'Lng': [], 'Dest_Lat': [], 'Dest_Lng': [],
             'Azimuth': [], 'AzimuthMin': [], 'AzimuthMax': []
         }
-        
+
+        # Reading antenna file...
         with csvt.CSVReader(self._in_sites) as sites:
 
             line = sites.read_line()
 
             while line != ['']:
 
+                # Antenna info...
                 if line[0] == 'BS_ANTENNA':
 
                     insert_data(
@@ -185,29 +200,39 @@ class CellAssociator:
                         1
                     )
 
+                # Sector delimiter...
                 elif line[0] == 'DELIMITER':
                     out_wr.write_row(line)
 
                 line = sites.read_line()
 
+            # Creating antennas information dataframe.
             self._antennas = pd.DataFrame(antennas_dict)
 
     def _process_geometry(self):
 
+        # Associations between antennas and EARFCNs / PCIs
         self._assocs = {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': []}
 
         # Calculating Voronoi cells.
 
+        # Base stations coordinates.
         bs_coords = np.array(list(self._antennas.groupby(['Lat', 'Lng']).groups.keys()))
 
+        # Voronoi cells calculation.
         vor = sp.Voronoi(bs_coords)
 
+        # Association between Voronoi cells and base stations coordinates.
         bs_vor = {'Lat': [], 'Lng': [], 'Vor': []}
 
+        # Associating Voronoi cells and base stations coords...
         for i in range(len(vor.points)):
+
             point = vor.points[i]
             p_reg = vor.point_region[i]
             region = vor.regions[p_reg]
+
+            # Filtering open Voronoi cells (at extremities of the covered area).
             if -1 not in region and region:
                 insert_data(bs_vor, {
                     'Lat': [point[0]],
@@ -215,12 +240,7 @@ class CellAssociator:
                     'Vor': [p_reg]
                 }, 1)
 
-        # bs_vor = {
-        #     'Lat': [x for (x, y) in vor.points],
-        #     'Lng': [y for (x, y) in vor.points],
-        #     'Vor': vor.point_region
-        # }
-
+        # Associating antennas and Voronoi cells.
         ant_vor_sectors = pd.merge(self._antennas, pd.DataFrame(bs_vor), on=['Lat', 'Lng']).drop_duplicates(
             ['Cartoradio_Number', 'Ant_Number'])
 
@@ -228,51 +248,73 @@ class CellAssociator:
         point_groups = self._point_assoc.groupby(
             ['TAC', 'CID', 'EARFCN', 'PCI'])
 
-        groups = {}
-        hulls = {}
+        groups = {}     # Groups of points of same EARFCN / PCI.
+        hulls = {}      # Convex hulls associated to groups of points.
+
+        # Calculating convex hulls...
 
         gr_keys = point_groups.groups.keys()
 
         for gr_key in gr_keys:
+
             gr = point_groups.get_group(gr_key)
             coords = np.array(list(zip(gr['Lat'], gr['Lng'])))
+
             groups[gr_key] = coords
             hulls[gr_key] = geom.MultiPoint(coords).convex_hull
 
-        v_weight = np.vectorize(weight)
-        v_sigma = np.vectorize(calc_sigma)
-        v_psi = np.vectorize(lambda x: 1.0 if x else 0.0)
-        v_belongs = np.vectorize(belongs)
-        v_valid = np.vectorize(is_valid)
+        # Vectorizing criteria calculation functions...
+        v_weight = np.vectorize(weight)                                 # Weight of each point.
+        v_sigma = np.vectorize(calc_sigma)                              # Angular criteria ("sigma")
+        v_psi = np.vectorize(lambda x: 1.0 if x else 0.0)               # Cell criteria ("psi")
+        v_belongs = np.vectorize(lambda x, y, s: s.contains(x, y))      # "Belongs to shape" function.
+        v_valid = np.vectorize(is_valid)                                # "Theta" validity function (antenna selection).
 
+        # Grouping antennas by Voronoi cell number.
         vor_groups = ant_vor_sectors.groupby(['Vor'])
 
+        # For each group of point with same EARFCN / PCI...
         for gr_key in gr_keys:      # n
 
-            # Indicators
+            # "Theta" criteria values.
             theta_values = {}
 
+            # Group of points and their RSRPs.
             point_group = point_groups.get_group(gr_key)
             points_rsrps = point_group['RSRP'].to_numpy()
 
+            # Size of group.
             card = len(point_group)
 
+            # Calculating weights...
             weights = v_weight(points_rsrps)
 
+            # For each Voronoi cell...
             for vor_key in vor_groups.groups.keys():    # i
 
-                vgroup = vor_groups.get_group(vor_key)
-                vlen = len(vgroup)
+                vgroup = vor_groups.get_group(vor_key)      # Group of antennas in the Voronoi cell.
+                vlen = len(vgroup)                          # Number of antennas in the Voronoi cell.
                 vgroup = vgroup.to_dict('list')
+
+                # Polygon of the Voronoi cell.
                 vor_shape = geom.Polygon(vor.vertices[vor.regions[vor_key]])
+
+                # Station / polygon distance calculation...
+
                 linear_vor = geom.LinearRing(vor_shape.exterior.coords)
+
+                # BS coords...
                 vlat = vgroup['Lat'][0]
                 vlng = vgroup['Lng'][0]
 
+                # Projects the base station point over the current group of points convex hull...
                 interp = linear_vor.interpolate(
                     linear_vor.project(geom.Point(vlat, vlng)))
                 dist = np.sqrt(((vlat - interp.x) ** 2 + (interp.y - vlng) ** 2))
 
+                # Calculating angles between points of base station and north over flat earth projection.
+
+                # Points latitude / longitude...
                 points_lat = point_group['Lat'].to_numpy()
                 points_lng = point_group['Lng'].to_numpy()
 
