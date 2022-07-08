@@ -4,14 +4,12 @@ import csvtools as csvt
 import shapely.geometry as geom
 import scipy.spatial as sp
 
-# FIXME Temporary
-import matplotlib.pyplot as plt
-
 from dictutils import insert_data, fill_data
 
 
 class CellAssociator:
 
+    # Association file header
     _HEADER = {
         'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
         'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
@@ -26,17 +24,8 @@ class CellAssociator:
         self._in_sites = in_sites
         self._in_meas = in_meas
         self._outdir = outdir
-        self._antennas_dict = {
-            'Cartoradio_Number': [], 'Ant_Number': [], 'Lat': [], 'Lng': [], 'Dest_Lat': [], 'Dest_Lng': [],
-            'Azimuth': [], 'AzimuthMin': [], 'AzimuthMax': []
-        }
-        self._serving_dict = {'Timestamp': [], 'Lat': [], 'Lng': [], 'EARFCN': [], 'PCI': []}
-        self._cellinfo_dict = {'EARFCN': [], 'PCI': [], 'TAC': [], 'CID': []}
-        self._measurements = {'Timestamp': [], 'RSRP': [], 'RSRQ': [], 'RSSI': []}
-        self._earpcis = []
         self._point_assoc = None
-        self._epassoc = {}
-        self._antennas = pd.DataFrame()
+        self._antennas = None
 
     def process_data(self):
         pass
@@ -47,8 +36,14 @@ class CellAssociator:
         last_earfcn = None
         last_pci = None
 
+        serving_dict = {'Timestamp': [], 'Lat': [], 'Lng': [], 'EARFCN': [], 'PCI': []}
+        measurements = {'Timestamp': [], 'RSRP': [], 'RSRQ': [], 'RSSI': []}
+
         # Reading measurement file.
         with csvt.CSVReader(self._in_meas) as meas:
+
+            cellinfo_dict = {'EARFCN': [], 'PCI': [], 'TAC': [], 'CID': []}
+            earpcis = []
 
             line = meas.read_line()
 
@@ -65,7 +60,7 @@ class CellAssociator:
                         raise RuntimeError('error: CELLINFO line must contain at least 10 fields')
 
                     insert_data(
-                        self._cellinfo_dict,
+                        cellinfo_dict,
                         {'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'TAC': [int(line[6])], 'CID': [int(line[7])]},
                         1
                     )
@@ -77,7 +72,7 @@ class CellAssociator:
                         raise RuntimeError('error: MEASURE_SERVING line must contain at least 6 fields')
 
                     insert_data(
-                        self._serving_dict,
+                        serving_dict,
                         {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
                          'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])]},
                         1
@@ -103,7 +98,7 @@ class CellAssociator:
                     if len(line) != len(lineb):
                         raise RuntimeError('error: MEAS_EARFCNS and MEAS_PCIS line should have the same length.')
 
-                    self._earpcis = [(int(i), int(j)) for (i, j) in zip(line[5:], lineb[5:])]
+                    earpcis = [(int(i), int(j)) for (i, j) in zip(line[5:], lineb[5:])]
 
                     out_wr.write_row(line)
                     out_wr.write_row(lineb)
@@ -111,10 +106,10 @@ class CellAssociator:
                 # Registering measurement data...
                 elif line[0] == 'MEASUREMENT':
 
-                    if not self._earpcis:
+                    if not earpcis:
                         raise RuntimeError('error: EARFCNS/PCIS not declared.')
 
-                    if len(self._earpcis) + 5 != len(line):
+                    if len(earpcis) + 5 != len(line):
                         raise RuntimeError('error: the measurement does not contains as much values than EARFCNs/PCIs.')
 
                     if last_earfcn is None or last_pci is None:
@@ -122,7 +117,7 @@ class CellAssociator:
 
                     meas_name = line[4]
                     if meas_name == 'RSRP' or meas_name == 'RSRQ' or meas_name == 'RSSI':
-                        meas_index = self._earpcis.index((last_earfcn, last_pci)) + 5
+                        meas_index = earpcis.index((last_earfcn, last_pci)) + 5
                         val = float(line[meas_index]) if line[meas_index] != '' else None
                         tstamp = float(line[1])
 
@@ -135,13 +130,13 @@ class CellAssociator:
 
                         if tstamp != prev_tstamp:
 
-                            insert_data(self._measurements, to_insert, 1)
+                            insert_data(measurements, to_insert, 1)
                             prev_tstamp = tstamp
                             meas_count += 1
 
                         else:
 
-                            fill_data(self._measurements, to_insert, meas_count - 1, 1)
+                            fill_data(measurements, to_insert, meas_count - 1, 1)
 
                     out_wr.write_row(line)
 
@@ -152,13 +147,13 @@ class CellAssociator:
 
             # Associating measurement points to corresponding base stations...
             self._point_assoc = pd.merge(
-                pd.DataFrame(self._cellinfo_dict), pd.DataFrame(self._serving_dict),
+                pd.DataFrame(cellinfo_dict), pd.DataFrame(serving_dict),
                 on=['EARFCN', 'PCI']
             )
 
             # Associating points to corresponding measurements...
             self._point_assoc = pd.merge(
-                self._point_assoc, pd.DataFrame(self._measurements),
+                self._point_assoc, pd.DataFrame(measurements),
                 on=['Timestamp']
             ).drop_duplicates(subset=['Timestamp']).sort_values(['Timestamp'])
 
@@ -166,12 +161,11 @@ class CellAssociator:
 
     def _read_antennas(self, out_wr: csvt.CSVWriter):
 
-        # {
-        #     'Cartoradio_Number': [], 'Ant_Number': [], 'Lat': [], 'Lng': [], 'Dest_Lat': [], 'Dest_Lng': [],
-        #     'Azimuth': [], 'AzimuthMin': [], 'AzimuthMax': []
-        # }
-
-
+        antennas_dict = {
+            'Cartoradio_Number': [], 'Ant_Number': [], 'Lat': [], 'Lng': [], 'Dest_Lat': [], 'Dest_Lng': [],
+            'Azimuth': [], 'AzimuthMin': [], 'AzimuthMax': []
+        }
+        
         with csvt.CSVReader(self._in_sites) as sites:
 
             line = sites.read_line()
@@ -181,7 +175,7 @@ class CellAssociator:
                 if line[0] == 'BS_ANTENNA':
 
                     insert_data(
-                        self._antennas_dict,
+                        antennas_dict,
                         {
                             'Cartoradio_Number': [int(line[2])], 'Ant_Number': [int(line[8])],
                             'Lat': [float(line[3])], 'Lng': [float(line[4])], 'Dest_Lat': [float(line[9])],
@@ -196,12 +190,11 @@ class CellAssociator:
 
                 line = sites.read_line()
 
-            self._antennas = pd.DataFrame(self._antennas_dict)
+            self._antennas = pd.DataFrame(antennas_dict)
 
     def _process_geometry(self):
 
-        self._assocs = {'Cartoradio_Number' : [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': []}
-        convex_points = {}
+        self._assocs = {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': []}
 
         # Calculating Voronoi cells.
 
@@ -231,11 +224,6 @@ class CellAssociator:
         ant_vor_sectors = pd.merge(self._antennas, pd.DataFrame(bs_vor), on=['Lat', 'Lng']).drop_duplicates(
             ['Cartoradio_Number', 'Ant_Number'])
 
-        # PLOT
-        # sp.voronoi_plot_2d(vor)
-
-        #ats_dict = ant_vor_sectors.to_dict('list')
-
         # Calculating convex hulls.
         point_groups = self._point_assoc.groupby(
             ['TAC', 'CID', 'EARFCN', 'PCI'])
@@ -254,7 +242,6 @@ class CellAssociator:
         v_weight = np.vectorize(weight)
         v_sigma = np.vectorize(calc_sigma)
         v_psi = np.vectorize(lambda x: 1.0 if x else 0.0)
-        v_theta = np.vectorize(calc_theta)
         v_belongs = np.vectorize(belongs)
         v_valid = np.vectorize(is_valid)
 
@@ -296,14 +283,6 @@ class CellAssociator:
 
                 if vor_shape.intersects(hulls[gr_key]):
 
-                    # PLOT
-                    # x, y = vor_shape.exterior.xy
-                    # plt.plot(x, y)
-                    # x, y = hulls[gr_key].exterior.xy if type(hulls[gr_key]) != geom.LineString else hulls[gr_key].xy
-                    # plt.plot(x, y)
-                    # x, y = [k[0] for k in groups[gr_key]], [k[1] for k in groups[gr_key]]
-                    # plt.scatter(x, y, s=0.25)
-
                     points_belongs = v_belongs(points_lat, points_lng, vor_shape)
 
                     for i in range(vlen):   # j
@@ -322,7 +301,6 @@ class CellAssociator:
                             ] = (sigma, psi, theta)
 
             if theta_values:
-                #print(theta_values)
                 theta_argmax = max(theta_values, key=lambda k: theta_values[k])
                 theta_max = theta_values[theta_argmax]
                 theta_argmax = [k for k in theta_values.keys()]
@@ -347,11 +325,6 @@ class CellAssociator:
                                 'TAC': [theta_argmax[argmin_dist][3][0]], 'CID': [theta_argmax[argmin_dist][3][1]],
                                 'EARFCN': [theta_argmax[argmin_dist][3][2]], 'PCI': [theta_argmax[argmin_dist][3][3]]
                             }, 1)
-
-        #PLOT
-        assoc_df = pd.DataFrame(self._assocs)
-
-        plt.show()
 
     def _write_output(self, out_wr: csvt.CSVWriter):
 
@@ -384,8 +357,6 @@ class CellAssociator:
                 point_assoc['CID'][i], point_assoc['EARFCN'][i], point_assoc['PCI'][i],
                 point_assoc['RSRP'][i], point_assoc['RSRQ'][i], point_assoc['RSSI'][i]
             ])
-
-
 
 
 def weight(rsrp: float) -> float:
