@@ -16,7 +16,10 @@ class CellAssociator:
         'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
         'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
         'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values'],
-        'DELIMITER': ['Support_Number', 'Support_Lat', 'Del_Lat', 'Del_Lng']
+        'DELIMITER': ['Support_Number', 'Support_Lat', 'Del_Lat', 'Del_Lng'],
+        'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Dest_Lng', 'Dest_Lat'],
+        'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI'],
+        'POINT': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'RSRP', 'RSRQ', 'RSSI']
     }
 
     def __init__(self, in_meas: str, in_sites: str, outdir: str):
@@ -29,11 +32,11 @@ class CellAssociator:
         }
         self._serving_dict = {'Timestamp': [], 'Lat': [], 'Lng': [], 'EARFCN': [], 'PCI': []}
         self._cellinfo_dict = {'EARFCN': [], 'PCI': [], 'TAC': [], 'CID': []}
-        self._rsrps = {'Timestamp': [], 'RSRP': []}
-        self._measurements = {'Timestamp': [], 'RSRP': []}
+        self._measurements = {'Timestamp': [], 'RSRP': [], 'RSRQ': [], 'RSSI': []}
         self._earpcis = []
         self._point_assoc = None
         self._epassoc = {}
+        self._antennas = pd.DataFrame()
 
     def process_data(self):
         pass
@@ -113,13 +116,18 @@ class CellAssociator:
                     if last_earfcn is None or last_pci is None:
                         raise RuntimeError('error: MEASUREMENT encountered before MEASURE_SERVING.')
 
-                    if line[4] == 'RSRP':
-                        rsrp_index = self._earpcis.index((last_earfcn, last_pci)) + 5
+                    meas_name = line[4]
+                    if meas_name == 'RSRP' or meas_name == 'RSRQ' or meas_name == 'RSSI':
+                        meas_index = self._earpcis.index((last_earfcn, last_pci)) + 5
+                        val = float(line[meas_index]) if line[meas_index] != '' else None
+
                         insert_data(
-                            self._rsrps,
+                            self._measurements,
                             {
                                 'Timestamp': [float(line[1])],
-                                'RSRP': [float(line[rsrp_index]) if line[rsrp_index] != '' else None]
+                                'RSRP': [val] if meas_name == 'RSRP' else [''],
+                                'RSRQ': [val] if meas_name == 'RSRQ' else [''],
+                                'RSSI': [val] if meas_name == 'RSSI' else [''],
                             },
                             1
                         )
@@ -137,9 +145,9 @@ class CellAssociator:
                 on=['EARFCN', 'PCI']
             )
 
-            # Associating points to corresponding RSRPs...
+            # Associating points to corresponding measurements...
             self._point_assoc = pd.merge(
-                self._point_assoc, pd.DataFrame(self._rsrps),
+                self._point_assoc, pd.DataFrame(self._measurements),
                 on=['Timestamp']
             ).drop_duplicates(subset=['Timestamp']).sort_values(['Timestamp'])
 
@@ -151,6 +159,7 @@ class CellAssociator:
         #     'Cartoradio_Number': [], 'Ant_Number': [], 'Lat': [], 'Lng': [], 'Dest_Lat': [], 'Dest_Lng': [],
         #     'Azimuth': [], 'AzimuthMin': [], 'AzimuthMax': []
         # }
+
 
         with csvt.CSVReader(self._in_sites) as sites:
 
@@ -180,7 +189,8 @@ class CellAssociator:
 
     def _process_geometry(self):
 
-        assocs = {'Cartoradio_Number' : [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': []}
+        self._assocs = {'Cartoradio_Number' : [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': []}
+        convex_points = {}
 
         # Calculating Voronoi cells.
 
@@ -216,7 +226,8 @@ class CellAssociator:
         #ats_dict = ant_vor_sectors.to_dict('list')
 
         # Calculating convex hulls.
-        point_groups = self._point_assoc.groupby(['TAC', 'CID', 'EARFCN', 'PCI'])
+        point_groups = self._point_assoc.groupby(
+            ['TAC', 'CID', 'EARFCN', 'PCI'])
 
         groups = {}
         hulls = {}
@@ -319,19 +330,51 @@ class CellAssociator:
                                     min_dist = dst
                                     argmin_dist = i
 
-                            insert_data(assocs, {
+                            insert_data(self._assocs, {
                                 'Cartoradio_Number': [theta_argmax[argmin_dist][0]],
                                 'Ant_Number': [theta_argmax[argmin_dist][1]],
-                                'TAC': [theta_argmax[argmin_dist][2][0]], 'CID': [theta_argmax[argmin_dist][2][1]],
-                                'EARFCN': [theta_argmax[argmin_dist][2][2]], 'PCI': [theta_argmax[argmin_dist][2][3]]
+                                'TAC': [theta_argmax[argmin_dist][3][0]], 'CID': [theta_argmax[argmin_dist][3][1]],
+                                'EARFCN': [theta_argmax[argmin_dist][3][2]], 'PCI': [theta_argmax[argmin_dist][3][3]]
                             }, 1)
 
         #PLOT
-        df = pd.DataFrame(assocs)
+        assoc_df = pd.DataFrame(self._assocs)
+
         plt.show()
 
-    def write_outfile(self):
-        pass
+    def _write_output(self, out_wr: csvt.CSVWriter):
+
+        # Writing antennas directivity.
+
+        ants = self._antennas.groupby(['Ant_Number'])
+
+        for a in ants.groups.keys():
+
+            ant = ants.get_group(a).to_dict('list')
+
+            out_wr.write_row([
+                'BS_ANT_DIR', ant['Cartoradio_Number'][0], ant['Ant_Number'][0], ant['Lat'][0],
+                ant['Lng'][0], ant['Dest_Lat'][0], ant['Dest_Lng'][0]
+            ])
+
+        # Writing associations
+        for i in range(len(self._assocs['Cartoradio_Number'])):
+            out_wr.write_row([
+                'ASSOC', self._assocs['Cartoradio_Number'][i], self._assocs['Ant_Number'][i], self._assocs['TAC'][i],
+                self._assocs['CID'][i], self._assocs['EARFCN'][i], self._assocs['PCI'][i]
+            ])
+
+        # Writing points.
+
+        point_assoc = self._point_assoc.to_dict('list')
+        for i in range(len(point_assoc['Lat'])):
+            out_wr.write_row([
+                'POINT', point_assoc['Lat'][i], point_assoc['Lng'][i], point_assoc['TAC'][i],
+                point_assoc['CID'][i], point_assoc['EARFCN'][i], point_assoc['PCI'][i],
+                point_assoc['RSRP'][i], point_assoc['RSRQ'][i], point_assoc['RSSI'][i]
+            ])
+
+
 
 
 def weight(rsrp: float) -> float:

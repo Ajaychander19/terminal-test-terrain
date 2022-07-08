@@ -49,6 +49,20 @@ class MyTestCase(TestCase):
             assoc._read_antennas(out)
             assoc._process_geometry()
 
+    def test_write_output(self):
+        with csvt.CSVWriter(
+                rel_dir('../../Mesures_tests/tests/assoc/out_write_out.csv'),
+                asc.CellAssociator._HEADER
+        ) as out:
+            assoc = asc.CellAssociator(
+                rel_dir('../../Mesures_tests/C208_10_DR10143732-M1_nz_phone_1.csv'),
+                rel_dir('../../Mesures_tests/sites_SFR.csv'),
+                rel_dir('../../Mesures_tests/tests/assoc/out_init_read.csv')
+            )
+            assoc._initial_read(out)
+            assoc._read_antennas(out)
+            assoc._process_geometry()
+            assoc._write_output(out)
 
 if __name__ == '__main__':
     unittest.main()
