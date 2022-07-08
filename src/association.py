@@ -7,7 +7,7 @@ import scipy.spatial as sp
 # FIXME Temporary
 import matplotlib.pyplot as plt
 
-from dictutils import insert_data
+from dictutils import insert_data, fill_data
 
 
 class CellAssociator:
@@ -51,6 +51,10 @@ class CellAssociator:
         with csvt.CSVReader(self._in_meas) as meas:
 
             line = meas.read_line()
+
+            prev_tstamp = None
+
+            meas_count = 0
 
             while line != ['']:
 
@@ -120,17 +124,24 @@ class CellAssociator:
                     if meas_name == 'RSRP' or meas_name == 'RSRQ' or meas_name == 'RSSI':
                         meas_index = self._earpcis.index((last_earfcn, last_pci)) + 5
                         val = float(line[meas_index]) if line[meas_index] != '' else None
+                        tstamp = float(line[1])
 
-                        insert_data(
-                            self._measurements,
-                            {
-                                'Timestamp': [float(line[1])],
-                                'RSRP': [val] if meas_name == 'RSRP' else [''],
-                                'RSRQ': [val] if meas_name == 'RSRQ' else [''],
-                                'RSSI': [val] if meas_name == 'RSSI' else [''],
-                            },
-                            1
-                        )
+                        to_insert = {
+                            'Timestamp': [float(line[1])],
+                            'RSRP': [val] if meas_name == 'RSRP' else [None],
+                            'RSRQ': [val] if meas_name == 'RSRQ' else [None],
+                            'RSSI': [val] if meas_name == 'RSSI' else [None],
+                        }
+
+                        if tstamp != prev_tstamp:
+
+                            insert_data(self._measurements, to_insert, 1)
+                            prev_tstamp = tstamp
+                            meas_count += 1
+
+                        else:
+
+                            fill_data(self._measurements, to_insert, meas_count - 1, 1)
 
                     out_wr.write_row(line)
 
