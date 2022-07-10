@@ -318,49 +318,78 @@ class CellAssociator:
                 points_lat = point_group['Lat'].to_numpy()
                 points_lng = point_group['Lng'].to_numpy()
 
+                # Points coordinates over flat earth projection.
                 dirs_north = (points_lat - vlat) * (np.pi / 180)
                 dirs_east = (points_lng - vlng) * (np.pi / 180) * np.cos(vlat / 180 * np.pi)
 
+                # Angles between north direction and point direction from the current base station.
                 angles = np.arctan2(dirs_east, dirs_north)
 
+                # Calculate values only if Voronoi cell intersects with the convex hull
+                # of the current group of points.
                 if vor_shape.intersects(hulls[gr_key]):
 
+                    # Is each point belonging to the cell ?
                     points_belongs = v_belongs(points_lat, points_lng, vor_shape)
 
                     for i in range(vlen):   # j
 
+                        # Azimuth delimitation of the sector.
                         az_min = vgroup['AzimuthMin'][i]
                         az_max = vgroup['AzimuthMax'][i]
 
+                        # Criteria calculation.
+
+                        # Angular criteria "sigma".
                         sigma_sum = v_sigma(angles, weights, az_min, az_max)
                         sigma = np.sum(sigma_sum) / card
+
+                        # Cell belonging criteria "phi".
                         psi_sum = v_psi(points_belongs) * sigma_sum
                         psi = np.sum(psi_sum) / card
+
+                        # Theta criteria calculation.
+
                         theta = calc_theta(sigma, psi)
                         if not theta == 0.0:
                             theta_values[
                                 (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], dist, gr_key)
                             ] = (sigma, psi, theta)
 
+            # If non-zero theta values have been calculated...
             if theta_values:
+
+                # Choosing one max thet value.
                 theta_argmax = max(theta_values, key=lambda k: theta_values[k])
                 theta_max = theta_values[theta_argmax]
+
+                # Check for other max values, equals to the first max value.
                 theta_argmax = [k for k in theta_values.keys()]
+
+                # Other theta values.
                 theta_array = np.array([theta_values[k] for k in theta_values.keys()])
 
+                # Selecting antennas.
                 if theta_array.size > 0:
+
+                    # Select valid antennas following theta values.
                     valids = v_valid(theta_max, theta_array, 0.08)
+
+                    # If valid antennas found, choose the antenna with a minimal distance
+                    # with the convex hull of the current group of points.
                     if valids.size > 0:
                         if np.all(valids):
                             min_dist = theta_argmax[0][2]
                             argmin_dist = 0
 
+                            # Selecting minimal base station / convex hull distance.
                             for i, selected in enumerate(theta_argmax):
                                 dst = selected[2]
                                 if dst < min_dist:
                                     min_dist = dst
                                     argmin_dist = i
 
+                            # Inserting data.
                             insert_data(self._assocs, {
                                 'Cartoradio_Number': [theta_argmax[argmin_dist][0]],
                                 'Ant_Number': [theta_argmax[argmin_dist][1]],
@@ -371,7 +400,6 @@ class CellAssociator:
     def _write_output(self, out_wr: csvt.CSVWriter):
 
         # Writing antennas directivity.
-
         ants = self._antennas.groupby(['Ant_Number'])
 
         for a in ants.groups.keys():
