@@ -13,6 +13,7 @@ from tkinter import messagebox, Canvas, BOTH
 
 import xcalyzer
 import cartoradio
+import association
 
 
 class CreateToolTip(object):
@@ -142,8 +143,8 @@ class GUI(tkinter.Frame):
 
             self.change_color('red')
             files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
-            if len(files) < 2:
-                messagebox.showinfo("Warning", "Two files are expected.")
+            if len(files) != 2:
+                messagebox.showerror("Error", "Two files are expected.")
             else:
                 # createSite_json(files,self.working_directory)
                 site_file = files[0] if 'Sites' in files[0] else files[1]
@@ -154,16 +155,26 @@ class GUI(tkinter.Frame):
             self.change_color('green')
 
         elif number == 4:  # association
+
             self.change_color('red')
             files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
-            if len(files) >= 2:
-                cell = Associate_cell(files, self.working_directory)
-                if cell == "ERROR":
-                    messagebox.showinfo("Warning", "There are not enough files ")
-                print("done association")
+
+            if len(files) != 2:
+                messagebox.showerror("Error", "Two files expected.")
             else:
-                messagebox.showinfo("Warning", "There are not enough files ")
+
+                # Associate_cell(files, self.working_directory)
+                site_file = files[0] if 'sites' in files[0] else files[1]
+                meas_file = files[1] if 'sites' in files[0] else files[0]
+
+                association.CellAssociator(
+                    meas_file,
+                    site_file,
+                    self.working_directory
+                ).calculate_association()
+
             self.change_color('green')
+
         else:
             self.change_color('red')
             #            url = "http://localhost:9090/index.html"

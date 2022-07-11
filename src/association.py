@@ -1,5 +1,8 @@
 """This module defines CellAssociator class and methods to associate base stations / antennas to each measurement."""
 
+import os.path
+import pathlib
+
 import pandas as pd
 import numpy as np
 import csvtools as csvt
@@ -53,6 +56,27 @@ class CellAssociator:
         self._point_assoc = None    # Association between points and measurements.
         self._antennas = None       # Antennas
 
+    def calculate_association(self):
+        """Calculates the association between EARFCNs / PCIs and base stations."""
+
+        print('Calculating association...')
+
+        with csvt.CSVWriter(
+                os.path.join(self._outdir, 'assoc_{0}_{1}.csv'.format(
+                    pathlib.Path(self._in_meas).stem, pathlib.Path(self._in_sites).stem)), self._HEADER) as out_wr:
+
+            print('Reading measurements...')
+            self._read_measurements(out_wr)
+
+            print('Reading sites...')
+            self._read_antennas(out_wr)
+
+            print('Associating...')
+            self._associate_data()
+
+            print('Writing output...')
+            self._write_output(out_wr)
+
     def _read_measurements(self, out_wr: csvt.CSVWriter):
         """PRIVATE METHOD which reads measurement file.
 
@@ -60,7 +84,7 @@ class CellAssociator:
         MEAS_EARFCNS, MEAS_PCIS and MEASUREMENT fields are reproduced in the output file.
 
         Parameters:
-            - out_wr: output file to be written.
+            out_wr: output file to be written.
 
         Raises:
             RuntimeError: if a problem occurs while decoding data from the file.
@@ -211,16 +235,16 @@ class CellAssociator:
     def _read_antennas(self, out_wr: csvt.CSVWriter):
         """PRIVATE METHOD which reads "sites" file.
 
-            Reads the "sites" file and store its data in memory.
-            DELIMITER fields are reproduced in the output file.
+        Reads the "sites" file and store its data in memory.
+        DELIMITER fields are reproduced in the output file.
 
-            Parameters:
-                - out_wr: output file to be written.
+        Parameters:
+            out_wr: output file to be written.
 
-            Raises:
-                RuntimeError: if a problem occurs while decoding data from the file.
+        Raises:
+            RuntimeError: if a problem occurs while decoding data from the file.
 
-            """
+        """
 
         # Antennas data
         antennas_dict = {

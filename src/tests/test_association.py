@@ -64,5 +64,12 @@ class MyTestCase(TestCase):
             assoc._associate_data()
             assoc._write_output(out)
 
+    def test_calculate_association(self):
+        asc.CellAssociator(
+            rel_dir('../../Mesures_tests/C208_10_DR10143732-M1_nz_phone_1.csv'),
+            rel_dir('../../Mesures_tests/sites_SFR.csv'),
+            rel_dir('../../Mesures_tests/')
+        ).calculate_association()
+
 if __name__ == '__main__':
     unittest.main()
