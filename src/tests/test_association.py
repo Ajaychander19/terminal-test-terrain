@@ -21,7 +21,7 @@ class MyTestCase(TestCase):
                 rel_dir('../../Mesures_tests/sites_SFR.csv'),
                 rel_dir('../../Mesures_tests/tests/assoc/out_init_read.csv')
             )
-            assoc._initial_read(out)
+            assoc._read_measurements(out)
 
     def test_read_antennas(self):
         with csvt.CSVWriter(
@@ -45,9 +45,9 @@ class MyTestCase(TestCase):
                 rel_dir('../../Mesures_tests/sites_SFR.csv'),
                 rel_dir('../../Mesures_tests/tests/assoc/out_init_read.csv')
             )
-            assoc._initial_read(out)
+            assoc._read_measurements(out)
             assoc._read_antennas(out)
-            assoc._process_geometry()
+            assoc._associate_data()
 
     def test_write_output(self):
         with csvt.CSVWriter(
@@ -59,9 +59,9 @@ class MyTestCase(TestCase):
                 rel_dir('../../Mesures_tests/sites_SFR.csv'),
                 rel_dir('../../Mesures_tests/tests/assoc/out_init_read.csv')
             )
-            assoc._initial_read(out)
+            assoc._read_measurements(out)
             assoc._read_antennas(out)
-            assoc._process_geometry()
+            assoc._associate_data()
             assoc._write_output(out)
 
 if __name__ == '__main__':

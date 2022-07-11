@@ -1,3 +1,5 @@
+"""This module defines CellAssociator class and methods to associate base stations / antennas to each measurement."""
+
 import pandas as pd
 import numpy as np
 import csvtools as csvt
@@ -8,6 +10,22 @@ from dictutils import insert_data, fill_data
 
 
 class CellAssociator:
+    """This class allows to do the association between measurements and mobile network base stations.
+
+    Measurement data are stored in the CSV file produced by the filed-testing functionality, and base stations
+    data are stored in the "sites" file produced during Cartoradio Processing.
+
+    Using these two files, the association between measurements and mobile network base stations is done. There is
+    no trivial relation between measurements and base stations: several criteria are used to find the relation. Grouping
+    measurement points by EARFCN / PCI, these criteria are:
+
+    - Signal reception criteria: how good is the received signal ?
+    - Angular criteria: is the point clearly in the angle forming the sector of the antenna ?
+    - Cell belonging criteria : is the point clearly in the cell.
+
+    Based on these criteria, this is possible to associate each group of measurements with the EARFCN / PCI to an
+    antenna, and so to a base station.
+    """
 
     # Association file header
     _HEADER = {
@@ -21,6 +39,13 @@ class CellAssociator:
     }
 
     def __init__(self, in_meas: str, in_sites: str, outdir: str):
+        """Class constructor.
+
+        Parameters:
+            in_meas: path of the input measurement file.
+            in_sites: path of the input "sites" file.
+            outdir: path of the output file.
+        """
 
         self._in_sites = in_sites   # Sites file path.
         self._in_meas = in_meas     # Measurements file path.
@@ -28,7 +53,19 @@ class CellAssociator:
         self._point_assoc = None    # Association between points and measurements.
         self._antennas = None       # Antennas
 
-    def _initial_read(self, out_wr: csvt.CSVWriter):
+    def _read_measurements(self, out_wr: csvt.CSVWriter):
+        """PRIVATE METHOD which reads measurement file.
+
+        Reads the measurement file and store data in memory.
+        MEAS_EARFCNS, MEAS_PCIS and MEASUREMENT fields are reproduced in the output file.
+
+        Parameters:
+            - out_wr: output file to be written.
+
+        Raises:
+            RuntimeError: if a problem occurs while decoding data from the file.
+
+        """
 
         # Last recorded EARFCN / PCI (used to associate measurements to points).
         last_earfcn = None
@@ -172,6 +209,18 @@ class CellAssociator:
             ).drop_duplicates(subset=['Timestamp']).sort_values(['Timestamp'])
 
     def _read_antennas(self, out_wr: csvt.CSVWriter):
+        """PRIVATE METHOD which reads "sites" file.
+
+            Reads the "sites" file and store its data in memory.
+            DELIMITER fields are reproduced in the output file.
+
+            Parameters:
+                - out_wr: output file to be written.
+
+            Raises:
+                RuntimeError: if a problem occurs while decoding data from the file.
+
+            """
 
         # Antennas data
         antennas_dict = {
@@ -209,7 +258,9 @@ class CellAssociator:
             # Creating antennas information dataframe.
             self._antennas = pd.DataFrame(antennas_dict)
 
-    def _process_geometry(self):
+    def _associate_data(self):
+        """PRIVATE METHOD which calculate the association between group of measurement points with
+        sames EARFCNS/PCIS and base stations."""
 
         # Associations between antennas and EARFCNs / PCIs
         self._assocs = {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': []}
@@ -264,11 +315,11 @@ class CellAssociator:
             hulls[gr_key] = geom.MultiPoint(coords).convex_hull
 
         # Vectorizing criteria calculation functions...
-        v_weight = np.vectorize(weight)                                 # Weight of each point.
-        v_sigma = np.vectorize(calc_sigma)                              # Angular criteria ("sigma")
-        v_psi = np.vectorize(lambda x: 1.0 if x else 0.0)               # Cell criteria ("psi")
-        v_belongs = np.vectorize(lambda x, y, s: s.contains(x, y))      # "Belongs to shape" function.
-        v_valid = np.vectorize(is_valid)                                # "Theta" validity function (antenna selection).
+        v_weight = np.vectorize(weight)     # Weight of each point.
+        v_sigma = np.vectorize(calc_sigma)  # Angular criteria ("sigma")
+        v_psi = np.vectorize(lambda x: 1.0 if x else 0.0)   # Cell criteria ("psi")
+        v_belongs = np.vectorize(lambda x, y, s: s.contains(geom.Point(x, y)))    # "Belongs to shape" function.
+        v_valid = np.vectorize(is_valid)    # "Theta" validity function (antenna selection).
 
         # Grouping antennas by Voronoi cell number.
         vor_groups = ant_vor_sectors.groupby(['Vor'])
@@ -359,7 +410,7 @@ class CellAssociator:
             # If non-zero theta values have been calculated...
             if theta_values:
 
-                # Choosing one max thet value.
+                # Choosing one max theta value.
                 theta_argmax = max(theta_values, key=lambda k: theta_values[k])
                 theta_max = theta_values[theta_argmax]
 
@@ -398,6 +449,16 @@ class CellAssociator:
                             }, 1)
 
     def _write_output(self, out_wr: csvt.CSVWriter):
+        """PRIVATE METHOD which writes relation calculated by _associate_datas in the output file.
+
+        Produced fields are :
+            - POINT: corresponds to a measurement point.
+            - BS_ANT_DIR: describes the directivity of an antenna.
+            - ASSOC: describe an association between an antenna and an EARFCN / PCI.
+
+        Parameters:
+            out_wr: output file.
+        """
 
         # Writing antennas directivity.
         ants = self._antennas.groupby(['Ant_Number'])
@@ -428,8 +489,19 @@ class CellAssociator:
                 point_assoc['RSRP'][i], point_assoc['RSRQ'][i], point_assoc['RSSI'][i]
             ])
 
+        print(pd.DataFrame(self._assocs))
+
 
 def weight(rsrp: float) -> float:
+    """Calculate the weight of a point using its RSRP.
+
+    Parameters:
+        rsrp: RSRP value of the point.
+
+    Returns:
+        Weight of the point, which is 0.15 if the RSRP is lesser than or equal to -100 dBm, 0.6 if the RSRP is between
+        -100 dBm and -80 dBm, or 1.0 if the RSRP is greater than or equal to -80 dBm.
+    """
     if rsrp <= -100:
         return 0.15
     elif -100 < rsrp < -80:
@@ -439,19 +511,60 @@ def weight(rsrp: float) -> float:
 
 
 def calc_sigma(a: float, w: float, az_min: float, az_max: float):
-    return w * (1.0 if az_min < a < az_max else 0.0)
+    """Calculates the "sigma" angular indicator of one measurement point.
+
+    Parameters:
+        a: angle between the north direction and the point direction over flat earth projection.
+        w: weight of the point.
+        az_min: minimum azimuth of the sector.
+        az_max: maximum azimuth of the sector.
+
+    Returns:
+        the weight of the point if a is between az_min and az_max, 0.0 otherwise.
+    """
+    return w if az_min < a < az_max else 0.0
 
 
 def calc_theta(sigma: float, psi: float) -> float:
+    """Calculate the "theta" indicator of a point from its sigma and psi values.
+
+    Parameters:
+        sigma: "sigma" angular indicator of the point.
+        psi: "psi" cell belonging indicator of the point.
+
+    Returns:
+        theta, where theta = 0.8 * sigma + 0.2 * psi, if theta < 0.25, returns 0.0 otherwise.
+    """
     return 0.0 if psi < 0.25 else (0.8 * sigma + 0.2 * psi)
 
 
 def belongs(x: float, y: float, shape: geom.Polygon) -> bool:
+    """Indicates if a point of given coordinates belongs to a given polygon.
+
+    Parameters:
+        x: x coordinate of the point.
+        y: y coordinate of the point.
+        shape: polygon.
+
+    Returns:
+        True if the point (x, y) belongs to the shape, False otherwise.
+    """
     return shape.contains(geom.Point(x, y))
 
 
-def is_valid(theta_max: float, other_theta: float, const: float):
+def is_valid(theta_max: float, other_theta: float, threshold: float):
+    """Calculate the validity criteria for antenna selection for a given group of theta value.
+
+    Parameters:
+        theta_max: max theta value calculated with the group.
+        other_theta: other theta value.
+        threshold: threshold of selection.
+
+    Returns:
+        True if |log10(other_theta / theta_max)| > threshold or if theta_max = 0.0,
+        or if other_theta / theta_max = 0.0 or ig theta_max = other_theta, False otherwise.
+    """
     if theta_max == 0.0 or other_theta / theta_max == 0.0 or theta_max == other_theta:
         return True
     else:
-        return np.abs(np.log10(other_theta / theta_max)) > const
+        return np.abs(np.log10(other_theta / theta_max)) > threshold
