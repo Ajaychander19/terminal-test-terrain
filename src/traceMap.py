@@ -421,20 +421,23 @@ def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
         bounded = baseStationLocation.loc[(baseStationLocation["Numero Cartoradio"] == row_Carte["Numero Cartoradio"])][
             "bounded"].iloc[0]
         for indexSurfTable, row_Surftable in surfacetable.iterrows():  # xet moi cell
-            azicount = 0
+            sigma = 0
             countcheck = 0
-            surcount = 0
+            psi = 0
             if row_Carte["Systeme"] == getLTEBandname(row_Surftable["EARFCN"]):  # check if it's the same earfcn
                 cellpolygon = row_Surftable["polygon"]
                 if (regiongeo.intersects(cellpolygon) == True):  # check if they intersect
                     pointrsrp = row_Surftable["PointRSRP"]
-                    for pointR in pointrsrp:  # check every cell in the cell
+                    for pointR in pointrsrp:  # check every point in the cell
                         weight = getWeight(pointR["rsrp"])
                         lat1 = (row_Carte["Latitude"]) * np.pi / 180
-                        ln2 = (-row_Carte["Longitude"] + pointR["geo"].y) * np.pi / 180
+                        ln2 = (pointR["geo"].y - row_Carte["Longitude"]) * np.pi / 180
                         lat2 = (pointR["geo"].x) * np.pi / 180
+
+                        # X and Y : lat lng relative
                         Y = cos(lat1) * ln2
                         X = lat2 - lat1
+                        print((X, Y))
                         probleme = 0
                         azimuthXL = atan2(Y,X)*180/np.pi
 
@@ -452,8 +455,6 @@ def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
 
                             elif (X < 0) and (Y > 0):
                                 azimuth = atan(Y / X) * 180 / np.pi + 180
-
-
                             else:
                                 azimuth = atan(Y / X) * 180 / np.pi - 180 + 360
 
@@ -463,30 +464,30 @@ def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
 
                         if azimutmin < 0:
                             if ((azimuth < azimutmax) or (azimuth > azimutmin + 360)):
-                                azicount += weight
+                                sigma += weight
                                 countcheck += 1
                                 if bounded == "true":
                                     if regiongeo.contains(pointR["geo"]):
-                                        surcount += weight
+                                        psi += weight
                         elif azimutmin > azimutmax:
                             if ((azimuth < azimutmax) or (azimuth > azimutmin)):
-                                azicount += weight
+                                sigma += weight
                                 countcheck += 1
                                 if bounded == "true":
                                     if regiongeo.contains(pointR["geo"]):
-                                        surcount += weight
+                                        psi += weight
                         else:
                             if ((azimuth < azimutmax) and (azimuth > azimutmin)):
-                                azicount += weight
+                                sigma += weight
                                 countcheck += 1
                                 if bounded == "true":
                                     if regiongeo.contains(pointR["geo"]):
-                                        surcount += weight
-                    val = 0.8 * azicount / len(pointrsrp) + 0.2 * surcount / len(pointrsrp)
+                                        psi += weight
+                    val = 0.8 * sigma / len(pointrsrp) + 0.2 * psi / len(pointrsrp)
                     dfcal = pd.DataFrame(
                         {"NbIndentity": [row_Carte["Numero Cartoradio"]], "cellID": [row_Surftable["cellID"]],
                          "azimuth": [row_Carte["Azimut"]], "EARFCN": row_Surftable["EARFCN"],
-                         "perAzimuth": [azicount / len(pointrsrp)], "perSurface": [surcount / len(pointrsrp)],
+                         "perAzimuth": [sigma / len(pointrsrp)], "perSurface": [psi / len(pointrsrp)],
                          "val": [val]})
                     BaseStaCellrelation = BaseStaCellrelation.append(dfcal, sort=False, ignore_index=True)
     if BaseStaCellrelation.shape[0] >0:
@@ -541,7 +542,7 @@ def cellInfo(Tactable,pciEarfcnTable,operatorDataframe):
                         xx,yy=list(po.coords)[0]
                         closest_point_coords = Point(xx,yy)
                         distList.append(distance(p,closest_point_coords))
-                    ind = np.argmin(varvalue)
+                    ind = np.argmin(distList)
                     dtf=pd.DataFrame({"cellID": [gr.iloc[ind]["cellID"]], "NbIndentity": [gr.iloc[ind]["NbIndentity"]],
                                                 "azimuth": [gr.iloc[ind]["azimuth"]], "EARFCN": [gr.iloc[ind]["EARFCN"]],
                                                 "perAzimuth": [gr.iloc[ind]["perAzimuth"]], "perSurface": [gr.iloc[ind]["perSurface"]],
