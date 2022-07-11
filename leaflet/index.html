@@ -90,13 +90,23 @@
 
 					<div class="checkbox checkbox-primary">
 						<input class="styled" type="checkbox"  id="RSRP">
-						<label for="RSRP">Serving cell RSRP </label>
+						<label for="RSRP">RSRP</label>
 					</div>
 
 					<div class="checkbox checkbox-primary">
+						<input class="styled" type="checkbox"  id="rsrq">
+						<label for="rsrq">RSRQ</label>
+					</div>
+
+					<div class="checkbox checkbox-primary">
+						<input class="styled" type="checkbox"  id="rssi">
+						<label for="rssi">RSSI</label>
+					</div>
+
+					<!--<div class="checkbox checkbox-primary">
 						<input class="styled" type="checkbox"  id="RSRP_offset">
 						<label for="RSRP_offset">First neighbour RSRP offset </label>
-					</div>
+					</div>-->
 				</div>
 
 				<div class="panel panel-success">
@@ -107,12 +117,21 @@
 				</div>
 
 				<div class="panel panel-success">
-					<button type="button" id="Clear All" class="btn btn-primary  btn-block " >Clear All</button>
+					<div class="panel-heading">PCI</div>
+					<div id="pci_div" class="form-group">
+						<!-- Maybe temporary -->
+						<select class="form-control selectpicker" id="PCI_select"></select>
+						<label for="PCI_select"></label>
+					</div>
 				</div>
 
 				<div class="panel panel-success">
-					<button type="button" id="turn_off_server" class="btn btn-primary  btn-block " >shutdown the Server</button>
+					<button type="button" id="Clear All" class="btn btn-primary  btn-block " >Clear All</button>
 				</div>
+
+				<!--<div class="panel panel-success">
+					<button type="button" id="turn_off_server" class="btn btn-primary  btn-block " >shutdown the Server</button>
+				</div>-->
 			</div>
 		</div>
 
