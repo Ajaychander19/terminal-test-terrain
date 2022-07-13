@@ -38,7 +38,7 @@ class CellAssociator:
         'DELIMITER': ['Support_Number', 'Support_Lat', 'Del_Lat', 'Del_Lng'],
         'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Dest_Lng', 'Dest_Lat'],
         'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI'],
-        'POINT': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'RSRP', 'RSRQ', 'RSSI']
+        'POINT': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'RSRP', 'RSRQ', 'RSSI', 'CINR']
     }
 
     def __init__(self, in_meas: str, in_sites: str, outdir: str):
@@ -96,7 +96,10 @@ class CellAssociator:
         last_pci = None
 
         # Serving cell infos.
-        serving_dict = {'Timestamp': [], 'Lat': [], 'Lng': [], 'EARFCN': [], 'PCI': []}
+        serving_dict = {
+            'Timestamp': [], 'Lat': [], 'Lng': [], 'EARFCN': [], 'PCI': [],
+            'RSRP': [], 'RSRQ': [], 'RSSI': [], 'CINR': []
+        }
 
         # Measurement infos.
         measurements = {'Timestamp': [], 'RSRP': [], 'RSRQ': [], 'RSSI': []}
@@ -137,7 +140,9 @@ class CellAssociator:
                     insert_data(
                         serving_dict,
                         {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
-                         'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])]},
+                         'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])],
+                         'RSRP': [float(line[6])], 'RSRQ': [float(line[7])], 'RSSI': [float(line[8])],
+                         'CINR': [float(line[9])]},
                         1
                     )
 
@@ -179,38 +184,38 @@ class CellAssociator:
                     if last_earfcn is None or last_pci is None:
                         raise RuntimeError('error: MEASUREMENT encountered before MEASURE_SERVING.')
 
-                    # Associating measurements to points...
-                    meas_name = line[4]
-
-                    if meas_name == 'RSRP' or meas_name == 'RSRQ' or meas_name == 'RSSI':
-
-                        # Corresponding index of the measurement following current EARFCN / PCI
-                        meas_index = earpcis.index((last_earfcn, last_pci)) + 5
-
-                        # Measurement value.
-                        val = float(line[meas_index]) if line[meas_index] != '' else None
-
-                        # Current measurement timestamp.
-                        tstamp = float(line[1])
-
-                        # Choosing where to insert data...
-                        to_insert = {
-                            'Timestamp': [float(line[1])],
-                            'RSRP': [val] if meas_name == 'RSRP' else [None],
-                            'RSRQ': [val] if meas_name == 'RSRQ' else [None],
-                            'RSSI': [val] if meas_name == 'RSSI' else [None],
-                        }
-
-                        # Timestamp change -> point change...
-                        if tstamp != prev_tstamp:
-
-                            insert_data(measurements, to_insert, 1)
-                            prev_tstamp = tstamp
-                            meas_count += 1
-
-                        else:   # otherwise merging previous measurement and new measurement.
-
-                            fill_data(measurements, to_insert, meas_count - 1, 1)
+                    # # Associating measurements to points...
+                    # meas_name = line[4]
+                    #
+                    # if meas_name == 'RSRP' or meas_name == 'RSRQ' or meas_name == 'RSSI':
+                    #
+                    #     # Corresponding index of the measurement following current EARFCN / PCI
+                    #     meas_index = earpcis.index((last_earfcn, last_pci)) + 5
+                    #
+                    #     # Measurement value.
+                    #     val = float(line[meas_index]) if line[meas_index] != '' else None
+                    #
+                    #     # Current measurement timestamp.
+                    #     tstamp = float(line[1])
+                    #
+                    #     # Choosing where to insert data...
+                    #     to_insert = {
+                    #         'Timestamp': [float(line[1])],
+                    #         'RSRP': [val] if meas_name == 'RSRP' else [None],
+                    #         'RSRQ': [val] if meas_name == 'RSRQ' else [None],
+                    #         'RSSI': [val] if meas_name == 'RSSI' else [None],
+                    #     }
+                    #
+                    #     # Timestamp change -> point change...
+                    #     if tstamp != prev_tstamp:
+                    #
+                    #         insert_data(measurements, to_insert, 1)
+                    #         prev_tstamp = tstamp
+                    #         meas_count += 1
+                    #
+                    #     else:   # otherwise merging previous measurement and new measurement.
+                    #
+                    #         fill_data(measurements, to_insert, meas_count - 1, 1)
 
                     # Copying measurement line into the output file (=/= point association !!!)
                     out_wr.write_row(line)
@@ -224,13 +229,13 @@ class CellAssociator:
             self._point_assoc = pd.merge(
                 pd.DataFrame(cellinfo_dict), pd.DataFrame(serving_dict),
                 on=['EARFCN', 'PCI']
-            )
-
-            # Associating points to corresponding measurements...
-            self._point_assoc = pd.merge(
-                self._point_assoc, pd.DataFrame(measurements),
-                on=['Timestamp']
             ).drop_duplicates(subset=['Timestamp']).sort_values(['Timestamp'])
+
+            # # Associating points to corresponding measurements...
+            # self._point_assoc = pd.merge(
+            #     self._point_assoc, pd.DataFrame(measurements),
+            #     on=['Timestamp']
+            # ).drop_duplicates(subset=['Timestamp']).sort_values(['Timestamp'])
 
     def _read_antennas(self, out_wr: csvt.CSVWriter):
         """PRIVATE METHOD which reads "sites" file.
@@ -510,7 +515,8 @@ class CellAssociator:
             out_wr.write_row([
                 'POINT', point_assoc['Lat'][i], point_assoc['Lng'][i], point_assoc['TAC'][i],
                 point_assoc['CID'][i], point_assoc['EARFCN'][i], point_assoc['PCI'][i],
-                point_assoc['RSRP'][i], point_assoc['RSRQ'][i], point_assoc['RSSI'][i]
+                point_assoc['RSRP'][i], point_assoc['RSRQ'][i], point_assoc['RSSI'][i],
+                point_assoc['CINR'][i]
             ])
 
         print(pd.DataFrame(self._assocs))

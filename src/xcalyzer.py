@@ -63,10 +63,10 @@ class XcalConverter:
         self._pcis = []
 
         self._data_dict = {
-            'name': [], 'timestamp': [], 'lat': [], 'lng': [],  # Common fields
-            'earfcn': [], 'pci': [],                            # Serving Cell
-            'tac': [], 'cid': [], 'mcc': [], 'mnc': [],         # Cell information
-            'meas_name': []                                     # Measurement
+            'name': [], 'timestamp': [], 'lat': [], 'lng': [],                          # Common fields
+            'earfcn': [], 'pci': [],  'rsrp': [], 'rsrq': [], 'rssi': [], 'cinr': [],   # Serving Cell
+            'tac': [], 'cid': [], 'mcc': [], 'mnc': [],                                 # Cell information
+            'meas_name': []                                                             # Measurement
         }
 
         self._mcc = None
@@ -246,7 +246,7 @@ class XcalConverter:
 
                         elif first == 'QCLTE_PSCELL':
 
-                            if l_len < 16:
+                            if l_len < 21:
                                 syntax_error(line_num, "16 columns expected, {} found.".format(l_len))
 
                             # Store serving EARFCN/PCI couple for the step two.
@@ -369,11 +369,13 @@ class XcalConverter:
                     serving_rsrp = float(line[5])
                     serving_rsrq = float(line[10])
                     serving_rssi = float(line[15])
+                    serving_cinr = float(line[20])
 
                     # Inserting serving ERAFCN / PCI.
                     insert_data(self._data_dict, {
                         'name': ['MEASURE_SERVING'], 'timestamp': [tstamp], 'lat': [None], 'lng': [None],
-                        'earfcn': [serving_earfcn], 'pci': [serving_pci]
+                        'earfcn': [serving_earfcn], 'pci': [serving_pci], 'rsrp': [serving_rsrp],
+                        'rsrq': [serving_rsrq], 'rssi': [serving_rssi], 'cinr': [serving_cinr]
                     }, 1)
 
                     index += 1
@@ -405,6 +407,7 @@ class XcalConverter:
                     curr_pci = 0
                     curr_rsrp = None
                     curr_rsrq = None
+                    curr_rssi = None
 
                     to_insert = {
                         'name': ['MEASUREMENT'] * 3, 'timestamp': [tstamp] * 3, 'lat': [None] * 3, 'lng': [None] * 3,
@@ -502,7 +505,10 @@ class XcalConverter:
             'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
             'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
             'CELLINFO': ['Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'],
-            'MEASURE_SERVING': ['Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI'],
+            'MEASURE_SERVING': [
+                'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI',
+                'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR'
+            ],
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
         }
 
@@ -535,7 +541,10 @@ class XcalConverter:
                         self._data_dict['cid'][i], self._data_dict['mcc'][i], self._data_dict['mnc'][i]
                     ])
                 elif name == 'MEASURE_SERVING':     # Serving cell information fields.
-                    to_write.extend([self._data_dict['earfcn'][i], self._data_dict['pci'][i]])
+                    to_write.extend([
+                        self._data_dict['earfcn'][i], self._data_dict['pci'][i], self._data_dict['rsrp'][i],
+                        self._data_dict['rsrq'][i], self._data_dict['rssi'][i], self._data_dict['cinr'][i]
+                    ])
                 elif name == 'MEASUREMENT':         # Measurement field.
                     to_write.append(self._data_dict['meas_name'][i])
                     to_write.extend([self._data_dict[ep][i] for ep in ep_list])
