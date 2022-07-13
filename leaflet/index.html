@@ -24,6 +24,8 @@
 
 		<script type='text/javascript' src='library/jquery.tmpl.min.js '></script>
 
+		<script type="text/javascript" src="scripts/csvread.js"></script>
+
 		<link rel="stylesheet" href="styles/frontstyle.css" />
 		<link rel="stylesheet" href='library/bootstrap-3.3.7\bootstrap-3.3.7-dist\css\bootstrap.css'>
 		<link rel="stylesheet" href='library/bootstrap-3.3.7\bootstrap-3.3.7-dist\js\awesome-bootstrap-checkbox.css'>
@@ -34,6 +36,7 @@
 
 		<input type="file" id="fileElem" multiple style="display:none" onchange="myFunction()" accept=".json">
 		
+
    </head>
 
 	<body>
@@ -103,10 +106,11 @@
 						<label for="rssi">RSSI</label>
 					</div>
 
-					<!--<div class="checkbox checkbox-primary">
+					<!-- To remove -->
+					<div class="checkbox checkbox-primary">
 						<input class="styled" type="checkbox"  id="RSRP_offset">
 						<label for="RSRP_offset">First neighbour RSRP offset </label>
-					</div>-->
+					</div>
 				</div>
 
 				<div class="panel panel-success">
@@ -167,8 +171,8 @@
 			</div>
 		</script>
 
-	<!-- Main script moved to scripts/app.js -->
-	<script src="scripts/app.js"></script>
+		<!-- Main script moved to scripts/app.js -->
+		<script src="scripts/app.js"></script>
 	
    </body>
 </html>

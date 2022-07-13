@@ -30,15 +30,15 @@ var point = {
 }
 
 var basemap={"baselayer":baselayer}
-var ColorChoice = 0;
+var colorChoice = 0;
 
 var layercontrol = L.control.layers(baseMaps,null,{ collapsed: false }).addTo(map);
 
 var siteserving = L.layerGroup();
-var Theory_Cell = L.layerGroup();       // Voronoi cells layer.
-var RSRP_offset= L.layerGroup();        // RSRP offset layer
-var base_station = L.layerGroup();      // Base station layer.
-var Tracking_area=L.layerGroup();
+var theoryCell = L.layerGroup();       // Voronoi cells layer.
+var rsrpOffset= L.layerGroup();        // RSRP offset layer
+var baseStation = L.layerGroup();      // Base station layer.
+var trackingArea=L.layerGroup();
 var RSRP = L.layerGroup();              // RSRP hexagonal layer.
 var PCI =L.layerGroup();                // PCI GPS points
 var hexlayer = L.hexbinLayer(hexbin_style()).hoverHandler(L.HexbinHoverHandler.tooltip()).addTo(map);
@@ -103,12 +103,12 @@ function hexbin_style(colorDomain,colorRange){
 
     // get event for the RSRP offset checkbox
 $("#RSRP_offset").click(function(event) {
-    if(map.hasLayer(RSRP_offset)) {
+    if(map.hasLayer(rsrpOffset)) {
         hexlayer.data([]);
         hexlayer.redraw()
-        map.removeLayer(RSRP_offset);
+        map.removeLayer(rsrpOffset);
     } else {
-        map.addLayer(RSRP_offset);
+        map.addLayer(rsrpOffset);
         rsrplayer.data([]);
         rsrplayer.redraw()
         hexlayer.opacity(0.8)
@@ -137,10 +137,10 @@ $("#RSRP").click(function(event) {
 
     // get event for the Theory cell checkbox
 $('#Theory_Cell').change(function() {
-    if(map.hasLayer(Theory_Cell)) {
-        map.removeLayer(Theory_Cell);
+    if(map.hasLayer(theoryCell)) {
+        map.removeLayer(theoryCell);
     } else {
-        map.addLayer(Theory_Cell);
+        map.addLayer(theoryCell);
         
     }
 });
@@ -148,7 +148,7 @@ $('#Theory_Cell').change(function() {
 // get event for the Alternative Color checkbox
 $("#ColorAlt").click(function(event) {
 
-    ColorChoice = 1-ColorChoice;
+    colorChoice = 1-colorChoice;
 
 //			if(map.hasLayer(PCI)) {
 //				map.removeLayer(PCI);
@@ -171,11 +171,11 @@ $("#PCI").click(function(event) {
 
 // get event for the Tracking area checkbox
 $("#Tracking_area").click(function(event) {
-    if(map.hasLayer(Tracking_area)) {
-        $(this).removeClass(Tracking_area);
-        map.removeLayer(Tracking_area);
+    if(map.hasLayer(trackingArea)) {
+        $(this).removeClass(trackingArea);
+        map.removeLayer(trackingArea);
     } else {
-        map.addLayer(Tracking_area);
+        map.addLayer(trackingArea);
     
     }
 });
@@ -339,19 +339,19 @@ $('#fileSelect').click(function (e) {
 document.getElementById("Base Station").addEventListener("click", function(){
     disabledAllLayer()
     
-    readfile(sites_fileName,cells_fileName,map.getBounds(),siteserving,Theory_Cell,RSRP_offset,base_station,
-                                    Tracking_area,RSRP,PCI,hexlayer,rsrplayer,overlayers,sites,markerObject)
+    readfile(sites_fileName,cells_fileName,map.getBounds(),siteserving,theoryCell,rsrpOffset,baseStation,
+                                    trackingArea,RSRP,PCI,hexlayer,rsrplayer,overlayers,sites,markerObject)
                         if (map.hasLayer(PCI)) {
                         map.removeLayer(PCI);
         map.addLayer(PCI);
                         }	
 })
 
-// get event for the turn_off_serverbutton
-document.getElementById("turn_off_server").addEventListener("click", function(){
-    $.get('/shutdown', function(){
-    });
-})
+//// get event for the turn_off_serverbutton
+//document.getElementById("turn_off_server").addEventListener("click", function(){
+//    $.get('/shutdown', function(){
+//    });
+//})
 
 // get event for the clear all button
 document.getElementById("Clear All").addEventListener("click", function(){
@@ -384,23 +384,23 @@ function disabledAllLayer(){
     rsrplayer.data([]);
     rsrplayer.redraw();
     $( "#RSRP" ).prop( "checked", false );
-    map.removeLayer(Theory_Cell);
-    Theory_Cell.clearLayers();
+    map.removeLayer(theoryCell);
+    theoryCell.clearLayers();
     $( "#Theory_Cell" ).prop( "checked", false );
     
     map.removeLayer(siteserving);
     siteserving.clearLayers();
     
-    map.removeLayer(Tracking_area);
-    Tracking_area.clearLayers();
+    map.removeLayer(trackingArea);
+    trackingArea.clearLayers();
     $( "#Tracking_area" ).prop( "checked", false );
 //  				      map.removeLayer(PCI);
     PCI.clearLayers();
 //          				$( "#PCI" ).prop( "checked", false );
     map.removeLayer(siteserving)
     siteserving.clearLayers();
-    map.removeLayer(base_station)
-    base_station.clearLayers();
+    map.removeLayer(baseStation)
+    baseStation.clearLayers();
 }
 //---------------------------------------------------------------------
 // this function gets the site in the view zone.
@@ -477,7 +477,7 @@ function getCells(siteList,cellfile){
 
 //---------------------------------------------------------------------
 // this function process the sitefile and cellfile(from python) and call the function for drawing theory cell, pci, tracking area,...
-function readfile(sitefile,cellfile,boundMap,siteserving,Theory_Cell,RSRP_offset,base_station,Tracking_area,RSRP,PCI,hexlayer,rsrplayer,overlayers,sites,markerObject){
+function readfile(sitefile,cellfile,boundMap,siteserving,theoryCell,rsrpOffset,baseStation,trackingArea,RSRP,PCI,hexlayer,rsrplayer,overlayers,sites,markerObject){
     var tacSet={};
     var nbid= new Set();
         
@@ -499,7 +499,7 @@ function readfile(sitefile,cellfile,boundMap,siteserving,Theory_Cell,RSRP_offset
                 }
                 else {
                     cir=L.circle([item.Latitude,item.Longitude], {radius:15,opacity: 1,
-                                                    color: 'green',interactive:true}).addTo(base_station)
+                                                    color: 'green',interactive:true}).addTo(baseStation)
                 }
                 station = new L.Polyline(directionpoint, {
                             color: 'green',
@@ -507,17 +507,17 @@ function readfile(sitefile,cellfile,boundMap,siteserving,Theory_Cell,RSRP_offset
                             opacity: 1,
                             smoothFactor: 1
                         });
-                station.addTo(base_station)
+                station.addTo(baseStation)
                 sites[item.Identification_number]= {}
                 sites[item.Identification_number]["site"]=site
                 sites[item.Identification_number]["earfcngroup"]={}
             });
-            base_station.addTo(map)
-            drawVoronoi(siteList,sites,Theory_Cell);
+            baseStation.addTo(map)
+            drawVoronoi(siteList,sites,theoryCell);
             
         if (cellList.length > 0){	
-            stationProcess(cellList,sites,overlayers,Tracking_area,PCI,nbid,siteserving,tacSet,markerObject);
-            drawTA(tacSet,sites,Tracking_area);
+            stationProcess(cellList,sites,overlayers,trackingArea,PCI,nbid,siteserving,tacSet,markerObject);
+            drawTA(tacSet,sites,trackingArea);
             
             associateCells(sites,overlayers,siteserving)
         
@@ -548,7 +548,7 @@ function readfile(sitefile,cellfile,boundMap,siteserving,Theory_Cell,RSRP_offset
     
 //---------------------------------------------------------------------		
 //this function draws the theory cell
-function drawVoronoi(listPointSite,sites,Theory_Cell){
+function drawVoronoi(listPointSite,sites,theoryCell){
     var listSites=[]
     var SitePoly=[];
     var index=0;
@@ -578,7 +578,7 @@ function drawVoronoi(listPointSite,sites,Theory_Cell){
     var box = turf.bbox(SitesCollection);
     
     var voronoiPolygons = turf.voronoi(SitesCollection,{bbox:[box[0]-0.015, box[1]-0.015, box[2]+0.015, box[3]+0.015]});     //lef: increase,
-    L.geoJSON([voronoiPolygons],{style: style(0.1,"000000")}).addTo(Theory_Cell)
+    L.geoJSON([voronoiPolygons],{style: style(0.1,"000000")}).addTo(theoryCell)
     
     
     for (index = 0; index < voronoiPolygons.features.length; index++){
@@ -600,7 +600,7 @@ function drawVoronoi(listPointSite,sites,Theory_Cell){
                                     weight: 2,
                                     opacity: 1,
                                     smoothFactor: 1
-                                }).addTo(Theory_Cell);
+                                }).addTo(theoryCell);
     
     }
     return voronoiPolygons
@@ -632,11 +632,11 @@ function style(opac,rand) {
 
 //---------------------------------------------------------------------
 // this function draws the tracking area
-function drawTA(tacset,sitelist,Tracking_area){
+function drawTA(tacset,sitelist,trackingArea){
     
     for(var key in tacset) {
         var polylines=[]
-        cellsites=tacset[key].cell_site // danh sach cac cell co cung TAC
+        cellsites=tacset[key].cell_site // list of cells with TAC
         
         for (i = 0; i < cellsites.length-1; i++){
             sitegeo = sitelist[cellsites[i]].site
@@ -652,7 +652,7 @@ function drawTA(tacset,sitelist,Tracking_area){
                                     weight: 2,
                                     opacity: 0.5,
                                     smoothFactor: 1
-                                }).addTo(Tracking_area).bindPopup(key);
+                                }).addTo(trackingArea).bindPopup(key);
         
     }
     
@@ -660,10 +660,10 @@ function drawTA(tacset,sitelist,Tracking_area){
 
 //---------------------------------------------------------------------
 //this function map the association cell with correspond site and add to the right earfcn layer
-function stationProcess(listpoints,sitesObject,overlayers,Tracking_area,PCI,nbid,siteserving,tacSet,markerObject){
+function stationProcess(listpoints,sitesObject,overlayers,trackingArea,PCI,nbid,siteserving,tacSet,markerObject){
     listpoints.forEach(function(cell){
-        TAcolor(cell,Tracking_area)
-        PCIcolor(cell,PCI)
+        taColor(cell,trackingArea)
+        pciColor(cell,PCI)
         hexpoints = hexpoints.concat(hexbins(cell));
         
         rsrpValue_points = rsrpValue_points.concat(heatpoint(cell))
@@ -714,7 +714,7 @@ function stationProcess(listpoints,sitesObject,overlayers,Tracking_area,PCI,nbid
 }
 //---------------------------------------------------------------------
 // this function adds the color for the points measured based on the TAC and add these points to a layer
-function TAcolor(jsoncell,layer){
+function taColor(jsoncell,layer){
     var firstcorlor= jsoncell.TAC.substr(0,2)
     var secondcorlor= jsoncell.TAC.substr(3,5)
     
@@ -732,7 +732,7 @@ function TAcolor(jsoncell,layer){
 //---------------------------------------------------------------------
 // this function adds the color for the points measured based on the PCI and add these points to a layer
             // PCIPCIPCI
-function PCIcolor(jsoncell,layer){
+function pciColor(jsoncell,layer){
     var linepoints=[]
     var rand = colorNumber(parseTuple(jsoncell.property)[0][1])
     
@@ -1002,9 +1002,9 @@ function colorNumber(val){
                     console.log(val);
     pci=parseInt(val,10);  // PCI is between 0 and 508, we consider it is coded on 9 bits and we split into 3 parts, each one over 3 bits
 
-                    ValTestee = (pci%9)*57+ Math.trunc(pci/9)+ColorChoice;
-                    if (ColorChoice!=0) {
-                            ValTestee = (pci%3)*170+ Math.trunc(pci/3)+ColorChoice;
+                    ValTestee = (pci%9)*57+ Math.trunc(pci/9)+colorChoice;
+                    if (colorChoice!=0) {
+                            ValTestee = (pci%3)*170+ Math.trunc(pci/3)+colorChoice;
                             }
                     ValCouleur = 10+ValTestee*32895
                     Couleur = ValCouleur.toString(16);
