@@ -1,119 +1,299 @@
-class CSVReader {
+var csvread = {
 
-    #file
-    #earfcns
-    #pcis
-    #points
-    #freader
-    #file_io_hdl
-    #rsrps
-    #rssis
-    #rsrqs
+    CSVReader: class  {
 
-    
-    constructor(file, io_error_handler) {
-        this.#file = file;
-        this.#earfcns = [];
-        this.#pcis = [];
-        this.#points = [];
-        this.#measurements = []
-        this.#file_io_hdl = io_error_handler
+        // Attributes
 
-        this.#freader = new FileReader();
+        // File reading.
+        #file
+        #freader
 
-    }
+        // Measurements columns.
+        #earfcns
+        #pcis
 
+        // Points of data
+        #points
 
+        // Measurements.
+        #rsrps
+        #rssis
+        #rsrqs
 
-    read_file() {
+        // Associations
+        #assocs
 
-        let cont = false
+        // Directivity
+        #antDirs
+        #sectDels
+
         
-        let flines = null
+        constructor(file) {
+            this.#file = file;
+            this.#earfcns = [];
+            this.#pcis = [];
+            this.#points = {};
+            this.#rsrps = [];
+            this.#rsrqs = [];
+            this.#rssis = [];
+            this.#rsrqs = [];
+            this.#assocs = [];
+            this.#antDirs = [];
+            this.#sectDels = [];
 
-        let prom = new Promise((resolve, reject) => {
-            this.#freader.onload = (_) => resolve(this.#freader.result);
-            this.#freader.onerror = (e) => reject(e);
-            this.#freader.readAsText(this.#file);
-        })
+            this.#freader = new FileReader();
 
-        prom.then((result) => {
-            flines = result.split('\r\n');
-            console.log('test');
-        }, this.#file_io_hdl);
+        }
 
-        let state = 0;
-        let meas_lines = false;
-        let meas_earfns = false;
-
-        for (let i in flines) {
-
-            let lineNum = i + 1
-            let line = flines[i].split('|');
-            let llen = line.length;
+        async readFile() {
             
-            if (llen === 0) throw new Error('Syntax error : line ' + lineNum + ': empty line.');
+            // Lines of the file which will be read.
+            let flines = null;
 
-            let first = line[0]
+            // Reading file...
+            let result = await this.#promiseFile();
 
-            switch (state) {
+            // Splitting file content by lines...
+            flines = result.split('\r\n');
 
-                case 0:
-                    if (first === 'DEFINE') state = 1;
-                    break;
+            // FSM state.
+            let state = 0;
 
-                case 1:
+            // Used to check if MEAS_EARFCNS and MEAS_PCIS are read (in this order).
+            let measLines = false;
+            let measEarfcns = false;
 
-                    if (first === 'CONTENT') state = 2;
-                    break;
+            // Iterating over lines...
+            for (let i in flines) {
 
-                case 2:
+                // Line number.
+                let lineNum = i + 1
 
-                    switch (first) {
+                // Splitting current line...
+                let line = flines[i].split('|');
 
-                        case 'MEAS_EARFCNS':
+                // Current line length...
+                let llen = line.length;
+                
+                if (llen === 0) throw new Error('Syntax error: line ' + lineNum + ': empty line.');
 
-                            if (llen < 6) throw new Error(
-                                'Error : line ' + lineNum + ': MEAS_EARFCNS line must contain at least 6 fields.')
+                let first = line[0]
 
-                            for (let j = 5; j < llen; j++) this.#earfcns.push(line[j]);
-                            meas_earfns = true
-                            break;
+                switch (state) {
 
-                        case 'MEAS_PCIS':
+                    case 0:
+                        if (first === 'DEFINE') state = 1;
+                        break;
 
-                            if (!meas_earfns) throw new Error(
-                                'Error : line ' + lineNum + ': no MEAS_EARFCNS line before MEAS_PCIS line.');
+                    case 1:
+                        if (first === 'CONTENT') state = 2;
+                        break;
 
-                            if (llen < 6) throw new Error(
-                                'Error : line ' + lineNum + ': MEAS_PCIS line must contain at least 6 fields.')
+                    case 2:
 
-                            for (let j = 5; j < llen; j++) this.#pcis.push(line[j]);
+                        // Reading data...    
 
-                            if (this.#earfcns.length !== this.#pcis.length) throw new Error(
-                                'Error : line ' + lineNum + ': EARFCN count is different of PCI count.');
+                        switch (first) {
 
-                            meas_lines = true
+                            case 'MEAS_EARFCNS':    // EARFCNS of measurement columns
 
-                            break;
+                                if (llen < 6) throw new Error(
+                                    'Error: line ' + lineNum + ': MEAS_EARFCNS line must contain at least 6 fields.')
 
-                        case 'MEASUREMENT':
-                            if (!meas_lines) throw new Error(
-                                'Error : line ' + lineNum + ': missing MEAS_EARFCNS or MEAS_PCIS line before this line.')
+                                for (let j = 5; j < llen; j++) this.#earfcns.push(line[j]);
+                                measEarfcns = true
+                                break;
 
-                            if (llen != this.#earfcns.length + 5) throw new Error(
-                                'Error : line ' + lineNum + ': more measurements than EARFCN / PCI found.')
+                            case 'MEAS_PCIS':   // PCIS of measurement columns.
 
-                                
+                                if (!measEarfcns) throw new Error(
+                                    'Error: line ' + lineNum + ': no MEAS_EARFCNS line before MEAS_PCIS line.');
 
-                    }
+                                if (llen < 6) throw new Error(
+                                    'Error: line ' + lineNum + ': MEAS_PCIS line must contain at least 6 fields.')
 
-                    break;
+                                for (let j = 5; j < llen; j++) this.#pcis.push(line[j]);
+
+                                if (this.#earfcns.length !== this.#pcis.length) throw new Error(
+                                    'Error: line ' + lineNum + ': EARFCN count is different of PCI count.');
+
+                                measLines = true
+
+                                break;
+
+                            case 'MEASUREMENT':
+                                if (!measLines) throw new Error(
+                                    'Error: line ' + lineNum + ': missing MEAS_EARFCNS or MEAS_PCIS line before this line.')
+
+                                if (llen != this.#earfcns.length + 5) throw new Error(
+                                    'Error: line ' + lineNum + ': more measurements than EARFCN / PCI found.')
+
+                                // Choosing in which table measurement will be added...    
+
+                                let toAdd = null
+
+                                switch (line[4]) {
+
+                                    case 'RSRP':
+                                        toAdd = this.#rsrps;
+                                        break;
+
+                                    case 'RSRQ':
+                                        toAdd = this.#rsrqs;
+                                        break;
+
+                                    case 'RSSI':
+                                        toAdd = this.#rssis;
+                                        break;
+
+                                }
+            
+                                // Series of measure taken in the same timestamp.
+                                let series = {
+                                    lat: csvread.parseNum(line[2], lineNum),
+                                    lng: csvread.parseNum(line[3], lineNum),
+                                    meas: []
+                                };
+
+
+                                // Adding measurements to series...
+                                for (let j = 5; j < llen; j++) 
+                                    series.meas.push(csvread.parseNum(line[j], lineNum, true));
+
+                                toAdd.push(series);
+
+                                break;
+
+                            case 'POINT':   // Serving cell geolocated point.
+
+                                if (llen < 11) throw new Error(
+                                    'Error: line ' + lineNum + ': POINT line must contain at least 6 fields.');
+
+                                let earfcn = csvread.parseNum(line[5], lineNum);
+                                let pci = csvread.parseNum(line[6], lineNum);
+
+                                // Filling serving EARFCN / PCI measurements dictionnary...
+                                if (this.#points[earfcn] === undefined) this.#points[earfcn] = {}
+                                if (this.#points[earfcn][pci] === undefined) this.#points[earfcn][pci] = []
+
+                                // Point to add.
+                                let point = {
+                                    lat: csvread.parseNum(line[1], lineNum),
+                                    lng: csvread.parseNum(line[2], lineNum),
+                                    tac: csvread.parseNum(line[3], lineNum),
+                                    cid: csvread.parseNum(line[4], lineNum),
+                                    rsrp: csvread.parseNum(line[7], lineNum),
+                                    rsrq: csvread.parseNum(line[8], lineNum),
+                                    rssi: csvread.parseNum(line[9], lineNum),
+                                    cinr: csvread.parseNum(line[10], lineNum),
+                                };
+
+                                this.#points[earfcn][pci].push(point);
+
+                                break;
+
+                            case 'DELIMITER':   // Sector delimiter.
+
+                                if (llen < 6) throw new Error(
+                                    'Error: line ' + lineNum + ': DELIMITER line must contain at least 6 fields.');
+
+                                let delVect = {
+                                    num: line[1],
+                                    latA: line[2],
+                                    lngA: line[3],
+                                    latB: line[4],
+                                    lngB: line[5]
+                                };
+
+                                this.#sectDels.push(delVect);
+
+                                break;
+
+                            case 'BS_ANT_DIR':  // Antenna direcitvity.
+
+                                if (llen < 7) throw new Error(
+                                    'Error: line ' + lineNum + ': BS_ANT_DIR line must contain at least 7 fields.');
+
+                                let antVect = {
+                                    carto_num: line[1],
+                                    ant_num: line[2],
+                                    latA: line[3],
+                                    lngA: line[4],
+                                    latB: line[5],
+                                    lngB: line[6]
+                                };
+
+                                this.#antDirs.push(antVect);
+
+                                break;
+
+                            case 'ASSOC':   // (EARFCN, PCI) -> Antenna association.
+
+                                if (llen < 7) throw new Error(
+                                    'Error: line ' + lineNum + ': ASSOC line must contain at least 7 fields.');
+
+                                let assoc = {
+                                    carto_num: line[1],
+                                    ant_num: line[2],
+                                    tac: line[3],
+                                    cid: line[4],
+                                    earfcn: line[5],
+                                    pci: line[6]
+                                };
+
+                                this.#assocs.push(assoc);
+
+                                break;
+
+
+                        }
+
+                        break;
+
+                }
 
             }
 
         }
 
-    }
+        #promiseFile() {
+            return new Promise((resolve, reject) => {
+                this.#freader.onload = (e) => resolve(this.#freader.result);
+                this.#freader.onerror = reject;
+                this.#freader.readAsText(this.#file);
+            })
 
+        }
+
+        get earfcns() { return utils.deepCopy(this.#earfcns); }
+
+        get pcis() { return utils.deepCopy(this.#pcis); }
+
+        get rsrps() { return utils.deepCopy(this.#rsrps); }
+        
+        get rsrqs() { return utils.deepCopy(this.#rsrqs); }
+
+        get rssis() { return utils.deepCopy(this.#rssis); }
+
+        get points() { return utils.deepCopy(this.#points); }
+
+        get assocs() { return utils.deepCopy(this.#assocs); }
+
+        get sectorDelimiters() { return utils.deepCopy(this.#sectDels); }
+
+        get antennaDirections() { return utils.deepCopy(this.#antDirs); }
+
+    },
+
+    parseNum: function(str, i, null_allowed=false) {
+
+        let x = parseFloat(str);
+
+        if (Number.isNaN(x)) {
+            if (null_allowed) return null;
+            else throw new Error('Parsing Error: line ' + i + ': Invalid number: ' + str + '.');
+        }
+
+        return x;
+    }
 }
