@@ -35,8 +35,8 @@ class CellAssociator:
         'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
         'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
         'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values'],
-        'DELIMITER': ['Support_Number', 'Support_Lat', 'Del_Lat', 'Del_Lng'],
-        'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Dest_Lng', 'Dest_Lat'],
+        'DELIMITER': ['Support_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng'],
+        'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
         'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI'],
         'POINT': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'RSRP', 'RSRQ', 'RSSI', 'CINR']
     }
