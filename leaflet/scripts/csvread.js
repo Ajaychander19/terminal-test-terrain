@@ -27,6 +27,8 @@ var csvread = {
         #antDirs
         #sectDels
 
+        #antennas
+
         
         constructor(file) {
             this.#file = file;
@@ -40,6 +42,7 @@ var csvread = {
             this.#assocs = [];
             this.#antDirs = [];
             this.#sectDels = [];
+            this.#antennas = {};
 
             this.#freader = new FileReader();
 
@@ -117,7 +120,7 @@ var csvread = {
                                 if (this.#earfcns.length !== this.#pcis.length) throw new Error(
                                     'Error: line ' + lineNum + ': EARFCN count is different of PCI count.');
 
-                                measLines = true
+                                measLines = true;
 
                                 break;
 
@@ -197,13 +200,19 @@ var csvread = {
                                 if (llen < 6) throw new Error(
                                     'Error: line ' + lineNum + ': DELIMITER line must contain at least 6 fields.');
 
+                                let cartoNum = csvread.parseNum(line[1], lineNum);
+                                let latA = csvread.parseNum(line[2], lineNum);
+                                let lngA = csvread.parseNum(line[3], lineNum);
+
+                                if (this.#antennas[cartoNum] === undefined) 
+                                    this.#antennas[cartoNum] = {lat: latA, lng: lngA, dels: []};
+
                                 let delVect = {
-                                    num: line[1],
-                                    latA: line[2],
-                                    lngA: line[3],
-                                    latB: line[4],
-                                    lngB: line[5]
+                                    latB: csvread.parseNum(line[4], lineNum),
+                                    lngB: csvread.parseNum(line[5], lineNum)
                                 };
+
+                                this.#antennas[cartoNum].dels.push(delVect);
 
                                 this.#sectDels.push(delVect);
 
@@ -215,12 +224,12 @@ var csvread = {
                                     'Error: line ' + lineNum + ': BS_ANT_DIR line must contain at least 7 fields.');
 
                                 let antVect = {
-                                    carto_num: line[1],
-                                    ant_num: line[2],
-                                    latA: line[3],
-                                    lngA: line[4],
-                                    latB: line[5],
-                                    lngB: line[6]
+                                    cartoNum: csvread.parseNum(line[1], lineNum),
+                                    antNum: csvread.parseNum(line[2], lineNum),
+                                    latA: csvread.parseNum(line[3], lineNum),
+                                    lngA: csvread.parseNum(line[4], lineNum),
+                                    latB: csvread.parseNum(line[5], lineNum),
+                                    lngB: csvread.parseNum(line[6], lineNum)
                                 };
 
                                 this.#antDirs.push(antVect);
@@ -233,18 +242,17 @@ var csvread = {
                                     'Error: line ' + lineNum + ': ASSOC line must contain at least 7 fields.');
 
                                 let assoc = {
-                                    carto_num: line[1],
-                                    ant_num: line[2],
-                                    tac: line[3],
-                                    cid: line[4],
-                                    earfcn: line[5],
-                                    pci: line[6]
+                                    cartoNum: csvread.parseNum(line[1], lineNum),
+                                    antNum: csvread.parseNum(line[2], lineNum),
+                                    tac: csvread.parseNum(line[3], lineNum),
+                                    cid: csvread.parseNum(line[4], lineNum),
+                                    earfcn: csvread.parseNum(line[5], lineNum),
+                                    pci: csvread.parseNum(line[6], lineNum)
                                 };
 
                                 this.#assocs.push(assoc);
 
                                 break;
-
 
                         }
 
@@ -283,6 +291,8 @@ var csvread = {
 
         get antennaDirections() { return utils.deepCopy(this.#antDirs); }
 
+        get antennas() { return utils.deepCopy(this.#antennas); }
+    
     },
 
     parseNum: function(str, i, null_allowed=false) {
