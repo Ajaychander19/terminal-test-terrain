@@ -16,39 +16,32 @@ const processing = {
 
     },
 
-    calcDelimiters: function(voronoi, delimiters) {
+    calcDelimiters: function(voronoi, antennas) {
 
         let result = [];
 
         let vorFeats = voronoi.features;
+        let antIndex = 0;
 
-        let tempDels = [];
+        for (let i in antennas) {
 
-        for (let i in delimiters) {
+            let ant = antennas[i];
+            let feature = vorFeats[antIndex];
 
-            let del = delimiters[i];
-            let feature = vorFeats[i];
+            for (let j in ant.dels) {
 
-            tempDels.push(del);
+                let del = ant.dels[j];
 
-            if (feature !== undefined) {
+                let line = turf.lineString([[ant.lng, ant.lat], [del.lngB, del.latB]]);
 
-                for (let j in tempDels) {
+                let inter = turf.lineIntersect(line, feature).features;
 
-                    let tmpd = tempDels[j];
-                    let line = turf.lineString([[tmpd.lngA, tmpd.latA], [tmpd.lngB, tmpd.latB]]);
-
-                    let inter = turf.lineIntersect(line, feature).features;
-
-                    if (inter.length !== 0) result.push(
-                        turf.lineString([tmpd.lngA, tmpd.latA], inter[0].geometry.coordinates)
-                    );
-
-                }
-
-                tempDels = [];
-
+                if (inter.length !== 0) result.push(
+                    turf.lineString([[ant.lng, ant.lat], inter[0].geometry.coordinates])
+                );
             }
+
+            antIndex++;
 
         }
 

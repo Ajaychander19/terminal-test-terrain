@@ -214,8 +214,6 @@ var csvread = {
 
                                 this.#antennas[cartoNum].dels.push(delVect);
 
-                                this.#sectDels.push(delVect);
-
                                 break;
 
                             case 'BS_ANT_DIR':  // Antenna direcitvity.
