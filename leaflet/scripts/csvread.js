@@ -285,8 +285,6 @@ var csvread = {
 
         get assocs() { return utils.deepCopy(this.#assocs); }
 
-        get sectorDelimiters() { return utils.deepCopy(this.#sectDels); }
-
         get antennaDirections() { return utils.deepCopy(this.#antDirs); }
 
         get antennas() { return utils.deepCopy(this.#antennas); }
