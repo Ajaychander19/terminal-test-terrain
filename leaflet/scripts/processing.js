@@ -34,21 +34,19 @@ const processing = {
             let feature = vorFeats[antIndex];   // Antenna Voronoi polygon.
 
             // For each delimiter of the antenna...
-            for (let j in ant.dels) {
+            ant.dels.forEach((del) => {
 
-                let del = ant.dels[j];  // Current delimiter.
+                    // GeoJSON of the delimiter.
+                    let line = turf.lineString([[ant.lng, ant.lat], [del.lngB, del.latB]]);
 
-                // GeoJSON of the delimiter.
-                let line = turf.lineString([[ant.lng, ant.lat], [del.lngB, del.latB]]);
+                    // Intersection between the delimiter and the hull of the Voronoi cell.
+                    let inter = turf.lineIntersect(line, feature).features;
 
-                // Intersection between the delimiter and the hull of the Voronoi cell.
-                let inter = turf.lineIntersect(line, feature).features;
-
-                // Truncating the delimiter following the hull of the Voronoi cell.
-                if (inter.length !== 0) result.push(
-                    turf.lineString([[ant.lng, ant.lat], inter[0].geometry.coordinates])
-                );
-            }
+                    // Truncating the delimiter following the hull of the Voronoi cell.
+                    if (inter.length !== 0) result.push(
+                        turf.lineString([[ant.lng, ant.lat], inter[0].geometry.coordinates])
+                    );
+            });
 
             antIndex++;
 
