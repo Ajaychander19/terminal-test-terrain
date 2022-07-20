@@ -40,86 +40,62 @@ const drawing = {
     
         }
 
-        drawTAC(points) {
-
-            this.#tacLayer = L.layerGroup();
-
-            let tacs = {};
-
-            for (let i in points) {
-
-                let earfcnGr = points[i];
-
-                for (let j in earfcnGr) {
-
-                    earfcnGr[j].forEach((point) => {
-
-                        let latLng = [point.lat, point.lng];
-                        let tac = point.tac;
-
-                        if (tacs[tac] === undefined) tacs[tac] = [];
-
-                        tacs[tac].push(latLng);
-                        
-                    });
-
-                }
-
-            }
-
-            for (let tac in tacs) {
-
-                let tacLayer = new L.GridLayer.MaskCanvas(styles.pointStyle(styles.tacColor(tac)));
-                tacLayer.setData(tacs[tac]);
-                tacLayer.addTo(this.#tacLayer);
-
-            }
-
-        }
-
         #drawPoints(points, valChooser, colorChooser) {
 
+            // Dictionary which contains point layers associated to EARFCNs/PCIs.
             let pointDict = {};
 
+            // For each EARFCNs found in points.
             for (let earfcn in points) {
 
-                let earfcnGr = points[i];
+                // Group of points with the same EARFCN.
+                let earfcnGr = points[earfcn];
 
+                // Adding EARFCN entry in dictionary if not already present.
                 pointDict[earfcn] || (pointDict[earfcn] = {});
 
+                // For each PCI associated to the EARFCN...
                 for (let pci in earfcnGr) {
 
+                    // Adding PCI entry if not exists.
                     pointDict[earfcn][pci] || (pointDict[earfcn][pci] = {})
 
+                    // Values dictionary.
                     let points = {}
 
-                    earfcnGr[j].forEach((point) => {
+                    // For each point associated to these EARFCN and PCI...
+                    earfcnGr[pci].forEach((point) => {
 
-                        let latLng = [point.lat, point.lng];
-                        let val = valChooser;
+                        let latLng = [point.lat, point.lng];    // Latitude and longitude of the point.
+                        let val = valChooser(point);            // Value to associate to the group of the current point.
 
+                        // Creating the group if it does not exists.
                         points[val] || (points[val] = []);
 
+                        // Adding point to the group...
                         points[val].push(latLng);
                         
                     });
 
-                    // TODO add to point dict
+                    // Creating layers from group of points.
+                    for (let val in points) {
+
+                        let layer = new L.GridLayer.MaskCanvas(styles.pointStyle(colorChooser(val)));
+                        layer.setData(points[val]);
+
+                        pointDict[earfcn][pci][val] = layer;
+
+                    }
 
                 }
 
             }
 
-            // for (let earfcn in pointDict) {
-
-            //     for (let pci in pointDict)
-
-            //     let pointLayer = new L.GridLayer.MaskCanvas(styles.pointStyle(colorChooser(tac)));
-            //     pointLayer.setData(tacs[tac]);
-
-            // }
+            return pointDict;
 
         }
+
+        //drawHex(measurements, )
 
         setCellLayer(b) { this.#setLayerVisibility(this.#cellLayer, b); }
 
