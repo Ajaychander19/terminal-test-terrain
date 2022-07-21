@@ -149,9 +149,16 @@ const drawing = {
                         
                         if (pcis) {
 
-                            let pciIndex = pcis.indexOf(pci);
-                            if (pciIndex !== -1 && earfcn === earfcns[pciIndex]) 
-                                layers.push(pciLayer);
+
+                            let pciIndexes = utils.indexesOf(pcis, pci);
+
+                            for (let pi in pciIndexes) {
+
+                                let pciIndex = pciIndexes[pi];
+
+                                if (pciIndex !== -1 && ((earfcns && earfcn === earfcns[pciIndex]) || !earfcns)) 
+                                    layers.push(pciLayer);
+                            }
 
                         } else layers.push(pciLayer);
 
