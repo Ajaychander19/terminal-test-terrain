@@ -6,19 +6,38 @@ const drawing = {
         #cellLayer
         #antLayer
         #assocLayer
+        
         #tacLayer
         #pciLayer
-        #hexLayers
+        
+        #servingRSRP
+        #servingRSRQ
+        #servingRSSI
+        #servingCINR
+        
         // #rsrpLayer
         // #rsrqLayer
         // #rssiLayer
         // #cinrLayer
 
+        #nonFilteredTAC
+        #nonFilteredPCI
+
 
         constructor(map) {
             this.#map = map;
+
             this.#cellLayer = L.layerGroup();
             this.#tacLayer = L.layerGroup();
+            this.#pciLayer = L.layerGroup();
+
+            this.#servingRSRP = L.layerGroup();
+            this.#servingRSRQ = L.layerGroup();
+            this.#servingRSSI = L.layerGroup();
+            this.#servingCINR = L.layerGroup();
+
+            this.#nonFilteredTAC = null;
+            this.#nonFilteredPCI = null;
         }
 
         drawCells(voronoi, antFeats, delFeats) {
@@ -40,7 +59,7 @@ const drawing = {
     
         }
 
-        #drawPoints(points, valChooser, colorChooser) {
+        drawPoints(points, valChooser, colorChooser) {
 
             // Dictionary which contains point layers associated to EARFCNs/PCIs.
             let pointDict = {};
@@ -66,8 +85,8 @@ const drawing = {
                     // For each point associated to these EARFCN and PCI...
                     earfcnGr[pci].forEach((point) => {
 
-                        let latLng = [point.lat, point.lng];    // Latitude and longitude of the point.
-                        let val = valChooser(point);            // Value to associate to the group of the current point.
+                        let latLng = [point.lat, point.lng];                // Latitude and longitude of the point.
+                        let val = valChooser(earfcn, pci, point);           // Value to associate to the group of the current point.
 
                         // Creating the group if it does not exists.
                         points[val] || (points[val] = []);
@@ -83,7 +102,7 @@ const drawing = {
                         let layer = new L.GridLayer.MaskCanvas(styles.pointStyle(colorChooser(val)));
                         layer.setData(points[val]);
 
-                        pointDict[earfcn][pci][val] = layer;
+                        pointDict[earfcn][pci] = layer;
 
                     }
 
@@ -95,7 +114,127 @@ const drawing = {
 
         }
 
-        //drawHex(measurements, )
+        drawServingHex(points, valChooser) {
+
+
+
+        }
+
+        setPointLayer(layer, pointLayers, earfcns=null, pcis=null) {
+
+            if (earfcns && pcis && earfcns.length !== pcis.length)
+                throw new Error('earfncs and pcis should have the same length');
+            
+            layer.clearLayers();
+
+            let earfcnLayers = {};
+            if (earfcns) {
+                for (let e in earfcns) {
+                    let earfcn = earfcns[e];
+                    earfcnLayers[earfcn] = pointLayers[earfcn];
+                }
+            } else earfcnLayers = pointLayers;
+
+            let layers = [];
+
+            for (let e in earfcnLayers) {
+
+                    let earfcn = parseInt(e);
+                    let pciLayers = earfcnLayers[e];
+
+                    for (let p in pciLayers) {
+
+                        let pci = parseInt(p);
+                        let pciLayer = pciLayers[p];
+                        
+                        if (pcis) {
+
+                            let pciIndex = pcis.indexOf(pci);
+                            if (pciIndex !== -1 && earfcn === earfcns[pciIndex]) 
+                                layers.push(pciLayer);
+
+                        } else layers.push(pciLayer);
+
+                    }
+                    
+            }
+
+            layers.forEach((l) => l.addTo(layer));
+
+        }
+
+        drawHex(measurements, earfcns, pcis) {
+
+            let result = {};
+
+            // Min and max measurements.
+            let minMeas = null;
+            let maxMeas = null;
+
+            // For each measurement taken...
+            measurements.forEach(
+                
+                (measObj) => {
+
+                    let meas = measObj.meas;
+
+                    // For each measurement value...
+                    for (let i in meas) {
+
+                        let m = meas[i];            // Measurement value.
+                        let earfcn = earfcns[i];    // Associated EARFCn.
+                        let pci = pcis[i];          // Associated PCI.
+
+                        // Initializing minMeas and maxMeas if not.
+                        minMeas || (minMeas = m);
+                        maxMeas || (maxMeas = m);
+
+                        // Updating minMeas and maxMeas if necessary.
+                        if (minMeas > m) minMeas = m;
+                        if (maxMeas < m) maxMeas = m;
+
+                        // Defining resutl[earfcn][pci] if not defined.
+                        result[earfcn] || (result[earfcn] = {});
+                        result[earfcn][pci] || (result[earfcn][pci] = []);
+
+                        // Adding (lat, lng, measurement value).
+                        result[earfcn][pci].push([meas.lat, meas.lng, m]);
+
+                    }
+
+                }
+            )
+
+            // Creating hexbinLayers in-place.
+            for (let earfcn in result) {
+
+                for (let pci in result[earfcn]) {
+
+                    let hexLayer = L.hexbinLayer(styles.hexColor(minMeas, maxMeas))
+                                    .hoverHandler(L.HexbinHoverHandler.tooltip());
+                    result[earfcn][pci] = hexLayer.data(result[earfcn, pci]);
+
+                }
+
+            }
+
+            return result;
+
+        }
+
+        drawTAC(points) { return this.drawPoints(points, (_e, _pc, p) => p.tac, styles.tacColor); }
+
+        drawPCI(points) { return this.drawPoints(points, (_e, pc, _p) => pc, (p) => styles.pciColor(p, 1)); }
+
+        updateTACLayer(points, earfcn=null, pci=null) {
+            this.#nonFilteredTAC || (this.#nonFilteredTAC = this.drawTAC(points));
+            this.setPointLayer(this.#tacLayer, this.#nonFilteredTAC, earfcn, pci); 
+        }
+
+        updatePCILayer(points, earfcn=null, pci=null) {
+            this.#nonFilteredPCI || (this.#nonFilteredPCI = this.drawPCI(points));
+            this.setPointLayer(this.#pciLayer, this.#nonFilteredPCI, earfcn, pci); 
+        }
 
         setCellLayer(b) { this.#setLayerVisibility(this.#cellLayer, b); }
 

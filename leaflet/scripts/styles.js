@@ -65,4 +65,31 @@ const styles = {
 
     },
 
+    hexColor: function (min, max) {
+
+        let colorRange = [
+            "black","MidnightBlue","Navy","DarkBlue",
+            "MediumBlue","blue","RoyalBlue","DodgerBlue",
+            "DeepSkyBlue","LightSkyBlue", "Cyan", "PaleTurquoise",
+            "aquamarine","lightgreen","mediumaquamarine","GreenYellow",
+            "Lime","chartreuse","yellow","Gold", "orange",
+            "DarkOrange", "Coral", "Tomato","Crimson"
+        ];  // FIXME Temporary.
+
+        return {
+            radius : 12,
+            opacity: 0,
+            duration: 200,
+
+            colorScaleExtent: [ 0, 96 ],
+            radiusScaleExtent: [ 1, undefined ],
+            colorDomain: "linear",
+            radiusDomain: null,
+            colorRange:colorRange,
+            radiusRange: [ 1, 12 ],
+            pointerEvents: 'all'
+        }
+
+    }
+
 }
