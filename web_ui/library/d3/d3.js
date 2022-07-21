@@ -970,7 +970,7 @@ function constant$1(x) {
   };
 }
 
-var keyPrefix = "$"; // Protect against keys like “__proto__”.
+var keyPrefix = "$"; // Protect against keys like ï¿½__proto__ï¿½.
 
 function bindIndex(parent, group, enter, update, exit, data) {
   var i = 0,
@@ -990,7 +990,7 @@ function bindIndex(parent, group, enter, update, exit, data) {
     }
   }
 
-  // Put any non-null nodes that don’t fit into exit.
+  // Put any non-null nodes that donï¿½t fit into exit.
   for (; i < groupLength; ++i) {
     if (node = group[i]) {
       exit[i] = node;
@@ -3124,7 +3124,7 @@ function timer(callback, delay, time) {
 
 function timerFlush() {
   now(); // Get the current time, if not already set.
-  ++frame; // Pretend we’ve set an alarm, if we haven’t already.
+  ++frame; // Pretend weï¿½ve set an alarm, if we havenï¿½t already.
   var t = taskHead, e;
   while (t) {
     if ((e = clockNow - t._time) >= 0) t._call.call(null, e);
@@ -3389,7 +3389,7 @@ function tweenRemove(id, name) {
         tween = schedule$$1.tween;
 
     // If this node shared tween with the previous node,
-    // just assign the updated shared tween and we’re done!
+    // just assign the updated shared tween and weï¿½re done!
     // Otherwise, copy-on-write.
     if (tween !== tween0) {
       tween1 = tween0 = tween;
@@ -3414,7 +3414,7 @@ function tweenFunction(id, name, value) {
         tween = schedule$$1.tween;
 
     // If this node shared tween with the previous node,
-    // just assign the updated shared tween and we’re done!
+    // just assign the updated shared tween and weï¿½re done!
     // Otherwise, copy-on-write.
     if (tween !== tween0) {
       tween1 = (tween0 = tween).slice();
@@ -3677,7 +3677,7 @@ function onFunction(id, name, listener) {
         on = schedule$$1.on;
 
     // If this node shared a dispatch with the previous node,
-    // just assign the updated shared dispatch and we’re done!
+    // just assign the updated shared dispatch and weï¿½re done!
     // Otherwise, copy-on-write.
     if (on !== on0) (on1 = (on0 = on).copy()).on(name, listener);
 
@@ -4302,7 +4302,7 @@ function defaultExtent() {
   return [[0, 0], [svg.width.baseVal.value, svg.height.baseVal.value]];
 }
 
-// Like d3.local, but with the name “__brush” rather than auto-generated.
+// Like d3.local, but with the name ï¿½__brushï¿½ rather than auto-generated.
 function local$1(node) {
   while (!node.__brush) if (!(node = node.parentNode)) return;
   return node.__brush;
@@ -4783,12 +4783,12 @@ function chord() {
       k += x;
     }
 
-    // Sort groups…
+    // Sort groupsï¿½
     if (sortGroups) groupIndex.sort(function(a, b) {
       return sortGroups(groupSums[a], groupSums[b]);
     });
 
-    // Sort subgroups…
+    // Sort subgroupsï¿½
     if (sortSubgroups) subgroupIndex.forEach(function(d, i) {
       d.sort(function(a, b) {
         return sortSubgroups(matrix[i][a], matrix[i][b]);
@@ -4975,7 +4975,7 @@ Path.prototype = path.prototype = {
       this._ += "L" + x0 + "," + y0;
     }
 
-    // Is this arc empty? We’re done.
+    // Is this arc empty? Weï¿½re done.
     if (!r) return;
 
     // Does the angle go the wrong way? Flip the direction.
@@ -5254,7 +5254,7 @@ function set$2(object, f) {
   // Copy constructor.
   if (object instanceof Set) object.each(function(value) { set.add(value); });
 
-  // Otherwise, assume it’s an array.
+  // Otherwise, assume itï¿½s an array.
   else if (object) {
     var i = -1, n = object.length;
     if (f == null) while (++i < n) set.add(object[i]);
@@ -6065,7 +6065,7 @@ function tree_cover(x, y) {
 
   // If the quadtree has no extent, initialize them.
   // Integer extent are necessary so that if we later double the extent,
-  // the existing quadrant boundaries don’t change due to floating point error!
+  // the existing quadrant boundaries donï¿½t change due to floating point error!
   if (isNaN(x0)) {
     x1 = (x0 = Math.floor(x)) + 1;
     y1 = (y0 = Math.floor(y)) + 1;
@@ -6161,7 +6161,7 @@ function tree_find(x, y, radius) {
 
   while (q = quads.pop()) {
 
-    // Stop searching if this quadrant can’t contain a closer node.
+    // Stop searching if this quadrant canï¿½t contain a closer node.
     if (!(node = q.node)
         || (x1 = q.x0) > x3
         || (y1 = q.y0) > y3
@@ -6188,7 +6188,7 @@ function tree_find(x, y, radius) {
       }
     }
 
-    // Visit this point. (Visiting coincident points isn’t necessary!)
+    // Visit this point. (Visiting coincident points isnï¿½t necessary!)
     else {
       var dx = x - +this._x.call(null, node.data),
           dy = y - +this._y.call(null, node.data),
@@ -6990,7 +6990,7 @@ function y$2(y) {
 // significant digits p, where x is positive and p is in [1, 21] or undefined.
 // For example, formatDecimal(1.23) returns ["123", 0].
 function formatDecimal(x, p) {
-  if ((i = (x = p ? x.toExponential(p - 1) : x.toExponential()).indexOf("e")) < 0) return null; // NaN, ±Infinity
+  if ((i = (x = p ? x.toExponential(p - 1) : x.toExponential()).indexOf("e")) < 0) return null; // NaN, ï¿½Infinity
   var i, coefficient = x.slice(0, i);
 
   // The string returned by toExponential either has the form \d\.\d+e[-+]\d+
@@ -7202,8 +7202,8 @@ function formatLocale(locale) {
         valuePrefix = (valueNegative ? (sign === "(" ? sign : "-") : sign === "-" || sign === "(" ? "" : sign) + valuePrefix;
         valueSuffix = (type === "s" ? prefixes[8 + prefixExponent / 3] : "") + valueSuffix + (valueNegative && sign === "(" ? ")" : "");
 
-        // Break the formatted value into the integer “value” part that can be
-        // grouped, and fractional or exponential “suffix” part that is not.
+        // Break the formatted value into the integer ï¿½valueï¿½ part that can be
+        // grouped, and fractional or exponential ï¿½suffixï¿½ part that is not.
         if (maybeSuffix) {
           i = -1, n = value.length;
           while (++i < n) {
@@ -7292,7 +7292,7 @@ function precisionRound(step, max) {
 // Adds floating point numbers with twice the normal precision.
 // Reference: J. R. Shewchuk, Adaptive Precision Floating-Point Arithmetic and
 // Fast Robust Geometric Predicates, Discrete & Computational Geometry 18(3)
-// 305–363 (1997).
+// 305ï¿½363 (1997).
 // Code adapted from GeographicLib by Charles F. F. Karney,
 // http://geographiclib.sourceforge.net/
 
@@ -7485,7 +7485,7 @@ function areaPoint(lambda, phi) {
   phi = phi / 2 + quarterPi; // half the angular distance from south pole
 
   // Spherical excess E for a spherical triangle with vertices: south pole,
-  // previous point, current point.  Uses a formula derived from Cagnoli’s
+  // previous point, current point.  Uses a formula derived from Cagnoliï¿½s
   // theorem.  See Todhunter, Spherical Trig. (1871), Sec. 103, Eq. (2).
   var dLambda = lambda - lambda0,
       sdLambda = dLambda >= 0 ? 1 : -1,
@@ -7659,8 +7659,8 @@ function boundsRingEnd() {
 }
 
 // Finds the left-right distance between two longitudes.
-// This is almost the same as (lambda1 - lambda0 + 360°) % 360°, except that we want
-// the distance between ±180° to be 360°.
+// This is almost the same as (lambda1 - lambda0 + 360ï¿½) % 360ï¿½, except that we want
+// the distance between ï¿½180ï¿½ to be 360ï¿½.
 function angle(lambda0, lambda1) {
   return (lambda1 -= lambda0) < 0 ? lambda1 + 360 : lambda1;
 }
@@ -7940,7 +7940,7 @@ function rotation(rotate) {
   return forward;
 }
 
-// Generates a circle centered at [0°, 0°], with a given radius and precision.
+// Generates a circle centered at [0ï¿½, 0ï¿½], with a given radius and precision.
 function circleStream(stream, radius, delta, direction, t0, t1) {
   if (!delta) return;
   var cosRadius = cos$1(radius),
@@ -8175,7 +8175,7 @@ function polygonContains(polygon, point) {
       sum$1.add(atan2(k * sign$$1 * sin$1(absDelta), cosPhi0 * cosPhi1 + k * cos$1(absDelta)));
       angle += antimeridian ? delta + sign$$1 * tau$3 : delta;
 
-      // Are the longitudes either side of the point’s meridian (lambda),
+      // Are the longitudes either side of the pointï¿½s meridian (lambda),
       // and are the latitudes smaller than the parallel (phi)?
       if (antimeridian ^ lambda0 >= lambda ^ lambda1 >= lambda) {
         var arc = cartesianCross(cartesian(point0), cartesian(point1));
@@ -8659,7 +8659,7 @@ function clipLine(a, b, x0, y0, x1, y1) {
 
 var clipMax = 1e9, clipMin = -clipMax;
 
-// TODO Use d3-polygon’s polygonContains here for the ring check?
+// TODO Use d3-polygonï¿½s polygonContains here for the ring check?
 // TODO Eliminate duplicate buffering in clipBuffer and polygon.push?
 
 function clipRectangle(x0, y0, x1, y1) {
@@ -9886,7 +9886,7 @@ function multiplex(streams) {
 }
 
 // A composite projection for the United States, configured by default for
-// 960×500. The projection also works quite well at 960×600 if you change the
+// 960ï¿½500. The projection also works quite well at 960ï¿½600 if you change the
 // scale to 1285 and adjust the translate accordingly. The set of standard
 // parallels for each region comes from USGS, which is published here:
 // http://egsc.usgs.gov/isb/pubs/MapProjections/projections.html#albers
@@ -10547,7 +10547,7 @@ function node_leaves() {
 function node_links() {
   var root = this, links = [];
   root.each(function(node) {
-    if (node !== root) { // Don’t include the root’s parent, if any.
+    if (node !== root) { // Donï¿½t include the rootï¿½s parent, if any.
       links.push({source: node.parent, target: node});
     }
   });
@@ -10822,13 +10822,13 @@ function packEnclose(circles) {
   b.next = a.previous = c;
   c.next = b.previous = a;
 
-  // Attempt to place each remaining circle…
+  // Attempt to place each remaining circleï¿½
   pack: for (i = 3; i < n; ++i) {
     place(a._, b._, c = circles[i]), c = new Node$1(c);
 
     // Find the closest intersecting circle on the front-chain, if any.
-    // “Closeness” is determined by linear distance along the front-chain.
-    // “Ahead” or “behind” is likewise determined by linear distance.
+    // ï¿½Closenessï¿½ is determined by linear distance along the front-chain.
+    // ï¿½Aheadï¿½ or ï¿½behindï¿½ is likewise determined by linear distance.
     j = b.next, k = a.previous, sj = b._.r, sk = a._.r;
     do {
       if (sj <= sk) {
@@ -11038,7 +11038,7 @@ function partition() {
   return partition;
 }
 
-var keyPrefix$1 = "$", // Protect against keys like “__proto__”.
+var keyPrefix$1 = "$", // Protect against keys like ï¿½__proto__ï¿½.
     preroot = {depth: -1},
     ambiguous = {};
 
@@ -11160,7 +11160,7 @@ function executeShifts(v) {
   }
 }
 
-// If vi-’s ancestor is a sibling of v, returns vi-’s ancestor. Otherwise,
+// If vi-ï¿½s ancestor is a sibling of v, returns vi-ï¿½s ancestor. Otherwise,
 // returns the specified (default) ancestor.
 function nextAncestor(vim, v, ancestor) {
   return vim.a.parent === v.parent ? vim.a : ancestor;
@@ -11215,7 +11215,7 @@ function tree() {
   function tree(root) {
     var t = treeRoot(root);
 
-    // Compute the layout using Buchheim et al.’s algorithm.
+    // Compute the layout using Buchheim et al.ï¿½s algorithm.
     t.eachAfter(firstWalk), t.parent.m = -t.z;
     t.eachBefore(secondWalk);
 
@@ -14277,7 +14277,7 @@ function arc() {
       // Is the sector collapsed to a line?
       if (!(da1 > epsilon$3)) context.moveTo(x01, y01);
 
-      // Does the sector’s outer ring have rounded corners?
+      // Does the sectorï¿½s outer ring have rounded corners?
       else if (rc1 > epsilon$3) {
         t0 = cornerTangents(x00, y00, x01, y01, r1, rc1, cw);
         t1 = cornerTangents(x11, y11, x10, y10, r1, rc1, cw);
@@ -14298,11 +14298,11 @@ function arc() {
       // Or is the outer ring just a circular arc?
       else context.moveTo(x01, y01), context.arc(0, 0, r1, a01, a11, !cw);
 
-      // Is there no inner ring, and it’s a circular sector?
-      // Or perhaps it’s an annular sector collapsed due to padding?
+      // Is there no inner ring, and itï¿½s a circular sector?
+      // Or perhaps itï¿½s an annular sector collapsed due to padding?
       if (!(r0 > epsilon$3) || !(da0 > epsilon$3)) context.lineTo(x10, y10);
 
-      // Does the sector’s inner ring (or point) have rounded corners?
+      // Does the sectorï¿½s inner ring (or point) have rounded corners?
       else if (rc0 > epsilon$3) {
         t0 = cornerTangents(x10, y10, x11, y11, r0, -rc0, cw);
         t1 = cornerTangents(x01, y01, x00, y00, r0, -rc0, cw);
@@ -15591,7 +15591,7 @@ function slope2(that, t) {
 }
 
 // According to https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Representations
-// "you can express cubic Hermite interpolation in terms of cubic Bézier curves
+// "you can express cubic Hermite interpolation in terms of cubic Bï¿½zier curves
 // with respect to the four values p0, p0 + m0 / 3, p1 - m1 / 3, p1".
 function point$5(that, t0, t1) {
   var x0 = that._x0,
@@ -16241,7 +16241,7 @@ function setEdgeEnd(edge, left, right, vertex) {
   }
 }
 
-// Liang–Barsky line clipping.
+// Liangï¿½Barsky line clipping.
 function clipEdge(edge, x0, y0, x1, y1) {
   var a = edge[0],
       b = edge[1],
@@ -16466,8 +16466,8 @@ function clipCells(x0, y0, x1, y1) {
     }
   }
 
-  // If there weren’t any edges, have the closest site cover the extent.
-  // It doesn’t matter which corner of the extent we measure!
+  // If there werenï¿½t any edges, have the closest site cover the extent.
+  // It doesnï¿½t matter which corner of the extent we measure!
   if (cover) {
     var dx, dy, d2, dc = Infinity;
 
@@ -17246,7 +17246,7 @@ function zoom() {
       clearTimeout(g.wheel);
     }
 
-    // If this wheel event won’t trigger a transform change, ignore it.
+    // If this wheel event wonï¿½t trigger a transform change, ignore it.
     else if (t.k === k) return;
 
     // Otherwise, capture the mouse point and location at the start.

@@ -68,28 +68,32 @@ const styles = {
     hexColor: function (min, max) {
 
         let colorRange = [
-            "black","MidnightBlue","Navy","DarkBlue",
+            "blue","#52a4ff","#00f9ff","#50ff7f",     
+            "#00FF00","#7CFF00","#B0FF00","#C2FF00","#D4FF00",
+            "#E5FF00","#FFF600","#FFE400","#FFD300","#FFAF00",
+            "#FF9E00","#FF8C00","#FF6900","#FF5700","red"
+        ];  // FIXME Temporary.
+
+        return {
+			radius : 12,
+			opacity: 0.6,
+			duration: 200,
+
+			colorScaleExtent: [ min, max ],
+			radiusScaleExtent: [ 1, undefined ],
+			colorDomain: null,
+			radiusDomain: null,
+			colorRange:["black","MidnightBlue","Navy","DarkBlue",
             "MediumBlue","blue","RoyalBlue","DodgerBlue",
             "DeepSkyBlue","LightSkyBlue", "Cyan", "PaleTurquoise",
             "aquamarine","lightgreen","mediumaquamarine","GreenYellow",
             "Lime","chartreuse","yellow","Gold", "orange",
-            "DarkOrange", "Coral", "Tomato","Crimson"
-        ];  // FIXME Temporary.
+            "DarkOrange", "Coral", "Tomato","Crimson"],
+			radiusRange: [ 1, 12 ],
 
-        return {
-            radius : 12,
-            opacity: 0.5,
-            duration: 200,
-
-            colorScaleExtent: [ 0, 96 ],
-            radiusScaleExtent: [ 1, undefined ],
-            colorDomain: "linear",
-            radiusDomain: null,
-            colorRange:colorRange,
-            radiusRange: [ 1, 12 ],
-            pointerEvents: 'all'
+			pointerEvents: 'all'
         }
 
-    }
+    },
 
 }

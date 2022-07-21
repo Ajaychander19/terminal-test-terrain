@@ -227,8 +227,7 @@ const drawing = {
 
                 for (let pci in result[earfcn]) {
 
-                    let hexLayer = L.hexbinLayer(styles.hexColor(minMeas, maxMeas))
-                                    .hoverHandler(L.HexbinHoverHandler.tooltip());
+                    let hexLayer = drawing.hexBin('test', styles.hexColor(minMeas, maxMeas));
                     hexLayer.data(result[earfcn][pci]);
                     result[earfcn][pci] = hexLayer;
 
@@ -267,23 +266,27 @@ const drawing = {
             else if (!b && this.#map.hasLayer(layer)) layer.removeFrom(this.#map);
         }
 
+    },
+
+    hexBin: function(tooltip, options) {
+
+        let hex = L.hexbinLayer(options);
+
+        let minFunct = function (d) {
+            let tempArray = d.map((i) => i.o[2]);
+            return Math.min.apply(null, tempArray);
+        }
+
+        hex._fn.colorValue = minFunct
+
+        hex.hoverHandler(
+            L.HexbinHoverHandler.tooltip({
+                tooltipContent: (d) => tooltip + ': ' + minFunct(d)
+            })
+        )
+
+        return hex;
+
     }
 
 }
-
-// MAYBE TEMPORARY
-// FROM : https://github.com/Asymmetrik/leaflet-d3/issues/54#issuecomment-538822001
-// this code snippet fixes a rendering bug on hexbins: they where not disappearing from the screen
-// when layer.clearLayers() was called.
-L.HexbinLayer.prototype.onRemove = function(map) {
-    L.SVG.prototype.onRemove.call(this);
-    // Destroy the svg container
-    this._destroyContainer();
-    // Remove events
-    map.off({ 'moveend': this.redraw }, this);
-    this._map = null;
-    // Explicitly will leave the data array alone in case the layer will be shown again
-    //this._data = [];
-    d3.select(this._container).remove();
-  };
-  // --------------------------------------------------------------------
