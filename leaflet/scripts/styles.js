@@ -78,7 +78,7 @@ const styles = {
 
         return {
             radius : 12,
-            opacity: 0,
+            opacity: 0.5,
             duration: 200,
 
             colorScaleExtent: [ 0, 96 ],

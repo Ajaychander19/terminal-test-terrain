@@ -114,53 +114,63 @@ const drawing = {
 
         }
 
-        drawServingHex(points, valChooser) {
+        // drawServingHex(points, valChooser) {
 
+        //     let hexDict = 
 
-
-        }
+        // }
 
         setPointLayer(layer, pointLayers, earfcns=null, pcis=null) {
 
+            // Check if tables have the same length.
             if (earfcns && pcis && earfcns.length !== pcis.length)
                 throw new Error('earfncs and pcis should have the same length');
             
+            // Clearing point layer.
             layer.clearLayers();
 
+            // Getting layers which correspond to chosen EARFCNs.
+
             let earfcnLayers = {};
-            if (earfcns) {
+            if (earfcns) {      // Chosen EARFCNs if earfncs param is not empty.
                 for (let e in earfcns) {
                     let earfcn = earfcns[e];
                     earfcnLayers[earfcn] = pointLayers[earfcn];
                 }
-            } else earfcnLayers = pointLayers;
+            } else earfcnLayers = pointLayers;  // All EARFCNs otherwise.
 
             let layers = [];
 
+            // For each groups of layers with the same EARFCN...
             for (let e in earfcnLayers) {
 
                     let earfcn = parseInt(e);
+
+                    // Current group of layers with the same EARFCN / PCI.
                     let pciLayers = earfcnLayers[e];
 
+                    // For each group of layer with the same EARFCN / PCI...
                     for (let p in pciLayers) {
 
-                        let pci = parseInt(p);
-                        let pciLayer = pciLayers[p];
+                        let pci = parseInt(p);          // Current PCI.
+                        let pciLayer = pciLayers[p];    // Layer associated to the PCI.
                         
-                        if (pcis) {
+                        if (pcis) {     // Chose PCIs of pcis param is not null.
 
-
+                            // PCI indexes in pcis, used to get the associated EARFCN in earfcns param.
                             let pciIndexes = utils.indexesOf(pcis, pci);
 
+                            // For each PCI index...
                             for (let pi in pciIndexes) {
 
                                 let pciIndex = pciIndexes[pi];
 
+                                // If current PCI corresponds to the current EARFCN, add to layers to show.
                                 if (pciIndex !== -1 && ((earfcns && earfcn === earfcns[pciIndex]) || !earfcns)) 
                                     layers.push(pciLayer);
                             }
 
-                        } else layers.push(pciLayer);
+                        } else layers.push(pciLayer);   // Choose all PCIs otherwise...
 
                     }
                     
@@ -205,7 +215,7 @@ const drawing = {
                         result[earfcn][pci] || (result[earfcn][pci] = []);
 
                         // Adding (lat, lng, measurement value).
-                        result[earfcn][pci].push([meas.lat, meas.lng, m]);
+                        if (m) result[earfcn][pci].push([measObj.lng, measObj.lat, m]);
 
                     }
 
@@ -219,7 +229,8 @@ const drawing = {
 
                     let hexLayer = L.hexbinLayer(styles.hexColor(minMeas, maxMeas))
                                     .hoverHandler(L.HexbinHoverHandler.tooltip());
-                    result[earfcn][pci] = hexLayer.data(result[earfcn, pci]);
+                    hexLayer.data(result[earfcn][pci]);
+                    result[earfcn][pci] = hexLayer;
 
                 }
 
@@ -259,3 +270,20 @@ const drawing = {
     }
 
 }
+
+// MAYBE TEMPORARY
+// FROM : https://github.com/Asymmetrik/leaflet-d3/issues/54#issuecomment-538822001
+// this code snippet fixes a rendering bug on hexbins: they where not disappearing from the screen
+// when layer.clearLayers() was called.
+L.HexbinLayer.prototype.onRemove = function(map) {
+    L.SVG.prototype.onRemove.call(this);
+    // Destroy the svg container
+    this._destroyContainer();
+    // Remove events
+    map.off({ 'moveend': this.redraw }, this);
+    this._map = null;
+    // Explicitly will leave the data array alone in case the layer will be shown again
+    //this._data = [];
+    d3.select(this._container).remove();
+  };
+  // --------------------------------------------------------------------
