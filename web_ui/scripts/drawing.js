@@ -114,11 +114,63 @@ const drawing = {
 
         }
 
-        // drawServingHex(points, valChooser) {
+        drawServingHex(layer, points, valChooser, earfcns, pcis) {
 
-        //     let hexDict = 
+            let hexData = [];
 
-        // }
+            // Getting EARFCN groups matching with earfcns parameter.
+
+            let earfcnGroups = {};
+
+            if (earfcns) earfcns.forEach((earfcn) => earfcnGroups[earfcn] = points[earfcn]);
+            else earfcnGroups = points;
+
+            // For each point group with the same EARFCN...
+            for (let e in earfcnGroups) {
+
+                let earfcn = parseInt(e);
+
+                // Current groups of points with the same EARFCN / PCI.
+                let pciGroups = earfcnGroups[e];
+
+                for (let p in pciGroups) {
+
+                    let pci = parseInt(p);
+                    let pciGroup = pciGroups[pci];
+
+                    let pushToHex = () => hexData.push(...(pciGroup.map((pt) => [pt.lng, pt.lat, valChooser(earfcn, pci, pt)])));
+
+                    if (pcis) { // Getting matching PCIs if pcis is not null.
+
+                        let pciIndexes = utils.indexesOf(pcis, pci);
+
+                        for (let pi in pciIndexes) {
+
+                            let pciIndex = pciIndexes[pi];
+
+                            // If current PCI corresponds to the current EARFCN, add to points to data.
+                            if (pciIndex !== -1 && ((earfcns && earfcn === earfcns[pciIndex]) || !earfcns))
+                                pushToHex();
+
+                        }
+
+                    } else pushToHex();
+
+                }
+
+            }
+
+            let values = hexData.map((h) => h[2]);
+
+            layer.options.colorScaleExtent = [
+                Math.min(...values), Math.max(...values)
+            ];
+
+            layer.redraw();
+
+            layer.data(hexData);
+
+        }
 
         setPointLayer(layer, pointLayers, earfcns=null, pcis=null) {
 
@@ -132,12 +184,8 @@ const drawing = {
             // Getting layers which correspond to chosen EARFCNs.
 
             let earfcnLayers = {};
-            if (earfcns) {      // Chosen EARFCNs if earfncs param is not empty.
-                for (let e in earfcns) {
-                    let earfcn = earfcns[e];
-                    earfcnLayers[earfcn] = pointLayers[earfcn];
-                }
-            } else earfcnLayers = pointLayers;  // All EARFCNs otherwise.
+            if (earfcns) earfcns.forEach((earfcn) => earfcnLayers[earfcn] = pointLayers[earfcn]);
+            else earfcnLayers = pointLayers;  // All EARFCNs otherwise.
 
             let layers = [];
 
@@ -180,7 +228,7 @@ const drawing = {
 
         }
 
-        drawHex(measurements, earfcns, pcis) {
+        drawHex(measurements, earfcns, pcis, tooltip) {
 
             let result = {};
 
@@ -227,7 +275,7 @@ const drawing = {
 
                 for (let pci in result[earfcn]) {
 
-                    let hexLayer = drawing.hexBin('test', styles.hexColor(minMeas, maxMeas));
+                    let hexLayer = drawing.hexBin(tooltip, styles.hexColor(minMeas, maxMeas));
                     hexLayer.data(result[earfcn][pci]);
                     result[earfcn][pci] = hexLayer;
 
