@@ -12,3 +12,4 @@ src/__pycache__
 /*.json
 /*.csv
 /*.pcap
+web_ui/node_modules
