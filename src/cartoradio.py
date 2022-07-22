@@ -61,7 +61,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
             'Support_Number', 'Cartoradio_Number', 'Lat', 'Lng', 'Height', 'Info_Addr', 'Info_Municipality',
             'Ant_Number', 'Dest_Lat', 'Dest_Lng', 'Azimuth', 'AzimuthMin', 'AzimuthMax', 'MinFreq', 'MaxFreq'
         ],
-        'DELIMITER': ['Support_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng']
+        'DELIMITER': ['Cartoradio_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng']
     }
 
     # Reading input data by operator.
@@ -99,7 +99,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
                     print('Rejected base station {} (reason: underground).'.format(supp_num))
 
                 # Delimitation lines of sectors.
-                delimiters = {'supp_num': [], 'lat': [], 'lng': [], 'del_lat': [], 'del_lng': []}
+                delimiters = {'carto_num': [], 'lat': [], 'lng': [], 'del_lat': [], 'del_lng': []}
 
                 # Associates antennas azimuths and sectors delimiters azimuths.
                 az_assoc = {}
@@ -150,6 +150,9 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
                 # Inserting data in the output file...
                 for i in range(len(station_group_dict['Numéro Cartoradio'])):
 
+                    # Current Cartoradio Number.
+                    carto_num = station_group_dict['Numéro Cartoradio'][i]
+
                     # Current antenna azimuth.
                     ant_az = station_group_dict['Azimut'][i]
 
@@ -171,7 +174,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
 
                     # Writing BS_ANTENNA entry...
                     out.write_row([
-                        'BS_ANTENNA', supp_num, station_group_dict['Numéro Cartoradio'][i],
+                        'BS_ANTENNA', supp_num, carto_num,
                         lat, lng, station_group_dict['Hauteur / sol'][i], station_group_dict['Adresse'][i],
                         station_group_dict['Commune'][i], station_group_dict["Numéro d'antenne"][i],
                         lat + 0.0005 * math.cos(ant_az * np.pi / 180),
@@ -188,7 +191,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
                         insert_data(
                             delimiters,
                             {
-                                'supp_num': [supp_num],
+                                'carto_num': [carto_num],
                                 'lat': [lat],
                                 'lng': [lng],
                                 'del_lat': [del_coords[0]],
@@ -203,7 +206,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
                         insert_data(
                             delimiters,
                             {
-                                'supp_num': [supp_num],
+                                'carto_num': [carto_num],
                                 'lat': [lat],
                                 'lng': [lng],
                                 'del_lat': [del_coords[0]],
@@ -213,9 +216,9 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
                         )
 
                 # Writing delimiters.
-                for i in range(len(delimiters['supp_num'])):
+                for i in range(len(delimiters['carto_num'])):
                     out.write_row(
-                        ['DELIMITER', delimiters['supp_num'][i], delimiters['lat'][i],
+                        ['DELIMITER', delimiters['carto_num'][i], delimiters['lat'][i],
                          delimiters['lng'][i], delimiters['del_lat'][i], delimiters['del_lng'][i]]
                     )
 
