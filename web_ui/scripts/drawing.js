@@ -36,6 +36,8 @@ const drawing = {
             this.#servingRSSI = L.layerGroup();
             this.#servingCINR = L.layerGroup();
 
+            this.#assocLayer = L.layerGroup();
+
             this.#nonFilteredTAC = null;
             this.#nonFilteredPCI = null;
         }
@@ -114,7 +116,7 @@ const drawing = {
 
         }
 
-        drawServingHex(layer, points, valChooser, earfcns, pcis) {
+        drawServingHex(layer, points, valChooser, earfcns=null, pcis=null) {
 
             let hexData = [];
 
@@ -169,6 +171,30 @@ const drawing = {
             layer.redraw();
 
             layer.data(hexData);
+
+        }
+
+        drawAssocs(assocs, displayCheck=false) {
+
+            let result = {};
+
+            assocs.forEach(
+                (assoc) => {
+
+                    let cartoNum = assoc.cartoNum;
+
+                    if (!result[cartoNum]) {
+
+                        let ant = rdr.antennas[cartoNum];
+                        let marker = L.marker([ant.lat, ant.lng], {icon: styles.stationIcon()});
+                        result[cartoNum] = marker;
+
+                        marker.addTo(this.#assocLayer);
+
+                    }
+
+                }
+            );
 
         }
 
@@ -309,6 +335,8 @@ const drawing = {
 
         setPCILayer(b) { this.#setLayerVisibility(this.#pciLayer, b); }
 
+        setAssocLayer(b) { this.#setLayerVisibility(this.#assocLayer, b); }
+
         #setLayerVisibility(layer, b) {
             if (b && !this.#map.hasLayer(layer)) layer.addTo(this.#map);
             else if (!b && this.#map.hasLayer(layer)) layer.removeFrom(this.#map);
@@ -316,7 +344,7 @@ const drawing = {
 
     },
 
-    hexBin: function(tooltip, options) {
+    hexBin: function (tooltip, options) {
 
         let hex = L.hexbinLayer(options);
 
