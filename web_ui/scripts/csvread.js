@@ -39,7 +39,7 @@ var csvread = {
             this.#rsrqs = [];
             this.#rssis = [];
             this.#rsrqs = [];
-            this.#assocs = [];
+            this.#assocs = {};
             this.#antDirs = [];
             this.#sectDels = [];
             this.#antennas = {};
@@ -239,16 +239,17 @@ var csvread = {
                                 if (llen < 7) throw new Error(
                                     'Error: line ' + lineNum + ': ASSOC line must contain at least 7 fields.');
 
-                                let assoc = {
-                                    cartoNum: csvread.parseNum(line[1], lineNum),
+                                let carto = csvread.parseNum(line[1], lineNum);
+
+                                this.#assocs[carto] || (this.#assocs[carto] = []);
+
+                                this.#assocs[carto].push({
                                     antNum: csvread.parseNum(line[2], lineNum),
                                     tac: csvread.parseNum(line[3], lineNum),
                                     cid: csvread.parseNum(line[4], lineNum),
                                     earfcn: csvread.parseNum(line[5], lineNum),
                                     pci: csvread.parseNum(line[6], lineNum)
-                                };
-
-                                this.#assocs.push(assoc);
+                                });
 
                                 break;
 

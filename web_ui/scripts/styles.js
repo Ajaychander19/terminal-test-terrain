@@ -105,9 +105,9 @@ const styles = {
             iconUrl: 'wifi-zone-marker.png',
             shadowUrl: 'site-shadow.png',
             iconSize:     [32, 32], // size of the icon
-            shadowSize:   [25, 40], // size of the shadow
+            shadowSize:   [39, 40], // size of the shadow
             iconAnchor:   [15,28], // point of the icon which will correspond to marker's location
-        
+            shadowAnchor: [12, 36]
         });
 
     }

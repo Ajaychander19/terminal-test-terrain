@@ -23,3 +23,18 @@ body
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+#map
+{
+    font-size: 8pt;
+}
+
+.tooltip-title
+{
+    font-weight: bold;
+}
+
+.check-div label
+{
+    font-weight: normal;
+}

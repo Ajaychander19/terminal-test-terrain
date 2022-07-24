@@ -176,25 +176,57 @@ const drawing = {
 
         drawAssocs(assocs, displayCheck=false) {
 
-            let result = {};
+            for (let cartoNum in assocs) {
 
-            assocs.forEach(
-                (assoc) => {
+                let assoc = assocs[cartoNum];
+                let ant = rdr.antennas[cartoNum];
+                let marker = L.marker([ant.lat, ant.lng], {icon: styles.stationIcon()});
 
-                    let cartoNum = assoc.cartoNum;
+                marker.bindPopup(
+                    this.drawMarkerPopup(cartoNum, assoc),
+                    {closeOnClick: false, autoClose: false}
+                );
+                marker.addTo(this.#assocLayer);
 
-                    if (!result[cartoNum]) {
+            }
 
-                        let ant = rdr.antennas[cartoNum];
-                        let marker = L.marker([ant.lat, ant.lng], {icon: styles.stationIcon()});
-                        result[cartoNum] = marker;
 
-                        marker.addTo(this.#assocLayer);
+        }
 
-                    }
+        drawMarkerPopup(cartoNum, assoc) {
+
+            let popDiv = document.createElement('div');
+            popDiv.innerHTML = '<span class="tooltip-title">' + cartoNum + '</span><br>';
+
+            let checkDiv = document.createElement('div');
+            checkDiv.classList.add('check-div');
+
+            assoc.forEach(
+                (asc) => {
+
+                    let earfcn = asc.earfcn;
+                    let pci = asc.pci;
+
+                    let checkBox = document.createElement('input');
+                    checkBox.setAttribute('type', 'checkbox');
+                    
+                    let checkId = 'check' + '-' + cartoNum + '-' + earfcn + '-' + pci;
+                    checkBox.id = checkId;
+
+                    let label = document.createElement('label');
+                    label.setAttribute('for', checkId);
+                    label.innerHTML = earfcn + ' - ' + pci;
+
+                    checkDiv.append(...[
+                        checkBox, label, document.createElement('br')
+                    ]);
 
                 }
             );
+
+            popDiv.append(checkDiv);
+
+            return popDiv;
 
         }
 
