@@ -40,6 +40,7 @@ const drawing = {
 
             this.#nonFilteredTAC = null;
             this.#nonFilteredPCI = null;
+
         }
 
         drawCells(voronoi, antFeats, delFeats) {
@@ -174,16 +175,18 @@ const drawing = {
 
         }
 
-        drawAssocs(assocs, displayCheck=false) {
+        drawAssocs(assocs, antennas, displayCheck=false) {
 
             for (let cartoNum in assocs) {
 
-                let assoc = assocs[cartoNum];
-                let ant = rdr.antennas[cartoNum];
+                let assoc = assocs[cartoNum];       // Association between current Cartoradio Num. and EARFCN / PCI.
+                let ant = antennas[cartoNum];   // Associated antenna
+
+                // Creating the marker object.
                 let marker = L.marker([ant.lat, ant.lng], {icon: styles.stationIcon()});
 
                 marker.bindPopup(
-                    this.drawMarkerPopup(cartoNum, assoc),
+                    this.drawAssocPopup(cartoNum, assoc),
                     {closeOnClick: false, autoClose: false}
                 );
                 marker.addTo(this.#assocLayer);
@@ -193,30 +196,39 @@ const drawing = {
 
         }
 
-        drawMarkerPopup(cartoNum, assoc) {
+        drawAssocPopup(cartoNum, assoc) {
 
+            // Content element of the popup.
             let popDiv = document.createElement('div');
+
+            // Popup title.
             popDiv.innerHTML = '<span class="tooltip-title">' + cartoNum + '</span><br>';
 
+            // Checkboxes container element.
             let checkDiv = document.createElement('div');
             checkDiv.classList.add('check-div');
 
+            // Inserting checkboxes for each associated EARFCN / PCI...
             assoc.forEach(
                 (asc) => {
 
                     let earfcn = asc.earfcn;
                     let pci = asc.pci;
 
+                    // Checkbox element.
                     let checkBox = document.createElement('input');
                     checkBox.setAttribute('type', 'checkbox');
                     
+                    // Identifying the checkbox.
                     let checkId = 'check' + '-' + cartoNum + '-' + earfcn + '-' + pci;
                     checkBox.id = checkId;
 
+                    // Label of the checkbox.
                     let label = document.createElement('label');
                     label.setAttribute('for', checkId);
                     label.innerHTML = earfcn + ' - ' + pci;
 
+                    // Adding it to the checkboxes container div...
                     checkDiv.append(...[
                         checkBox, label, document.createElement('br')
                     ]);
@@ -374,6 +386,37 @@ const drawing = {
             else if (!b && this.#map.hasLayer(layer)) layer.removeFrom(this.#map);
         }
 
+        enableInputs(b) {
+
+            let visuInputs = document.querySelectorAll('.visu-params input, .visu-params select');
+            
+            if (b) visuInputs.forEach((input) => input.removeAttribute('disabled'));
+            else visuInputs.forEach((input) => input.setAttribute('disabled', ''));
+
+        }
+
+        drawSelectors(earfcns, pcis) {
+
+
+            let pciSelector = document.querySelector('#PCI_select');
+            let earSelector = document.querySelector('#EARFCN_select');
+
+            earSelector.innerHTML = '';
+            pciSelector.innerHTML = '';
+
+            earfcns.forEach(
+                (earfcn) => {
+                    
+                    let option = document.createElement('option');
+                    option.setAttribute('value', 'earfcn-' + earfcn);
+                    option.innerHTML = earfcn;
+                    earSelector.append(option);
+
+                }
+            )
+
+        }
+
     },
 
     hexBin: function (tooltip, options) {
@@ -385,7 +428,7 @@ const drawing = {
             return Math.min.apply(null, tempArray);
         }
 
-        hex._fn.colorValue = minFunct
+        hex._fn.colorValue = minFunct;
 
         hex.hoverHandler(
             L.HexbinHoverHandler.tooltip({

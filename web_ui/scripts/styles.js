@@ -110,6 +110,17 @@ const styles = {
             shadowAnchor: [12, 36]
         });
 
+    },
+
+    mapStyle: function (baseMap) {
+
+        // copied from the old program.
+        return {
+            center: [47.148, 4.474],
+            maxZoom: 17, 
+            zoom: 6,
+            layers: baseMap
+        };
     }
 
 }

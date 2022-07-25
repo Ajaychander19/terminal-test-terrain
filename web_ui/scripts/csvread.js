@@ -22,6 +22,7 @@ var csvread = {
 
         // Associations
         #assocs
+        #reverseAssocs
 
         // Directivity
         #antDirs
@@ -40,6 +41,7 @@ var csvread = {
             this.#rssis = [];
             this.#rsrqs = [];
             this.#assocs = {};
+            this.#reverseAssocs = {};
             this.#antDirs = [];
             this.#sectDels = [];
             this.#antennas = {};
@@ -240,6 +242,11 @@ var csvread = {
                                     'Error: line ' + lineNum + ': ASSOC line must contain at least 7 fields.');
 
                                 let carto = csvread.parseNum(line[1], lineNum);
+                                let earfcn_ = csvread.parseNum(line[5], lineNum);
+                                let pci_ = csvread.parseNum(line[6], lineNum);
+
+                                this.#reverseAssocs[earfcn_] || (this.#reverseAssocs[earfcn_] = {});
+                                this.#reverseAssocs[earfcn_][pci_] || (this.#reverseAssocs[earfcn_][pci_] = carto);
 
                                 this.#assocs[carto] || (this.#assocs[carto] = []);
 
@@ -289,6 +296,8 @@ var csvread = {
         get antennaDirections() { return utils.deepCopy(this.#antDirs); }
 
         get antennas() { return utils.deepCopy(this.#antennas); }
+
+        get reverseAssocs() { return utils.deepCopy(this.#reverseAssocs); }
     
     },
 
