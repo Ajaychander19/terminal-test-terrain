@@ -31,10 +31,10 @@ const drawing = {
             this.#tacLayer = L.layerGroup();
             this.#pciLayer = L.layerGroup();
 
-            this.#servingRSRP = L.layerGroup();
-            this.#servingRSRQ = L.layerGroup();
-            this.#servingRSSI = L.layerGroup();
-            this.#servingCINR = L.layerGroup();
+            this.#servingRSRP = drawing.hexBin('RSRP', styles.hexColor(0, 1));
+            this.#servingRSRQ = drawing.hexBin('RSRQ', styles.hexColor(0, 1));
+            this.#servingRSSI = drawing.hexBin('RSSI', styles.hexColor(0, 1));
+            this.#servingCINR = drawing.hexBin('CINR', styles.hexColor(0, 1));
 
             this.#assocLayer = L.layerGroup();
 
@@ -121,6 +121,9 @@ const drawing = {
 
             let hexData = [];
 
+            let min = null;
+            let max = null;
+
             // Getting EARFCN groups matching with earfcns parameter.
 
             let earfcnGroups = {};
@@ -140,6 +143,15 @@ const drawing = {
 
                     let pci = parseInt(p);
                     let pciGroup = pciGroups[pci];
+
+                    let localMin = Math.min(...(pciGroup.map((pt) => valChooser(earfcn, pci, pt))));
+                    let localMax = Math.max(...(pciGroup.map((pt) => valChooser(earfcn, pci, pt))));
+
+                    if (min != null) min = Math.min(localMin, min)
+                    else min = localMin;
+
+                    if (max != null) max = Math.max(localMax, max)
+                    else max = localMax;
 
                     let pushToHex = () => hexData.push(...(pciGroup.map((pt) => [pt.lng, pt.lat, valChooser(earfcn, pci, pt)])));
 
@@ -165,9 +177,7 @@ const drawing = {
 
             let values = hexData.map((h) => h[2]);
 
-            layer.options.colorScaleExtent = [
-                Math.min(...values), Math.max(...values)
-            ];
+            layer.options.colorScaleExtent = [min, max];
 
             layer.redraw();
 
@@ -361,6 +371,34 @@ const drawing = {
 
         drawPCI(points) { return this.drawPoints(points, (_e, pc, _p) => pc, (p) => styles.pciColor(p, 1)); }
 
+        drawServingRSRP(points, earfcns=null, pcis=null) {
+            this.drawServingHex(
+                this.#servingRSRP, points, (_e, _p, pt) => pt.rsrp,
+                earfcns, pcis
+            );
+        }
+
+        drawServingRSRQ(points, earfcns=null, pcis=null) {
+            this.drawServingHex(
+                this.#servingRSRQ, points, (_e, _p, pt) => pt.rsrq,
+                earfcns, pcis
+            );
+        }
+
+        drawServingRSSI(points, earfcns=null, pcis=null) {
+            this.drawServingHex(
+                this.#servingRSSI, points, (_e, _p, pt) => pt.rssi,
+                earfcns, pcis
+            );
+        }
+
+        drawServingCINR(points, earfcns=null, pcis=null) {
+            this.drawServingHex(
+                this.#servingCINR, points, (_e, _p, pt) => pt.cinr,
+                earfcns, pcis
+            );
+        }
+
         updateTACLayer(points, earfcn=null, pci=null) {
             this.#nonFilteredTAC || (this.#nonFilteredTAC = this.drawTAC(points));
             this.setPointLayer(this.#tacLayer, this.#nonFilteredTAC, earfcn, pci); 
@@ -371,6 +409,8 @@ const drawing = {
             this.setPointLayer(this.#pciLayer, this.#nonFilteredPCI, earfcn, pci); 
         }
 
+
+
         setCellLayer(b) { this.#setLayerVisibility(this.#cellLayer, b); }
 
         setAntLayer(b) { this.#setLayerVisibility(this.#antLayer, b); }
@@ -380,6 +420,14 @@ const drawing = {
         setPCILayer(b) { this.#setLayerVisibility(this.#pciLayer, b); }
 
         setAssocLayer(b) { this.#setLayerVisibility(this.#assocLayer, b); }
+
+        setServingRSRP(b) { this.#setLayerVisibility(this.#servingRSRP, b); }
+
+        setServingRSRQ(b) { this.#setLayerVisibility(this.#servingRSRQ, b); }
+
+        setServingRSSI(b) { this.#setLayerVisibility(this.#servingRSSI, b); }
+
+        setServingCINR(b) { this.#setLayerVisibility(this.#servingCINR, b); }
 
         #setLayerVisibility(layer, b) {
             if (b && !this.#map.hasLayer(layer)) layer.addTo(this.#map);
@@ -398,19 +446,38 @@ const drawing = {
         drawSelectors(earfcns, pcis) {
 
 
-            let pciSelector = document.querySelector('#PCI_select');
+            let pciSelector = document.querySelector('#pci-select');
             let earSelector = document.querySelector('#EARFCN_select');
 
-            earSelector.innerHTML = '';
-            pciSelector.innerHTML = '';
+            earSelector.innerHTML = '<option value="serving-earfcn">Serving EARFCN</option>';
+            pciSelector.innerHTML = '<option value="serving-pci">Serving PCI</option>';
 
             earfcns.forEach(
                 (earfcn) => {
+
+                    if (!document.querySelector('#EARFCN_select option[value="' + earfcn + '"]')) {
                     
-                    let option = document.createElement('option');
-                    option.setAttribute('value', 'earfcn-' + earfcn);
-                    option.innerHTML = earfcn;
-                    earSelector.append(option);
+                        let option = document.createElement('option');
+                        option.setAttribute('value', earfcn);
+                        option.innerHTML = earfcn;
+                        earSelector.append(option);
+
+                    }
+
+                }
+            );
+
+            pcis.forEach(
+                (pci) => {
+
+                    if (!document.querySelector('#pci-select option[value="' + pci + '"]')) {
+                    
+                        let option = document.createElement('option');
+                        option.setAttribute('value', pci);
+                        option.innerHTML = pci;
+                        pciSelector.append(option);
+
+                    }
 
                 }
             )

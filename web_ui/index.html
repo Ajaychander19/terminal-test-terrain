@@ -52,7 +52,7 @@
 			</div>
 			<div class="col-sm-9">
 				 <div id="map"></div>
-				 <div class="panel-heading">DEVELOPED BY HOANG TRIEU</div>
+				 <div class="panel-heading">ORIGINAL PROGRAM DEVELOPED BY HOANG TRIEU.<br>2022 VERSION OF THE PROGRAM BY KILLIAN CALLAC</div>
 			</div>
 
 			<div id="tool-div" class="col-sm-3">
@@ -97,22 +97,22 @@
 					</div>
 
 					<div class="checkbox checkbox-primary">
-						<input class="styled" type="radio" name="hex" id="RSRP">
+						<input class="styled" type="checkbox" id="RSRP">
 						<label for="RSRP">RSRP</label>
 					</div>
 
 					<div class="checkbox checkbox-primary">
-						<input class="styled" type="radio" name="hex" id="rsrq">
+						<input class="styled" type="checkbox" id="rsrq">
 						<label for="rsrq">RSRQ</label>
 					</div>
 
 					<div class="checkbox checkbox-primary">
-						<input class="styled" type="radio" name="hex" id="rssi">
+						<input class="styled" type="checkbox" id="rssi">
 						<label for="rssi">RSSI</label>
 					</div>
 
 					<div class="checkbox checkbox-primary">
-						<input class="styled" type="radio" name="hex" id="cinr">
+						<input class="styled" type="checkbox" id="cinr">
 						<label for="cinr">CINR</label>
 					</div>
 
@@ -121,13 +121,6 @@
 						<input class="styled" type="checkbox"  id="RSRP_offset">
 						<label for="RSRP_offset">First neighbour RSRP offset </label>
 					</div>
-				</div>
-
-				<div class="panel panel-success visu-params">
-					<div class="panel-heading">EARFCN</div>
-					<select class="form-control selectpicker" id="EARFCN_select">
-						<option value="serving-earfcn">Serving EARFCN</option>
-					</select>
 				</div>
 
 				<div class="panel panel-success visu-params">
@@ -142,13 +135,19 @@
 				</div>
 
 				<div class="panel panel-success visu-params">
+					<div class="panel-heading">EARFCN</div>
+					<select class="form-control selectpicker" id="EARFCN_select">
+						<option value="serving-earfcn">Serving EARFCN</option>
+					</select>
+				</div>
+
+				<div class="panel panel-success visu-params">
 					<div class="panel-heading">PCI</div>
 					<div id="pci_div" class="form-group">
 						<!-- Maybe temporary -->
-						<label for="PCI_select"></label>
-						<select class="form-control selectpicker" id="PCI_select">
+						<label for="pci-select"></label>
+						<select class="form-control selectpicker" id="pci-select">
 							<option value='serving-pci'>Serving PCI</option>
-							<option value='best_pci'>Best server</option>
 						</select>
 					</div>
 				</div>
