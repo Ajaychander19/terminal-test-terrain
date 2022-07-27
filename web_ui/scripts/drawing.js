@@ -50,6 +50,8 @@ const drawing = {
 
         drawCells(voronoi, antFeats, delFeats) {
 
+            this.#cellLayer.clearLayers();
+
             // GeoJSON features of Voronoi cells.
             let vorFeats = voronoi.features;
             
@@ -168,6 +170,8 @@ const drawing = {
         }
 
         drawAssocs(assocs, antennas, displayCheck=false) {
+
+            this.#assocLayer.clearLayers();
 
             for (let cartoNum in assocs) {
 
@@ -384,12 +388,12 @@ const drawing = {
         }
 
         updateTACLayer(points, earfcn=null, pci=null) {
-            this.#nonFilteredTAC || (this.#nonFilteredTAC = this.drawTAC(points));
+            this.#nonFilteredTAC = this.drawTAC(points);
             this.setPointLayer(this.#tacLayer, this.#nonFilteredTAC, earfcn, pci); 
         }
 
         updatePCILayer(points, earfcn=null, pci=null) {
-            this.#nonFilteredPCI || (this.#nonFilteredPCI = this.drawPCI(points));
+            this.#nonFilteredPCI = this.drawPCI(points);
             this.setPointLayer(this.#pciLayer, this.#nonFilteredPCI, earfcn, pci); 
         }
 
@@ -424,15 +428,6 @@ const drawing = {
         #setLayerVisibility(layer, b) {
             if (b && !this.#map.hasLayer(layer)) layer.addTo(this.#map);
             else if (!b && this.#map.hasLayer(layer)) layer.removeFrom(this.#map);
-        }
-
-        enableInputs(b) {
-
-            let visuInputs = document.querySelectorAll('.visu-params input, .visu-params select');
-            
-            if (b) visuInputs.forEach((input) => input.removeAttribute('disabled'));
-            else visuInputs.forEach((input) => input.setAttribute('disabled', ''));
-
         }
 
         drawSelectors(earfcns, pcis) {

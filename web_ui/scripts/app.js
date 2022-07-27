@@ -58,6 +58,8 @@ const app = {
             // Creating the map.
             this.#map = L.map('map', styles.mapStyle(baseMaps['Base Layer']));
 
+            this.reset();
+
             // Adding background layers. 
             L.control.layers(baseMaps, null, { collapsed: false }).addTo(this.#map);
 
@@ -95,6 +97,8 @@ const app = {
                 this.#drawingMap.setAssocLayer(true);
 
                 this.#drawingMap.drawSelectors(earfcns, pcis);
+
+                this.enableInputs(true);
 
                 this.update();
 
@@ -180,6 +184,8 @@ const app = {
 
             }
 
+            document.querySelector('#clear-all').onclick = (evt) => this.reset();
+
         }
 
         update() {
@@ -230,6 +236,48 @@ const app = {
                 this.#drawingMap.setServingCINR(false);
 
             }
+
+        }
+
+        reset() {
+
+            console.log('reset');
+
+            this.#earfcnOnServing = true;
+            this.#pciOnServing = true;
+            this.#onServing = true;
+
+            this.#selEarfcns = null;
+            this.#selPcis = null;
+
+            this.#rsrpChecked = false;
+            this.#rsrqChecked = false;
+            this.#rssiChecked = false;
+            this.#cinrChecked = false;
+
+            this.#fileReader = null;
+
+            document.querySelectorAll('select').forEach((elt) => elt.innerHTML = '');
+            document.querySelectorAll('input[type="checkbox"]').forEach((elt) => elt.checked = false);
+
+            this.enableInputs(false);
+
+            if (this.#drawingMap) {
+                this.updateDisplay();
+                this.#drawingMap.setAntLayer(false);
+                this.#drawingMap.setAssocLayer(false);
+                this.#drawingMap.setCellLayer(false);
+                this.#drawingMap.setTACLayer(false);
+                this.#drawingMap.setPCILayer(false);
+            }
+
+        }
+
+        enableInputs(b) {
+
+            let visuInputs = document.querySelectorAll('.visu-params input, .visu-params select');
+            
+            visuInputs.forEach((input) => input.disabled = !b);
 
         }
 
