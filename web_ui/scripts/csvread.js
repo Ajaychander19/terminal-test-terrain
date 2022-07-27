@@ -19,6 +19,7 @@ var csvread = {
         #rsrps
         #rssis
         #rsrqs
+        #cinrs
 
         // Associations
         #assocs
@@ -30,6 +31,17 @@ var csvread = {
 
         #antennas
 
+        // Minimum / maximums.
+        #minRSRP
+        #minRSRQ
+        #minRSSI
+        #minCINR
+
+        #maxRSRP
+        #maxRSRQ
+        #maxRSSI
+        #maxCINR
+
         
         constructor(file) {
             this.#file = file;
@@ -39,12 +51,22 @@ var csvread = {
             this.#rsrps = [];
             this.#rsrqs = [];
             this.#rssis = [];
-            this.#rsrqs = [];
+            this.#cinrs = [];
             this.#assocs = {};
             this.#reverseAssocs = {};
             this.#antDirs = [];
             this.#sectDels = [];
             this.#antennas = {};
+
+            this.#minRSRP = null;
+            this.#minRSRQ = null;
+            this.#minRSSI = null;
+            this.#minCINR = null;
+    
+            this.#maxRSRP = null;
+            this.#maxRSRQ = null;
+            this.#maxRSSI = null;
+            this.#maxCINR = null;
 
             this.#freader = new FileReader();
 
@@ -105,7 +127,7 @@ var csvread = {
                                 if (llen < 6) throw new Error(
                                     'Error: line ' + lineNum + ': MEAS_EARFCNS line must contain at least 6 fields.')
 
-                                for (let j = 5; j < llen; j++) this.#earfcns.push(line[j]);
+                                for (let j = 5; j < llen; j++) this.#earfcns.push(parseInt(line[j]));
                                 measEarfcns = true
                                 break;
 
@@ -117,7 +139,7 @@ var csvread = {
                                 if (llen < 6) throw new Error(
                                     'Error: line ' + lineNum + ': MEAS_PCIS line must contain at least 6 fields.')
 
-                                for (let j = 5; j < llen; j++) this.#pcis.push(line[j]);
+                                for (let j = 5; j < llen; j++) this.#pcis.push(parseInt(line[j]));
 
                                 if (this.#earfcns.length !== this.#pcis.length) throw new Error(
                                     'Error: line ' + lineNum + ': EARFCN count is different of PCI count.');
@@ -136,22 +158,6 @@ var csvread = {
                                 // Choosing in which table measurement will be added...    
 
                                 let toAdd = null
-
-                                switch (line[4]) {
-
-                                    case 'RSRP':
-                                        toAdd = this.#rsrps;
-                                        break;
-
-                                    case 'RSRQ':
-                                        toAdd = this.#rsrqs;
-                                        break;
-
-                                    case 'RSSI':
-                                        toAdd = this.#rssis;
-                                        break;
-
-                                }
             
                                 // Series of measure taken in the same timestamp.
                                 let series = {
@@ -165,6 +171,48 @@ var csvread = {
                                 for (let j = 5; j < llen; j++) 
                                     series.meas.push(csvread.parseNum(line[j], lineNum, true));
 
+
+                                let localMin = Math.min(...(series.meas.filter((e) => e !== null)));
+                                let localMax = Math.max(...(series.meas.filter((e) => e !== null)));
+
+                                switch (line[4]) {
+
+                                    case 'RSRP':
+                                        toAdd = this.#rsrps;
+
+                                        this.#minRSRP || (this.#minRSRP = localMin);
+                                        this.#maxRSRP || (this.#maxRSRP = localMax);
+
+                                        if (this.#minRSRP > localMin) this.#minRSRP = localMin;
+                                        if (this.#maxRSRP < localMax) this.#maxRSRP = localMax;
+
+                                        break;
+
+                                    case 'RSRQ':
+                                        toAdd = this.#rsrqs;
+
+                                        this.#minRSRQ || (this.#minRSRQ = localMin);
+                                        this.#maxRSRQ || (this.#maxRSRQ = localMax);
+
+                                        if (this.#minRSRQ > localMin) this.#minRSRQ = localMin;
+                                        if (this.#maxRSRQ < localMax) this.#maxRSRQ = localMax;
+
+                                        break;
+
+                                    case 'RSSI':
+                                        toAdd = this.#rssis;
+
+                                        
+                                            this.#minRSSI || (this.#minRSSI = localMin);
+                                            this.#maxRSSI || (this.#maxRSSI = localMax);
+
+                                            if (this.#minRSSI > localMin) this.#minRSSI = localMin;
+                                            if (this.#maxRSSI < localMax) this.#maxRSSI = localMax;
+
+                                        break;
+
+                                }
+
                                 toAdd.push(series);
 
                                 break;
@@ -176,6 +224,7 @@ var csvread = {
 
                                 let earfcn = csvread.parseNum(line[5], lineNum);
                                 let pci = csvread.parseNum(line[6], lineNum);
+                                let cinr = csvread.parseNum(line[10], lineNum);
 
                                 // Filling serving EARFCN / PCI measurements dictionnary...
                                 if (this.#points[earfcn] === undefined) this.#points[earfcn] = {}
@@ -190,8 +239,14 @@ var csvread = {
                                     rsrp: csvread.parseNum(line[7], lineNum),
                                     rsrq: csvread.parseNum(line[8], lineNum),
                                     rssi: csvread.parseNum(line[9], lineNum),
-                                    cinr: csvread.parseNum(line[10], lineNum),
+                                    cinr: cinr,
                                 };
+
+                                this.#minCINR || (this.#minCINR = cinr);
+                                this.#maxCINR || (this.#maxCINR = cinr);
+
+                                if (this.#minCINR > cinr) this.#minCINR = cinr;
+                                if (this.#maxCINR < cinr) this.#maxCINR = cinr;
 
                                 this.#points[earfcn][pci].push(point);
 
@@ -289,6 +344,8 @@ var csvread = {
 
         get rssis() { return utils.deepCopy(this.#rssis); }
 
+        get cinrs() { return utils.deepCopy(this.#cinrs); }
+
         get points() { return utils.deepCopy(this.#points); }
 
         get assocs() { return utils.deepCopy(this.#assocs); }
@@ -298,6 +355,21 @@ var csvread = {
         get antennas() { return utils.deepCopy(this.#antennas); }
 
         get reverseAssocs() { return utils.deepCopy(this.#reverseAssocs); }
+
+        get extremas() {
+
+            return {
+                minRSRP: this.#minRSRP,
+                maxRSRP: this.#maxRSRP,
+                minRSRQ: this.#minRSRQ,
+                maxRSRQ: this.#maxRSRQ,
+                minRSSI: this.#minRSSI,
+                maxRSSI: this.#maxRSSI,
+                minCINR: this.#minCINR,
+                maxCINR: this.#maxCINR,
+            };
+
+        }
     
     },
 

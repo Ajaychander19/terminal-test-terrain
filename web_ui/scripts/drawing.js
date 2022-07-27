@@ -15,10 +15,10 @@ const drawing = {
         #servingRSSI
         #servingCINR
         
-        // #rsrpLayer
-        // #rsrqLayer
-        // #rssiLayer
-        // #cinrLayer
+        #rsrpLayer
+        #rsrqLayer
+        #rssiLayer
+        #cinrLayer
 
         #nonFilteredTAC
         #nonFilteredPCI
@@ -35,6 +35,11 @@ const drawing = {
             this.#servingRSRQ = drawing.hexBin('RSRQ', styles.hexColor(0, 1));
             this.#servingRSSI = drawing.hexBin('RSSI', styles.hexColor(0, 1));
             this.#servingCINR = drawing.hexBin('CINR', styles.hexColor(0, 1));
+
+            this.#rsrpLayer = drawing.hexBin('RSRP', styles.hexColor(0, 1));
+            this.#rsrqLayer = drawing.hexBin('RSRQ', styles.hexColor(0, 1));
+            this.#rssiLayer = drawing.hexBin('RSSI', styles.hexColor(0, 1));
+            this.#cinrLayer = drawing.hexBin('CINR', styles.hexColor(0, 1));
 
             this.#assocLayer = L.layerGroup();
 
@@ -117,65 +122,42 @@ const drawing = {
 
         }
 
-        drawServingHex(layer, points, valChooser, earfcns=null, pcis=null) {
+        drawServingHex(layer, points, valChooser, min, max, earfcns=null, pcis=null) {
 
             let hexData = [];
 
-            let min = null;
-            let max = null;
+            let baseEarfncs = [];
+            let basePcis = [];
 
-            // Getting EARFCN groups matching with earfcns parameter.
+            for (let earfcn in points) {
 
-            let earfcnGroups = {};
+                let pciGroup = points[earfcn];
 
-            if (earfcns) earfcns.forEach((earfcn) => earfcnGroups[earfcn] = points[earfcn]);
-            else earfcnGroups = points;
-
-            // For each point group with the same EARFCN...
-            for (let e in earfcnGroups) {
-
-                let earfcn = parseInt(e);
-
-                // Current groups of points with the same EARFCN / PCI.
-                let pciGroups = earfcnGroups[e];
-
-                for (let p in pciGroups) {
-
-                    let pci = parseInt(p);
-                    let pciGroup = pciGroups[pci];
-
-                    let localMin = Math.min(...(pciGroup.map((pt) => valChooser(earfcn, pci, pt))));
-                    let localMax = Math.max(...(pciGroup.map((pt) => valChooser(earfcn, pci, pt))));
-
-                    if (min != null) min = Math.min(localMin, min)
-                    else min = localMin;
-
-                    if (max != null) max = Math.max(localMax, max)
-                    else max = localMax;
-
-                    let pushToHex = () => hexData.push(...(pciGroup.map((pt) => [pt.lng, pt.lat, valChooser(earfcn, pci, pt)])));
-
-                    if (pcis) { // Getting matching PCIs if pcis is not null.
-
-                        let pciIndexes = utils.indexesOf(pcis, pci);
-
-                        for (let pi in pciIndexes) {
-
-                            let pciIndex = pciIndexes[pi];
-
-                            // If current PCI corresponds to the current EARFCN, add to points to data.
-                            if (pciIndex !== -1 && ((earfcns && earfcn === earfcns[pciIndex]) || !earfcns))
-                                pushToHex();
-
-                        }
-
-                    } else pushToHex();
-
+                for (let pci in pciGroup) {
+                    baseEarfncs.push(parseInt(earfcn));
+                    basePcis.push(parseInt(pci));
                 }
+
 
             }
 
-            let values = hexData.map((h) => h[2]);
+            let earpcis = utils.subEarpci(baseEarfncs, basePcis, earfcns, pcis);
+            let filtEarfcns = earpcis.earfcns;
+            let filtPcis = earpcis.pcis;
+
+            for (let i in filtEarfcns) {
+
+                let earfcn = filtEarfcns[i];
+                let pci = filtPcis[i];
+
+                points[earfcn][pci].forEach(
+                    (pt) => {
+                        let val = valChooser(earfcn, pci, pt);
+                        hexData.push([pt.lng, pt.lat, val]);
+                    }
+                );
+
+            }
 
             layer.options.colorScaleExtent = [min, max];
 
@@ -308,13 +290,11 @@ const drawing = {
 
         }
 
-        drawHex(measurements, earfcns, pcis, tooltip) {
+        drawHex(layer, measurements, earfcns, pcis, min, max, reqEarfcns=null, reqPcis=null) {
 
-            let result = {};
+            let hexData = [];
 
-            // Min and max measurements.
-            let minMeas = null;
-            let maxMeas = null;
+            let earpcis = utils.subEarpci(earfcns, pcis, reqEarfcns, reqPcis);
 
             // For each measurement taken...
             measurements.forEach(
@@ -323,47 +303,35 @@ const drawing = {
 
                     let meas = measObj.meas;
 
-                    // For each measurement value...
-                    for (let i in meas) {
+                    earpcis.indices.forEach(
+                        (i) => {
+                            let m = meas[i];
+                            if (m) hexData.push([measObj.lng, measObj.lat, m]);
+                        }
+                    );
 
-                        let m = meas[i];            // Measurement value.
-                        let earfcn = earfcns[i];    // Associated EARFCn.
-                        let pci = pcis[i];          // Associated PCI.
+                    // // For each measurement value...
+                    // for (let i in meas) {
 
-                        // Initializing minMeas and maxMeas if not.
-                        minMeas || (minMeas = m);
-                        maxMeas || (maxMeas = m);
+                    //     let m = meas[i];            // Measurement value.
+                    //     let earfcn = earfcns[i];    // Associated EARFCn.
+                    //     let pci = pcis[i];          // Associated PCI.
 
-                        // Updating minMeas and maxMeas if necessary.
-                        if (minMeas > m) minMeas = m;
-                        if (maxMeas < m) maxMeas = m;
+                    //     // // Defining resutl[earfcn][pci] if not defined.
+                    //     // result[earfcn] || (result[earfcn] = {});
+                    //     // result[earfcn][pci] || (result[earfcn][pci] = []);
 
-                        // Defining resutl[earfcn][pci] if not defined.
-                        result[earfcn] || (result[earfcn] = {});
-                        result[earfcn][pci] || (result[earfcn][pci] = []);
+                    //     // Adding (lat, lng, measurement value).
+                    //     if (m) hexData.push([measObj.lng, measObj.lat, m]);
 
-                        // Adding (lat, lng, measurement value).
-                        if (m) result[earfcn][pci].push([measObj.lng, measObj.lat, m]);
-
-                    }
-
-                }
-            )
-
-            // Creating hexbinLayers in-place.
-            for (let earfcn in result) {
-
-                for (let pci in result[earfcn]) {
-
-                    let hexLayer = drawing.hexBin(tooltip, styles.hexColor(minMeas, maxMeas));
-                    hexLayer.data(result[earfcn][pci]);
-                    result[earfcn][pci] = hexLayer;
+                    // }
 
                 }
+            );
 
-            }
-
-            return result;
+            layer.options.colorScaleExtent = [min, max];
+            layer.redraw();
+            layer.data(hexData);
 
         }
 
@@ -371,32 +339,48 @@ const drawing = {
 
         drawPCI(points) { return this.drawPoints(points, (_e, pc, _p) => pc, (p) => styles.pciColor(p, 1)); }
 
-        drawServingRSRP(points, earfcns=null, pcis=null) {
+        drawServingRSRP(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
                 this.#servingRSRP, points, (_e, _p, pt) => pt.rsrp,
-                earfcns, pcis
+                min, max, earfcns, pcis,
             );
         }
 
-        drawServingRSRQ(points, earfcns=null, pcis=null) {
+        drawServingRSRQ(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
                 this.#servingRSRQ, points, (_e, _p, pt) => pt.rsrq,
-                earfcns, pcis
+                min, max, earfcns, pcis
             );
         }
 
-        drawServingRSSI(points, earfcns=null, pcis=null) {
+        drawServingRSSI(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
                 this.#servingRSSI, points, (_e, _p, pt) => pt.rssi,
-                earfcns, pcis
+                min, max, earfcns, pcis
             );
         }
 
-        drawServingCINR(points, earfcns=null, pcis=null) {
+        drawServingCINR(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
                 this.#servingCINR, points, (_e, _p, pt) => pt.cinr,
-                earfcns, pcis
+                min, max, earfcns, pcis
             );
+        }
+
+        drawRSRP(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
+            this.drawHex(this.#rsrpLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
+        }
+
+        drawRSRQ(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
+            this.drawHex(this.#rsrqLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
+        }
+
+        drawRSSI(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
+            this.drawHex(this.#rssiLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
+        }
+
+        drawCINR(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
+            this.drawHex(this.#cinrLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
         }
 
         updateTACLayer(points, earfcn=null, pci=null) {
@@ -429,6 +413,14 @@ const drawing = {
 
         setServingCINR(b) { this.#setLayerVisibility(this.#servingCINR, b); }
 
+        setRSRP(b) { this.#setLayerVisibility(this.#rsrpLayer, b); }
+
+        setRSRQ(b) { this.#setLayerVisibility(this.#rsrqLayer, b); }
+
+        setRSSI(b) { this.#setLayerVisibility(this.#rssiLayer, b); }
+
+        // setCINR(b) { this.#setLayerVisibility(this.#cinrLayer, b); }
+
         #setLayerVisibility(layer, b) {
             if (b && !this.#map.hasLayer(layer)) layer.addTo(this.#map);
             else if (!b && this.#map.hasLayer(layer)) layer.removeFrom(this.#map);
@@ -449,8 +441,10 @@ const drawing = {
             let pciSelector = document.querySelector('#pci-select');
             let earSelector = document.querySelector('#EARFCN_select');
 
-            earSelector.innerHTML = '<option value="serving-earfcn">Serving EARFCN</option>';
-            pciSelector.innerHTML = '<option value="serving-pci">Serving PCI</option>';
+            earSelector.innerHTML = '<option value="serving-earfcn">Serving EARFCN</option>'
+                + '<option value="all-earfcns">All EARFCNs</option>';
+            pciSelector.innerHTML = '<option value="serving-pci">Serving PCI</option>'
+                + '<option value="all-pcis">All PCIs</option>';
 
             earfcns.forEach(
                 (earfcn) => {

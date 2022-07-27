@@ -34,8 +34,13 @@ const app = {
         #pciOnServing = true;
         #onServing = true;
 
-        #selEarfcn = null;
-        #selPci = null;
+        #selEarfcns = null;
+        #selPcis = null;
+
+        #rsrpChecked = false;
+        #rsrqChecked = false;
+        #rssiChecked = false;
+        #cinrChecked = false;
 
         constructor() {
 
@@ -118,37 +123,29 @@ const app = {
 
             document.querySelector('#RSRP').onclick = (evt) => {
 
-                let checked = evt.srcElement.checked;
-                
-                if (this.#onServing) this.#drawingMap.setServingRSRP(checked);
-                else this.#drawingMap.setRSRP(checked);
+                this.#rsrpChecked = evt.srcElement.checked;
+                this.updateDisplay();
 
             };
 
             document.querySelector('#rsrq').onclick = (evt) => {
                 
-                let checked = evt.srcElement.checked;
-                
-                if (this.#onServing) this.#drawingMap.setServingRSRQ(checked);
-                else this.#drawingMap.setRSRQ(checked);
+                this.#rsrqChecked = evt.srcElement.checked;
+                this.updateDisplay();
 
             };
 
             document.querySelector('#rssi').onclick = (evt) => {
                 
-                let checked = evt.srcElement.checked;
-                
-                if (this.#onServing) this.#drawingMap.setServingRSSI(checked);
-                else this.#drawingMap.setRSSI(checked);
+                this.#rssiChecked = evt.srcElement.checked;
+                this.updateDisplay();
 
             };
 
-            document.querySelector('#cinr').onclick = (evt) => {
+            document.querySelector('#cinr').onclick = (evt) => { 
                 
-                let checked = evt.srcElement.checked;
-                
-                if (this.#onServing) this.#drawingMap.setServingCINR(checked);
-                else this.#drawingMap.setCINR(checked);
+                this.#cinrChecked = evt.srcElement.checked;
+                this.updateDisplay();
 
             };
 
@@ -158,11 +155,13 @@ const app = {
 
                 this.#earfcnOnServing = (val === 'serving-earfcn');
 
-                this.#selEarfcn = (!this.#earfcnOnServing) ? [parseInt(val)] : null;
+                this.#selEarfcns = (!this.#earfcnOnServing && val !== 'all-earfcns') ? 
+                    [parseInt(val)] : null;
 
                 this.#onServing = this.#earfcnOnServing || this.#pciOnServing;
 
                 this.update();
+                this.updateDisplay();
 
             }
 
@@ -172,11 +171,12 @@ const app = {
 
                 this.#pciOnServing = (val === 'serving-pci');
 
-                this.#selPci = (!this.#pciOnServing) ? [parseInt(val)] : null;
+                this.#selPcis = (!this.#pciOnServing && val !== 'all-pcis') ? [parseInt(val)] : null;
                 
                 this.#onServing = this.#earfcnOnServing || this.#pciOnServing;
 
                 this.update();
+                this.updateDisplay();
 
             }
 
@@ -185,14 +185,52 @@ const app = {
         update() {
 
             let points = this.#fileReader.points;
+            let earfcns = this.#fileReader.earfcns;
+            let pcis = this.#fileReader.pcis;
+            let selEarfcns = this.#selEarfcns;
+            let selPcis = this.#selPcis;
+            let extr = this.#fileReader.extremas;
 
-            this.#drawingMap.updatePCILayer(points, this.#selEarfcn, this.#selPci);
-            this.#drawingMap.updateTACLayer(points, this.#selEarfcn, this.#selPci);
+            this.#drawingMap.updatePCILayer(points, selEarfcns, selPcis);
+            this.#drawingMap.updateTACLayer(points, selEarfcns, selPcis);
 
-            this.#drawingMap.drawServingRSRP(points, this.#selEarfcn, this.#selPci);
-            this.#drawingMap.drawServingRSRQ(points, this.#selEarfcn, this.#selPci);
-            this.#drawingMap.drawServingRSSI(points, this.#selEarfcn, this.#selPci);
-            this.#drawingMap.drawServingCINR(points, this.#selEarfcn, this.#selPci);
+            this.#drawingMap.drawServingRSRP(points, extr.minRSRP, extr.maxRSRP, selEarfcns, selPcis);
+            this.#drawingMap.drawServingRSRQ(points, extr.minRSRQ, extr.maxRSRQ, selEarfcns, selPcis);
+            this.#drawingMap.drawServingRSSI(points, extr.minRSSI, extr.maxRSSI, selEarfcns, selPcis);
+            this.#drawingMap.drawServingCINR(points, extr.minCINR, extr.maxCINR, selEarfcns, selPcis);
+        
+            this.#drawingMap.drawRSRP(this.#fileReader.rsrps, earfcns, pcis, extr.minRSRP, extr.maxRSRP, selEarfcns, selPcis);
+            this.#drawingMap.drawRSRQ(this.#fileReader.rsrqs, earfcns, pcis, extr.minRSRQ, extr.maxRSRQ, selEarfcns, selPcis);
+            this.#drawingMap.drawRSSI(this.#fileReader.rssis, earfcns, pcis, extr.minRSSI, extr.maxRSSI, selEarfcns, selPcis);
+        
+        }
+
+        updateDisplay() {
+
+            if (this.#onServing) {
+
+                this.#drawingMap.setServingRSRP(this.#rsrpChecked);
+                this.#drawingMap.setServingRSRQ(this.#rsrqChecked);
+                this.#drawingMap.setServingRSSI(this.#rssiChecked);
+                this.#drawingMap.setServingCINR(this.#cinrChecked);
+
+                this.#drawingMap.setRSRP(false);
+                this.#drawingMap.setRSRQ(false);
+                this.#drawingMap.setRSSI(false);
+
+            } else {
+
+                this.#drawingMap.setRSRP(this.#rsrpChecked);
+                this.#drawingMap.setRSRQ(this.#rsrqChecked);
+                this.#drawingMap.setRSSI(this.#rssiChecked);
+
+                this.#drawingMap.setServingRSRP(false);
+                this.#drawingMap.setServingRSRQ(false);
+                this.#drawingMap.setServingRSSI(false);
+                this.#drawingMap.setServingCINR(false);
+
+            }
+
         }
 
     }
