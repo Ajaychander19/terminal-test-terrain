@@ -177,15 +177,12 @@ class GUI(tkinter.Frame):
 
         else:
             self.change_color('red')
-            #            url = "http://localhost:9090/index.html"
             url = "file://" + getLeaflet('index.html')
-            # url="file:///"+os.path.abspath("..\\..\\leaflet\\index.html")
             try:
                 print("try to open url", url, " with default browser")
                 webbrowser.open_new_tab(url)
-                localhost()
-            except webbrowser.Error:
-                print("Something went wrong when opening webbrowser")
+            except webbrowser.Error as e:
+                print("Error: {}", str(e))
 
             self.change_color('green')
 

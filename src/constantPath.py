@@ -6,6 +6,7 @@ from os import path
 from math import sin, cos, sqrt, atan2, radians
 from datetime import time
 
+
 def getPathText(name):
     """Gets the path of a file in the temporary files directory (outputFiles).
 
@@ -17,12 +18,13 @@ def getPathText(name):
     """
 #     print('code origine :', os.path.abspath("..\\outputFiles\\" + name))
     if os.path.isdir(os.path.abspath(name)):
-        #        print('youp la boum1:', os.path.normpath(os.path.join(os.path.abspath(name), os.path.pardir, 'outputFiles', name)))
+        # print('youp la boum1:', os.path.normpath(os.path.join(os.path.abspath(name), os.path.pardir, 'outputFiles', name)))
         return os.path.normpath(os.path.join(os.path.abspath(name), os.path.pardir, 'outputFiles', name))
     else:
         #print('youp la boum2:', os.path.normpath(os.path.join(os.path.abspath(name), os.path.pardir, os.path.pardir, 'outputFiles', name)))
         return os.path.normpath(os.path.join(os.path.abspath(name), os.path.pardir, os.path.pardir,  'outputFiles', name))
     #return os.path.abspath("..\\outputFiles\\" + name)
+
 
 # this function gets the path of the html directory
 def getLeaflet(name):
@@ -34,7 +36,7 @@ def getLeaflet(name):
     Returns:
         The file's absolute path.
     """
-    return os.path.abspath(os.path.join(os.path.abspath(name),os.path.pardir,os.path.pardir,'leaflet',name))
+    return os.path.abspath(os.path.join(os.path.abspath(name), os.path.pardir, os.path.pardir, 'web_ui', name))
 #    return os.path.abspath("..\\..\\leaflet\\" + name)
 
 # this function gets the path of wireshark application
