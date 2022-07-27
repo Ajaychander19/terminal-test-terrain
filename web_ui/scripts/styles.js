@@ -117,7 +117,7 @@ const styles = {
         // copied from the old program.
         return {
             center: [47.148, 4.474],
-            maxZoom: 17, 
+            maxZoom: 100, 
             zoom: 6,
             layers: baseMap
         };

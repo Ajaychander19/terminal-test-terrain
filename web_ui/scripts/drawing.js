@@ -169,7 +169,7 @@ const drawing = {
 
         }
 
-        drawAssocs(assocs, antennas, displayCheck=false) {
+        drawAssocs(assocs, antennas, checkEarfcns, checkPcis, earfcns=null, pcis=null) {
 
             this.#assocLayer.clearLayers();
 
@@ -182,7 +182,7 @@ const drawing = {
                 let marker = L.marker([ant.lat, ant.lng], {icon: styles.stationIcon()});
 
                 marker.bindPopup(
-                    this.drawAssocPopup(cartoNum, assoc),
+                    this.drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, earfcns, pcis),
                     {closeOnClick: false, autoClose: false}
                 );
                 marker.addTo(this.#assocLayer);
@@ -192,7 +192,7 @@ const drawing = {
 
         }
 
-        drawAssocPopup(cartoNum, assoc) {
+        drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, earfcns=null, pcis=null) {
 
             // Content element of the popup.
             let popDiv = document.createElement('div');
@@ -205,32 +205,75 @@ const drawing = {
             checkDiv.classList.add('check-div');
 
             // Inserting checkboxes for each associated EARFCN / PCI...
-            assoc.forEach(
-                (asc) => {
 
-                    let earfcn = asc.earfcn;
-                    let pci = asc.pci;
+            let ascEarfcns = assoc.map((asc) => asc.earfcn);
+            let ascPcis = assoc.map((asc) => asc.pci);
 
-                    // Checkbox element.
-                    let checkBox = document.createElement('input');
-                    checkBox.setAttribute('type', 'checkbox');
+            let earpcis = utils.subEarpci(ascEarfcns, ascPcis, earfcns, pcis);
+
+            for (let i in earpcis.earfcns) {
+
+                let earfcn = earpcis.earfcns[i];
+                let pci = earpcis.pcis[i];
+
+                // Checkbox element.
+                let checkBox = document.createElement('input');
+                checkBox.setAttribute('type', 'checkbox');
+                
+                // Identifying the checkbox.
+                let checkId = 'check' + '-' + cartoNum + '-' + earfcn + '-' + pci;
+                checkBox.id = checkId;
+
+                checkBox.onclick = (evt) => { 
                     
-                    // Identifying the checkbox.
-                    let checkId = 'check' + '-' + cartoNum + '-' + earfcn + '-' + pci;
-                    checkBox.id = checkId;
+                    if (evt.target.checked) {
+                        checkEarfcns.push(earfcn);
+                        checkPcis.push(pci);
+                    } else utils.removeEarpci(checkEarfcns, checkPcis, earfcn, pci);
 
-                    // Label of the checkbox.
-                    let label = document.createElement('label');
-                    label.setAttribute('for', checkId);
-                    label.innerHTML = earfcn + ' - ' + pci;
+                };
 
-                    // Adding it to the checkboxes container div...
-                    checkDiv.append(...[
-                        checkBox, label, document.createElement('br')
-                    ]);
+                if (utils.indexOfEarpci(checkEarfcns, checkPcis, earfcn, pci) !== -1) checkBox.checked = true;
 
-                }
-            );
+                // Label of the checkbox.
+                let label = document.createElement('label');
+                label.setAttribute('for', checkId);
+                label.innerHTML = earfcn + ' - ' + pci;
+
+                // Adding it to the checkboxes container div...
+                checkDiv.append(...[
+                    checkBox, label, document.createElement('br')
+                ]);
+
+
+            }
+
+            // assoc.forEach(
+            //     (asc) => {
+
+            //         let earfcn = asc.earfcn;
+            //         let pci = asc.pci;
+
+            //         // Checkbox element.
+            //         let checkBox = document.createElement('input');
+            //         checkBox.setAttribute('type', 'checkbox');
+                    
+            //         // Identifying the checkbox.
+            //         let checkId = 'check' + '-' + cartoNum + '-' + earfcn + '-' + pci;
+            //         checkBox.id = checkId;
+
+            //         // Label of the checkbox.
+            //         let label = document.createElement('label');
+            //         label.setAttribute('for', checkId);
+            //         label.innerHTML = earfcn + ' - ' + pci;
+
+            //         // Adding it to the checkboxes container div...
+            //         checkDiv.append(...[
+            //             checkBox, label, document.createElement('br')
+            //         ]);
+
+            //     }
+            // );
 
             popDiv.append(checkDiv);
 

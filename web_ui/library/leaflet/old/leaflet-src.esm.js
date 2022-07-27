@@ -4287,7 +4287,7 @@ var Map = Evented.extend({
 		var targets = [],
 		    target,
 		    isHover = type === 'mouseout' || type === 'mouseover',
-		    src = e.target || e.srcElement,
+		    src = e.target || e.target,
 		    dragging = false;
 
 		while (src) {
@@ -4318,7 +4318,7 @@ var Map = Evented.extend({
 
 		if (type === 'mousedown' || type === 'keypress') {
 			// prevents outline when clicking on keyboard-focusable element
-			preventOutline(e.target || e.srcElement);
+			preventOutline(e.target || e.target);
 		}
 
 		this._fireDOMEvent(e, type);
@@ -5851,7 +5851,7 @@ var Draggable = Evented.extend({
 
 			addClass(document.body, 'leaflet-dragging');
 
-			this._lastTarget = e.target || e.srcElement;
+			this._lastTarget = e.target || e.target;
 			// IE and Edge do not give the <use> element, so fetch it
 			// if necessary
 			if ((window.SVGElementInstance) && (this._lastTarget instanceof SVGElementInstance)) {

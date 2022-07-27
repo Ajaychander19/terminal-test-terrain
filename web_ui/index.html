@@ -39,13 +39,10 @@
 		<link rel="stylesheet" type="text/css" href="library/leaflet/leaflet.css" />
 
 		<!-- <input type="file" id="fileElem" multiple style="display:none" onchange="myFunction()" accept=".json"> -->
-		<input type="file" id="fileElem" multiple style="display:none" accept=".csv">
-		
-
+		<input type="file" id="fileElem" style="display:none" accept=".csv">
    </head>
 
 	<body>
-	
 		<div class="container-fluid">
 			<div class="class=col-sm-4  text-center">
 				<h1>COVERAGE OF 4G BASE STATIONS  </h1>
@@ -127,7 +124,7 @@
 					<div class="panel-heading">Sites</div>
 					<div id="myDiv" class="form-group">
 						<select class="form-control selectpicker" id="sites-select">
-							<option value="all-sites">All sites</option>
+							<option value="all-sites" selected="selected">All sites</option>
 							<option value="only-sites">Only selected sites</option>
 						</select>
 						<!-- <label for="site-select"></label> -->

@@ -1,28 +1,4 @@
 const app = {
-    
-    // Model: class {
-
-    //     constructor() {
-
-    //     }
-
-    // },
-
-    // Controller: class {
-
-    //     constructor() {
-
-    //     }
-
-    // },
-
-    // View: class {
-
-    //     constructor(map) {
-
-    //     }
-
-    // },
 
     App: class {
 
@@ -36,6 +12,11 @@ const app = {
 
         #selEarfcns = null;
         #selPcis = null;
+
+        #checkEarfcns = [];
+        #checkPcis = [];
+
+        #allSites = true;
 
         #rsrpChecked = false;
         #rsrqChecked = false;
@@ -67,124 +48,7 @@ const app = {
 
             // Setting up UI Events.
 
-            document.querySelector('#fileSelect').onclick = (_) => {
-
-                let inputElt = document.querySelector('#fileElem');
-                inputElt.click();
-
-            };
-
-            document.querySelector('#fileElem').onchange = async (evt) => {
-
-                let file = evt.srcElement.files[0];
-                this.#fileReader = new csvread.CSVReader(file);
-                await this.#fileReader.readFile();
-
-                let antennas = this.#fileReader.antennas;
-
-                let vor = processing.calcVoronoi(antennas);
-                let dels = processing.calcDelimiters(vor, antennas);
-                let ants = processing.calcAntennas(this.#fileReader.antennaDirections);
-
-                let earfcns = this.#fileReader.earfcns;
-                let pcis = this.#fileReader.pcis;
-
-                this.#drawingMap.drawCells(vor, ants, dels);
-                this.#drawingMap.drawAssocs(this.#fileReader.assocs, antennas);
-
-                this.#drawingMap.setAntLayer(true);
-
-                this.#drawingMap.setAssocLayer(true);
-
-                this.#drawingMap.drawSelectors(earfcns, pcis);
-
-                this.enableInputs(true);
-
-                this.update();
-
-            };
-
-            document.querySelector('#Theory_Cell').onclick = (evt) => {
-                this.#drawingMap.setCellLayer(evt.srcElement.checked);
-            };
-
-            document.querySelector('#sites-select').onchange = (evt) => {
-
-                let onlySitesSel = evt.srcElement.value === 'only-sites';
-
-                // if (onlySitesSel) $('.check-div').show();
-                // else $('.check-div').hide();
-
-            };
-
-            document.querySelector('#Tracking_area').onclick = (evt) => {
-                this.#drawingMap.setTACLayer(evt.srcElement.checked);
-            };
-
-            document.querySelector('#PCI').onclick = (evt) => {
-                this.#drawingMap.setPCILayer(evt.srcElement.checked);
-            };
-
-            document.querySelector('#RSRP').onclick = (evt) => {
-
-                this.#rsrpChecked = evt.srcElement.checked;
-                this.updateDisplay();
-
-            };
-
-            document.querySelector('#rsrq').onclick = (evt) => {
-                
-                this.#rsrqChecked = evt.srcElement.checked;
-                this.updateDisplay();
-
-            };
-
-            document.querySelector('#rssi').onclick = (evt) => {
-                
-                this.#rssiChecked = evt.srcElement.checked;
-                this.updateDisplay();
-
-            };
-
-            document.querySelector('#cinr').onclick = (evt) => { 
-                
-                this.#cinrChecked = evt.srcElement.checked;
-                this.updateDisplay();
-
-            };
-
-            document.querySelector('#EARFCN_select').onchange = (evt) => {
-
-                let val = evt.srcElement.value;
-
-                this.#earfcnOnServing = (val === 'serving-earfcn');
-
-                this.#selEarfcns = (!this.#earfcnOnServing && val !== 'all-earfcns') ? 
-                    [parseInt(val)] : null;
-
-                this.#onServing = this.#earfcnOnServing || this.#pciOnServing;
-
-                this.update();
-                this.updateDisplay();
-
-            }
-
-            document.querySelector('#pci-select').onchange = (evt) => {
-
-                let val = evt.srcElement.value;
-
-                this.#pciOnServing = (val === 'serving-pci');
-
-                this.#selPcis = (!this.#pciOnServing && val !== 'all-pcis') ? [parseInt(val)] : null;
-                
-                this.#onServing = this.#earfcnOnServing || this.#pciOnServing;
-
-                this.update();
-                this.updateDisplay();
-
-            }
-
-            document.querySelector('#clear-all').onclick = (evt) => this.reset();
+            this.attributeEvents();
 
         }
 
@@ -239,9 +103,18 @@ const app = {
 
         }
 
-        reset() {
+        updateAssocs() {
 
-            console.log('reset');
+            let earpcis = utils.subEarpci(this.#fileReader.earfcns,
+                this.#fileReader.pcis, this.#selEarfcns, this.#selPcis)
+
+            this.#drawingMap.drawAssocs(
+                this.#fileReader.assocs, this.#fileReader.antennas, this.#checkEarfcns, this.#checkPcis, 
+                earpcis.earfcns, earpcis.pcis);
+
+        }
+
+        reset() {
 
             this.#earfcnOnServing = true;
             this.#pciOnServing = true;
@@ -257,7 +130,9 @@ const app = {
 
             this.#fileReader = null;
 
-            document.querySelectorAll('select').forEach((elt) => elt.innerHTML = '');
+            document.querySelectorAll('#EARFCN_select, #pci-select').forEach((elt) => elt.innerHTML = '');
+            document.querySelector('#sites-select').value = 'all-sites';
+
             document.querySelectorAll('input[type="checkbox"]').forEach((elt) => elt.checked = false);
 
             this.enableInputs(false);
@@ -275,9 +150,140 @@ const app = {
 
         enableInputs(b) {
 
-            let visuInputs = document.querySelectorAll('.visu-params input, .visu-params select');
+            let visuInputs = document.querySelectorAll('.visu-params input, .visu-params select, #clear-all');
             
             visuInputs.forEach((input) => input.disabled = !b);
+
+        }
+
+        attributeEvents() {
+
+            document.querySelector('#fileSelect').onclick = (_) => {
+
+                let inputElt = document.querySelector('#fileElem');
+                inputElt.click();
+
+            };
+
+            document.querySelector('#fileElem').onchange = async (evt) => {
+
+                let file = evt.target.files[0];
+                this.#fileReader = new csvread.CSVReader(file);
+                await this.#fileReader.readFile();
+
+                let antennas = this.#fileReader.antennas;
+
+                let vor = processing.calcVoronoi(antennas);
+                let dels = processing.calcDelimiters(vor, antennas);
+                let ants = processing.calcAntennas(this.#fileReader.antennaDirections);
+
+                let earfcns = this.#fileReader.earfcns;
+                let pcis = this.#fileReader.pcis;
+
+                this.#drawingMap.drawCells(vor, ants, dels);
+                this.updateAssocs();
+
+                this.#drawingMap.setAntLayer(true);
+
+                this.#drawingMap.setAssocLayer(true);
+
+                this.#drawingMap.drawSelectors(earfcns, pcis);
+
+                this.enableInputs(true);
+
+                this.update();
+
+            };
+
+            document.querySelector('#Theory_Cell').onclick = (evt) => {
+                this.#drawingMap.setCellLayer(evt.target.checked);
+            };
+
+            document.querySelector('#sites-select').onchange = (evt) => {
+
+                let onlySitesSel = evt.target.value === 'only-sites';
+
+                // if (onlySitesSel) $('.check-div').show();
+                // else $('.check-div').hide();
+
+            };
+
+            document.querySelector('#Tracking_area').onclick = (evt) => {
+                this.#drawingMap.setTACLayer(evt.target.checked);
+            };
+
+            document.querySelector('#PCI').onclick = (evt) => {
+                this.#drawingMap.setPCILayer(evt.target.checked);
+            };
+
+            document.querySelector('#RSRP').onclick = (evt) => {
+
+                this.#rsrpChecked = evt.target.checked;
+                this.updateDisplay();
+
+            };
+
+            document.querySelector('#rsrq').onclick = (evt) => {
+                
+                this.#rsrqChecked = evt.target.checked;
+                this.updateDisplay();
+
+            };
+
+            document.querySelector('#rssi').onclick = (evt) => {
+                
+                this.#rssiChecked = evt.target.checked;
+                this.updateDisplay();
+
+            };
+
+            document.querySelector('#cinr').onclick = (evt) => { 
+                
+                this.#cinrChecked = evt.target.checked;
+                this.updateDisplay();
+
+            };
+
+            document.querySelector('#sites-select').onchange = (evt) => {
+                this.#allSites = (evt.target.value === 'all-sites');
+            }
+
+            document.querySelector('#EARFCN_select').onchange = (evt) => {
+
+                let val = evt.target.value;
+
+                this.#earfcnOnServing = (val === 'serving-earfcn');
+
+                this.#selEarfcns = (!this.#earfcnOnServing && val !== 'all-earfcns') ? 
+                    [parseInt(val)] : null;
+
+                this.#onServing = this.#earfcnOnServing || this.#pciOnServing;
+
+                
+
+                this.update();
+                this.updateDisplay();
+                this.updateAssocs();
+
+            }
+
+            document.querySelector('#pci-select').onchange = (evt) => {
+
+                let val = evt.target.value;
+
+                this.#pciOnServing = (val === 'serving-pci');
+
+                this.#selPcis = (!this.#pciOnServing && val !== 'all-pcis') ? [parseInt(val)] : null;
+                
+                this.#onServing = this.#earfcnOnServing || this.#pciOnServing;
+
+                this.update();
+                this.updateDisplay();
+                this.updateAssocs();
+
+            }
+
+            document.querySelector('#clear-all').onclick = (evt) => this.reset();
 
         }
 

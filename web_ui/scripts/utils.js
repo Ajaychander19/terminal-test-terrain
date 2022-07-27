@@ -10,6 +10,28 @@ const utils = {
 
     },
 
+    indexOfEarpci: function (earfcns, pcis, earfcn, pci) {
+
+        let earfcnIdx = utils.indexesOf(earfcns, earfcn);
+        let pcisIdx = utils.indexesOf(pcis, pci);
+
+        let inter = earfcnIdx.filter((e) => pcisIdx.includes(e))
+
+        return inter.length !== 0 ? inter[0] : -1;
+
+    },
+
+    removeEarpci: function (earfcns, pcis, earfcn, pci) {
+        
+        let i = utils.indexOfEarpci(earfcns, pcis, earfcn, pci);
+
+        if (i !== -1) {
+            earfcns.splice(i, 1);
+            pcis.splice(i, 1);
+        }
+
+    },
+
     subEarpci: function (earfcns, pcis, reqEarfcns=null, reqPcis=null) {
 
         let result = {earfcns: [], pcis: [], indices: []};
@@ -19,12 +41,12 @@ const utils = {
 
         if (!reqEarfcns) subEarfcnsIdx = earfcns.map((_, i) => parseInt(i));
         else reqEarfcns.forEach(
-            (e) => this.interPush(subEarfcnsIdx, this.indexesOf(earfcns, e))
+            (e) => utils.interPush(subEarfcnsIdx, utils.indexesOf(earfcns, e))
         );
 
         if (!reqPcis) subPcisIdx = pcis.map((_, i) => parseInt(i));
         else reqPcis.forEach(
-            (e) => this.interPush(subPcisIdx, this.indexesOf(pcis, e))
+            (e) => utils.interPush(subPcisIdx, utils.indexesOf(pcis, e))
         );
 
         subEarfcnsIdx.filter((i) => subPcisIdx.includes(i))
