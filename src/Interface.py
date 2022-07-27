@@ -1,15 +1,11 @@
 import tkinter
 from tkinter import filedialog
-from messages import *
-from PhoneId import *
-from traceMap import *
-from converfile import *
+
 from constantPath import *
-import sys
-import re
+
 import webbrowser
 from tkinter import font
-from tkinter import messagebox, Canvas, BOTH
+from tkinter import messagebox, Canvas
 
 import xcalyzer
 import cartoradio
@@ -38,7 +34,7 @@ class CreateToolTip(object):
         self.tw.wm_geometry("+%d+%d" % (x, y))
         label = tkinter.Label(self.tw, text=self.text, justify='left',
                               background='yellow', relief='solid', borderwidth=1,
-                              font=("Arial", "10", "normal"), wraplengt=200)
+                              font=("Arial", "10", "normal"), wraplength=200)
         # label.config(width=200)
         label.pack(ipadx=1)
 
