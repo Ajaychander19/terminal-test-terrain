@@ -128,7 +128,7 @@ var csvread = {
                                     'Error: line ' + lineNum + ': MEAS_EARFCNS line must contain at least 6 fields.')
 
                                 for (let j = 5; j < llen; j++) this.#earfcns.push(parseInt(line[j]));
-                                measEarfcns = true
+                                measEarfcns = true;
                                 break;
 
                             case 'MEAS_PCIS':   // PCIS of measurement columns.
@@ -203,11 +203,11 @@ var csvread = {
                                         toAdd = this.#rssis;
 
                                         
-                                            this.#minRSSI || (this.#minRSSI = localMin);
-                                            this.#maxRSSI || (this.#maxRSSI = localMax);
+                                        this.#minRSSI || (this.#minRSSI = localMin);
+                                        this.#maxRSSI || (this.#maxRSSI = localMax);
 
-                                            if (this.#minRSSI > localMin) this.#minRSSI = localMin;
-                                            if (this.#maxRSSI < localMax) this.#maxRSSI = localMax;
+                                        if (this.#minRSSI > localMin) this.#minRSSI = localMin;
+                                        if (this.#maxRSSI < localMax) this.#maxRSSI = localMax;
 
                                         break;
 

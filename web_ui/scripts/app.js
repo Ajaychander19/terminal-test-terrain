@@ -113,7 +113,7 @@ const app = {
 
         updateAssocs() {
 
-            let earpcis = utils.subEarpci(this.#fileReader.earfcns,
+            let earpcis = this.#allSites ? {earfcns: [], pcis: [], indices: []} : utils.subEarpci(this.#fileReader.earfcns,
                 this.#fileReader.pcis, this.#selEarfcns, this.#selPcis)
 
             this.#drawingMap.drawAssocs(
@@ -259,6 +259,7 @@ const app = {
 
                 this.#allSites = (evt.target.value === 'all-sites');
                 this.update();
+                this.updateAssocs();
 
             }
 

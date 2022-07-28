@@ -496,8 +496,6 @@ class XcalConverter:
 
                 line = new_line
 
-            pass
-
     def produce_csv_file(self):
         """Produces the CSV output file following the previous data processing."""
 

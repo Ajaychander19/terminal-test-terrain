@@ -250,33 +250,6 @@ const drawing = {
 
             }
 
-            // assoc.forEach(
-            //     (asc) => {
-
-            //         let earfcn = asc.earfcn;
-            //         let pci = asc.pci;
-
-            //         // Checkbox element.
-            //         let checkBox = document.createElement('input');
-            //         checkBox.setAttribute('type', 'checkbox');
-                    
-            //         // Identifying the checkbox.
-            //         let checkId = 'check' + '-' + cartoNum + '-' + earfcn + '-' + pci;
-            //         checkBox.id = checkId;
-
-            //         // Label of the checkbox.
-            //         let label = document.createElement('label');
-            //         label.setAttribute('for', checkId);
-            //         label.innerHTML = earfcn + ' - ' + pci;
-
-            //         // Adding it to the checkboxes container div...
-            //         checkDiv.append(...[
-            //             checkBox, label, document.createElement('br')
-            //         ]);
-
-            //     }
-            // );
-
             popDiv.append(checkDiv);
 
             return popDiv;
@@ -359,22 +332,6 @@ const drawing = {
                         }
                     );
 
-                    // // For each measurement value...
-                    // for (let i in meas) {
-
-                    //     let m = meas[i];            // Measurement value.
-                    //     let earfcn = earfcns[i];    // Associated EARFCn.
-                    //     let pci = pcis[i];          // Associated PCI.
-
-                    //     // // Defining resutl[earfcn][pci] if not defined.
-                    //     // result[earfcn] || (result[earfcn] = {});
-                    //     // result[earfcn][pci] || (result[earfcn][pci] = []);
-
-                    //     // Adding (lat, lng, measurement value).
-                    //     if (m) hexData.push([measObj.lng, measObj.lat, m]);
-
-                    // }
-
                 }
             );
 
@@ -426,10 +383,6 @@ const drawing = {
 
         drawRSSI(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
             this.drawHex(this.#rssiLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
-        }
-
-        drawCINR(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
-            this.drawHex(this.#cinrLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
         }
 
         updateTACLayer(points, earfcn=null, pci=null) {
@@ -486,7 +439,7 @@ const drawing = {
             pciSelector.innerHTML = '<option value="serving-pci">Serving PCI</option>'
                 + '<option value="all-pcis">All PCIs</option>';
 
-            earfcns.forEach(
+            earfcns.sort().forEach(
                 (earfcn) => {
 
                     if (!document.querySelector('#EARFCN_select option[value="' + earfcn + '"]')) {
@@ -501,7 +454,7 @@ const drawing = {
                 }
             );
 
-            pcis.forEach(
+            pcis.sort().forEach(
                 (pci) => {
 
                     if (!document.querySelector('#pci-select option[value="' + pci + '"]')) {
@@ -535,7 +488,7 @@ const drawing = {
             L.HexbinHoverHandler.tooltip({
                 tooltipContent: (d) => tooltip + ': ' + minFunct(d)
             })
-        )
+        );
 
         return hex;
 
