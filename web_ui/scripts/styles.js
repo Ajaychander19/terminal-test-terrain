@@ -41,7 +41,7 @@ const styles = {
     pciColor: function (pci, colorChoice) {
 
         let testedVal = (
-            (colorChoice != 0) ? 
+            (colorChoice !== 0) ? 
             (pci % 9) * 57 + Math.trunc(pci / 9)
             : (pci % 3) * 170 + Math.trunc(pci / 3)
         ) + colorChoice;

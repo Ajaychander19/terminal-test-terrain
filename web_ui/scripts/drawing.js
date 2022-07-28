@@ -343,7 +343,7 @@ const drawing = {
 
         drawTAC(points) { return this.drawPoints(points, (_e, _pc, p) => p.tac, styles.tacColor); }
 
-        drawPCI(points) { return this.drawPoints(points, (_e, pc, _p) => pc, (p) => styles.pciColor(p, 1)); }
+        drawPCI(points, col=1) { return this.drawPoints(points, (_e, pc, _p) => pc, (p) => styles.pciColor(p, col)); }
 
         drawServingRSRP(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
@@ -390,8 +390,8 @@ const drawing = {
             this.setPointLayer(this.#tacLayer, this.#nonFilteredTAC, earfcn, pci); 
         }
 
-        updatePCILayer(points, earfcn=null, pci=null) {
-            this.#nonFilteredPCI = this.drawPCI(points);
+        updatePCILayer(points, earfcn=null, pci=null, col=1) {
+            this.#nonFilteredPCI = this.drawPCI(points, col);
             this.setPointLayer(this.#pciLayer, this.#nonFilteredPCI, earfcn, pci); 
         }
 

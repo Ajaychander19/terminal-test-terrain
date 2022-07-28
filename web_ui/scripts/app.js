@@ -18,6 +18,8 @@ const app = {
 
         #allSites = true;
 
+        #altCol = 1;
+
         #rsrpChecked = false;
         #rsrqChecked = false;
         #rssiChecked = false;
@@ -69,7 +71,7 @@ const app = {
             let finalEarfcns = (this.#allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
             let finalPcis = (this.#allSites) ? selPcis : onlySitesEarpcis.pcis;
 
-            this.#drawingMap.updatePCILayer(points, finalEarfcns, finalPcis);
+            this.#drawingMap.updatePCILayer(points, finalEarfcns, finalPcis, this.#altCol);
             this.#drawingMap.updateTACLayer(points, finalEarfcns, finalPcis);
 
             this.#drawingMap.drawServingRSRP(points, extr.minRSRP, extr.maxRSRP, finalEarfcns, finalPcis);
@@ -297,6 +299,13 @@ const app = {
             }
 
             document.querySelector('#clear-all').onclick = (evt) => this.reset();
+
+            document.querySelector('#ColorAlt').onclick = (evt) => {
+
+                this.#altCol = evt.target.checked ? 0 : 1;
+                this.update();
+
+            }
 
         }
 
