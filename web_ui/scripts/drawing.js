@@ -57,7 +57,7 @@ const drawing = {
             
             // Creating layers for Voronoi cells and delimiters.
             let vorLayer = L.geoJson(turf.featureCollection(vorFeats), styles.polyStyle(0.1, '000000'));
-            let delLayer = L.geoJson(turf.featureCollection(delFeats), styles.STYLE_DELIMITER);
+            let delLayer = L.geoJson(turf.featureCollection(delFeats), styles.styleDelimiter());
             delLayer.bringToBack();
             
             // Grouping these layers
@@ -65,7 +65,7 @@ const drawing = {
             delLayer.addTo(this.#cellLayer);
 
             // Antennas layer (always displayed by default).
-            this.#antLayer = L.geoJson(turf.featureCollection(antFeats), styles.STYLE_ANTENNA);
+            this.#antLayer = L.geoJson(turf.featureCollection(antFeats), styles.styleAntenna());
     
         }
 

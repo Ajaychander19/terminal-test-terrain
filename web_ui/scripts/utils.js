@@ -121,7 +121,7 @@ const utils = {
                     (ear) => utils.indexesOf(reqPcis, p).includes(ear))
                 : null;
 
-            // Pair found or not possible to found the pair.
+            // Pair found or not possible to find the pair.
             let sameIndex = (inter) ? inter.length !== 0  : true
 
             // If pair found (if possible), and PCi found.

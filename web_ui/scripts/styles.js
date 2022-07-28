@@ -1,21 +1,53 @@
+/**
+ * Contains Leaflet style (options) definition functions.
+ * 
+ * @namespace
+ */
 const styles = {
 
-    STYLE_DELIMITER: {
-        color: 'green',
-        weight: 2,
-        opacity: 1,
-        smoothFactor: 1
+    /**
+     * @returns Sector delimiter style.
+     * 
+     * @function
+     */
+    styleDelimiter: function () {
+        return {
+            color: 'green',
+            weight: 2,
+            opacity: 1,
+            smoothFactor: 1
+        };
     },
 
-    STYLE_ANTENNA: {
-        color: 'green',
-        weight: 4,
-        opacity: 1,
-        smoothFactor: 1
+    /**
+     * @returns Antenna directivity "branches" style.
+     * 
+     * @function
+     */
+    styleAntenna: function () {
+        return {
+            color: 'green',
+            weight: 4,
+            opacity: 1,
+            smoothFactor: 1
+        };
     },
 
+    /**
+     * Heatmap gradient constant.
+     * 
+     * @constant
+     */
     HEATMAP: [],
 
+    /**
+     * 
+     * @param {number} opac Opacity (0.0-1.0)
+     * @param {String} hexColor Hexadecimal color (RRGGBB).
+     * @returns Voronoi cells style of opacity opac and color hexColor.
+     * 
+     * @function
+     */
     polyStyle: function (opac, hexColor) {
 
         return {
@@ -29,6 +61,13 @@ const styles = {
 
     },
 
+    /**
+     * 
+     * @param {String} color Hexadecimal color (RRGGBB).
+     * @returns Style of points of color color.
+     * 
+     * @function
+     */
     pointStyle: function (color)  {
         return {
             radius: 3,
@@ -40,7 +79,16 @@ const styles = {
         }
     },
 
+    /**
+     * 
+     * @param {number} pci PCI value.
+     * @param {number} colorChoice Alternate color for PCI (0 or 1). 
+     * @returns Style of PCI points of pci PCI value and colorChoice alt. color value.
+     * 
+     * @function
+     */
     pciColor: function (pci, colorChoice) {
+        // originated from the old program.
 
         let testedVal = (
             (colorChoice !== 0) ? 
@@ -54,7 +102,15 @@ const styles = {
 
     },
 
+    /**
+     * 
+     * @param {number} tac TAC value. 
+     * @returns Color of a TAC point of value tac.
+     * 
+     * @function
+     */
     tacColor: function (tac) {
+        // originated and readapted from the old program.
 
         let lcolor = (tac & 0xFF00) >> 8;
         let rcolor = tac & 0x00FF;
@@ -67,6 +123,14 @@ const styles = {
 
     },
 
+    /**
+     * 
+     * @param {number} min Minimum measurement value.
+     * @param {number} max Maximum measurement value.
+     * @returns Style for heatmap hexagons, with a color range over [min, max].
+     * 
+     * @function
+     */
     hexColor: function (min, max) {
 
         // copied from the old program.
@@ -87,6 +151,12 @@ const styles = {
 
     },
 
+    /**
+     * 
+     * @returns The icon of an associated base station.
+     * 
+     * @function
+     */
     stationIcon: function () {
 
         // copied from the old program.
@@ -102,6 +172,13 @@ const styles = {
 
     },
 
+    /**
+     * 
+     * @param {*} baseMap Lealfet map default background.
+     * @returns Style of a Leaflet map with default backround baseMap.
+     * 
+     * @function
+     */
     mapStyle: function (baseMap) {
 
         // copied from the old program.
@@ -113,17 +190,31 @@ const styles = {
         };
     },
 
+    /**
+     * Produces a gradient made of a given number of color for HexBin layers.
+     * 
+     * The gradiant is created using RGB-hex from HSL (Hue-Saturation-Luminosity) conversion, 
+     * by iterating over HSL values with H in [240, 0], over the given number of steps, 
+     * and with S: 1.0, L: 0.5.
+     * 
+     * @param {number} stepNum Number of colors.
+     * @returns An Array of stepNum hexadecimal RGB color code, forming an heatmap gradient.
+     * 
+     * @function
+     */
     generateGradient: function (stepNum) {
 
         let result = [];
 
-        let floatStep = 240.0 / stepNum;
+        let floatStep = 240.0 / stepNum;    // Step size.
 
+        // Iterating step by step...
         for (let i = stepNum; i > 0; i--) {
 
-            let hue = i * floatStep;
-            hue = hue < 0 ? 0 : hue;
+            let hue = i * floatStep;    // Current hue.
+            hue = hue < 0 ? 0 : hue;    // Avoiding hue being less than 0 due to floating-point errors.
 
+            // Adding new hexadecimal code to results.
             result.push(d3.hsl(hue, 1.0, 0.5).formatHex())
 
         }
