@@ -59,19 +59,27 @@ const app = {
             let pcis = this.#fileReader.pcis;
             let selEarfcns = this.#selEarfcns;
             let selPcis = this.#selPcis;
+            let checkEarfcns = this.#checkEarfcns;
+            let checkPcis = this.#checkPcis;
             let extr = this.#fileReader.extremas;
 
-            this.#drawingMap.updatePCILayer(points, selEarfcns, selPcis);
-            this.#drawingMap.updateTACLayer(points, selEarfcns, selPcis);
+            let filtEarpcis = utils.subEarpci(earfcns, pcis, selEarfcns, selPcis);
 
-            this.#drawingMap.drawServingRSRP(points, extr.minRSRP, extr.maxRSRP, selEarfcns, selPcis);
-            this.#drawingMap.drawServingRSRQ(points, extr.minRSRQ, extr.maxRSRQ, selEarfcns, selPcis);
-            this.#drawingMap.drawServingRSSI(points, extr.minRSSI, extr.maxRSSI, selEarfcns, selPcis);
-            this.#drawingMap.drawServingCINR(points, extr.minCINR, extr.maxCINR, selEarfcns, selPcis);
+            let onlySitesEarpcis = utils.subEarpci(filtEarpcis.earfcns, filtEarpcis.pcis, checkEarfcns, checkPcis);
+            let finalEarfcns = (this.#allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
+            let finalPcis = (this.#allSites) ? selPcis : onlySitesEarpcis.pcis;
+
+            this.#drawingMap.updatePCILayer(points, finalEarfcns, finalPcis);
+            this.#drawingMap.updateTACLayer(points, finalEarfcns, finalPcis);
+
+            this.#drawingMap.drawServingRSRP(points, extr.minRSRP, extr.maxRSRP, finalEarfcns, finalPcis);
+            this.#drawingMap.drawServingRSRQ(points, extr.minRSRQ, extr.maxRSRQ, finalEarfcns, finalPcis);
+            this.#drawingMap.drawServingRSSI(points, extr.minRSSI, extr.maxRSSI, finalEarfcns, finalPcis);
+            this.#drawingMap.drawServingCINR(points, extr.minCINR, extr.maxCINR, finalEarfcns, finalPcis);
         
-            this.#drawingMap.drawRSRP(this.#fileReader.rsrps, earfcns, pcis, extr.minRSRP, extr.maxRSRP, selEarfcns, selPcis);
-            this.#drawingMap.drawRSRQ(this.#fileReader.rsrqs, earfcns, pcis, extr.minRSRQ, extr.maxRSRQ, selEarfcns, selPcis);
-            this.#drawingMap.drawRSSI(this.#fileReader.rssis, earfcns, pcis, extr.minRSSI, extr.maxRSSI, selEarfcns, selPcis);
+            this.#drawingMap.drawRSRP(this.#fileReader.rsrps, earfcns, pcis, extr.minRSRP, extr.maxRSRP, finalEarfcns, finalPcis);
+            this.#drawingMap.drawRSRQ(this.#fileReader.rsrqs, earfcns, pcis, extr.minRSRQ, extr.maxRSRQ, finalEarfcns, finalPcis);
+            this.#drawingMap.drawRSSI(this.#fileReader.rssis, earfcns, pcis, extr.minRSSI, extr.maxRSSI, finalEarfcns, finalPcis);
         
         }
 
@@ -110,7 +118,7 @@ const app = {
 
             this.#drawingMap.drawAssocs(
                 this.#fileReader.assocs, this.#fileReader.antennas, this.#checkEarfcns, this.#checkPcis, 
-                earpcis.earfcns, earpcis.pcis);
+                () => this.update(), earpcis.earfcns, earpcis.pcis);
 
         }
 
@@ -122,6 +130,9 @@ const app = {
 
             this.#selEarfcns = null;
             this.#selPcis = null;
+
+            this.#checkEarfcns = [];
+            this.#checkPcis = [];
 
             this.#rsrpChecked = false;
             this.#rsrqChecked = false;
@@ -245,7 +256,10 @@ const app = {
             };
 
             document.querySelector('#sites-select').onchange = (evt) => {
+
                 this.#allSites = (evt.target.value === 'all-sites');
+                this.update();
+
             }
 
             document.querySelector('#EARFCN_select').onchange = (evt) => {
@@ -258,8 +272,6 @@ const app = {
                     [parseInt(val)] : null;
 
                 this.#onServing = this.#earfcnOnServing || this.#pciOnServing;
-
-                
 
                 this.update();
                 this.updateDisplay();

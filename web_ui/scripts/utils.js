@@ -49,7 +49,12 @@ const utils = {
             (e) => utils.interPush(subPcisIdx, utils.indexesOf(pcis, e))
         );
 
-        subEarfcnsIdx.filter((i) => subPcisIdx.includes(i))
+        subEarfcnsIdx.filter((i, j) => {
+            let e = earfcns[i];
+            let p = pcis[i];
+            let sameIndex = (reqEarfcns && reqPcis) ? utils.indexesOf(reqEarfcns, e).filter((ear) => utils.indexesOf(reqPcis, p).includes(ear)).length !== 0  : true
+            return subPcisIdx.includes(i) && sameIndex;
+        })
                      .forEach(
                         (i) => {
                             result.earfcns.push(earfcns[i]);

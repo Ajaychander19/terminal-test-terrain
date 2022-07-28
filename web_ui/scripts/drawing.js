@@ -169,7 +169,7 @@ const drawing = {
 
         }
 
-        drawAssocs(assocs, antennas, checkEarfcns, checkPcis, earfcns=null, pcis=null) {
+        drawAssocs(assocs, antennas, checkEarfcns, checkPcis, updateMethod, earfcns=null, pcis=null) {
 
             this.#assocLayer.clearLayers();
 
@@ -182,7 +182,7 @@ const drawing = {
                 let marker = L.marker([ant.lat, ant.lng], {icon: styles.stationIcon()});
 
                 marker.bindPopup(
-                    this.drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, earfcns, pcis),
+                    this.drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, updateMethod, earfcns, pcis),
                     {closeOnClick: false, autoClose: false}
                 );
                 marker.addTo(this.#assocLayer);
@@ -192,7 +192,7 @@ const drawing = {
 
         }
 
-        drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, earfcns=null, pcis=null) {
+        drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, updateMethod, earfcns=null, pcis=null) {
 
             // Content element of the popup.
             let popDiv = document.createElement('div');
@@ -230,6 +230,8 @@ const drawing = {
                         checkEarfcns.push(earfcn);
                         checkPcis.push(pci);
                     } else utils.removeEarpci(checkEarfcns, checkPcis, earfcn, pci);
+
+                    updateMethod();
 
                 };
 
