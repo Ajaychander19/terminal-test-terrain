@@ -142,11 +142,15 @@ const app = {
             this.#cinrChecked = false;
 
             this.#fileReader = null;
+            
+            this.#altCol = 1;
 
             document.querySelectorAll('#EARFCN_select, #pci-select').forEach((elt) => elt.innerHTML = '');
             document.querySelector('#sites-select').value = 'all-sites';
 
             document.querySelectorAll('input[type="checkbox"]').forEach((elt) => elt.checked = false);
+
+            document.querySelector('#fileSelect').disabled = false;
 
             this.enableInputs(false);
 
@@ -171,7 +175,7 @@ const app = {
 
         attributeEvents() {
 
-            document.querySelector('#fileSelect').onclick = (_) => {
+            document.querySelector('#fileSelect').onclick = (evt) => {
 
                 let inputElt = document.querySelector('#fileElem');
                 inputElt.click();

@@ -113,22 +113,15 @@
 						<label for="cinr">CINR</label>
 					</div>
 
-					<!-- To remove -->
-					<div class="checkbox checkbox-primary">
-						<input class="styled" type="checkbox"  id="RSRP_offset">
-						<label for="RSRP_offset">First neighbour RSRP offset </label>
-					</div>
 				</div>
 
 				<div class="panel panel-success visu-params">
 					<div class="panel-heading">Sites</div>
-					<div id="myDiv" class="form-group">
-						<select class="form-control selectpicker" id="sites-select">
-							<option value="all-sites" selected="selected">All sites</option>
-							<option value="only-sites">Only selected sites</option>
-						</select>
-						<!-- <label for="site-select"></label> -->
-					</div>
+					<select class="form-control selectpicker" id="sites-select">
+						<option value="all-sites" selected="selected">All sites</option>
+						<option value="only-sites">Only selected sites</option>
+					</select>
+					<!-- <label for="site-select"></label> -->
 				</div>
 
 				<div class="panel panel-success visu-params">
@@ -141,14 +134,11 @@
 
 				<div class="panel panel-success visu-params">
 					<div class="panel-heading">PCI</div>
-					<div id="pci_div" class="form-group">
-						<!-- Maybe temporary -->
-						<label for="pci-select"></label>
-						<select class="form-control selectpicker" id="pci-select">
-							<option value='serving-pci'>Serving PCI</option>
-							<option value="all-pcis">All PCIs</option>
-						</select>
-					</div>
+					<!-- Maybe temporary -->
+					<select class="form-control selectpicker" id="pci-select">
+						<option value='serving-pci'>Serving PCI</option>
+						<option value="all-pcis">All PCIs</option>
+					</select>
 				</div>
 
 				<div class="panel panel-success visu-params">

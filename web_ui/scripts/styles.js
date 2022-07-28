@@ -14,6 +14,8 @@ const styles = {
         smoothFactor: 1
     },
 
+    HEATMAP: [],
+
     polyStyle: function (opac, hexColor) {
 
         return {
@@ -67,13 +69,6 @@ const styles = {
 
     hexColor: function (min, max) {
 
-        let colorRange = [
-            "blue","#52a4ff","#00f9ff","#50ff7f",     
-            "#00FF00","#7CFF00","#B0FF00","#C2FF00","#D4FF00",
-            "#E5FF00","#FFF600","#FFE400","#FFD300","#FFAF00",
-            "#FF9E00","#FF8C00","#FF6900","#FF5700","red"
-        ];  // FIXME Temporary.
-
         // copied from the old program.
         return {
 			radius : 12,
@@ -84,15 +79,10 @@ const styles = {
 			radiusScaleExtent: [ 1, undefined ],
 			colorDomain: null,
 			radiusDomain: null,
-			colorRange:["black","MidnightBlue","Navy","DarkBlue",
-            "MediumBlue","blue","RoyalBlue","DodgerBlue",
-            "DeepSkyBlue","LightSkyBlue", "Cyan", "PaleTurquoise",
-            "aquamarine","lightgreen","mediumaquamarine","GreenYellow",
-            "Lime","chartreuse","yellow","Gold", "orange",
-            "DarkOrange", "Coral", "Tomato","Crimson"],
+			colorRange: styles.HEATMAP,
 			radiusRange: [ 1, 12 ],
 
-			pointerEvents: 'all'
+			pointserEvents: 'all'
         }
 
     },
@@ -121,6 +111,27 @@ const styles = {
             zoom: 6,
             layers: baseMap
         };
+    },
+
+    generateGradient: function (stepNum) {
+
+        let result = [];
+
+        let floatStep = 240.0 / stepNum;
+
+        for (let i = stepNum; i > 0; i--) {
+
+            let hue = i * floatStep;
+            hue = hue < 0 ? 0 : hue;
+
+            result.push(d3.hsl(hue, 1.0, 0.5).formatHex())
+
+        }
+
+        return result;
+
     }
 
-}
+};
+
+(function () { styles.HEATMAP = styles.generateGradient(255); })();

@@ -439,7 +439,18 @@ const drawing = {
             pciSelector.innerHTML = '<option value="serving-pci">Serving PCI</option>'
                 + '<option value="all-pcis">All PCIs</option>';
 
-            earfcns.sort().forEach(
+            let order = (a, b) => {
+                
+                let numA = parseInt(a);
+                let numB = parseInt(b);
+
+                if (a === b) return 0;
+                else if (a < b) return -1;
+                else return 1;
+
+            }
+
+            earfcns.sort(order).forEach(
                 (earfcn) => {
 
                     if (!document.querySelector('#EARFCN_select option[value="' + earfcn + '"]')) {
@@ -454,7 +465,7 @@ const drawing = {
                 }
             );
 
-            pcis.sort().forEach(
+            pcis.sort(order).forEach(
                 (pci) => {
 
                     if (!document.querySelector('#pci-select option[value="' + pci + '"]')) {
