@@ -1,5 +1,20 @@
+/**
+ * Contains data processing methods, used to calculate some geometrical elements from data.
+ * 
+ * @namespace
+ */
 const processing = {
 
+    /**
+     * Calculates Voronoi diagram from antennas data.
+     * The calculation is done using turf.js Voronoi function, which produces
+     * GeoJSON data of the Voronoi diagram.
+     * 
+     * @param {*} antennas Antennas object from the file reader object.
+     * @returns GeoJSON Voronoi diagram obtained from antennas.
+     * 
+     * @function
+     */
     calcVoronoi: function (antennas) {
 
         // Base station coordinates list.
@@ -19,6 +34,17 @@ const processing = {
 
     },
 
+    /**
+     * Calculates sectors delimitation lines from delimiters data.
+     * Produced lines are GeoJSON objects made with turf.js library. These
+     * line are truncated in order to not go outside corresponding Voronoi cell.
+     * 
+     * @param {*} voronoi Voronoi diagram GeoJSON object.
+     * @param {*} antennas Antennas object from the file reader object.
+     * @returns Array of truncated sector delimitation lines which match with Voronoi cells.
+     * 
+     * @function
+     */
     calcDelimiters: function (voronoi, antennas) {
 
         // List of calculated delimiters.
@@ -56,6 +82,15 @@ const processing = {
 
     },
 
+    /**
+     * Calculates antennas directivity line from antennas directivity data.
+     * Produced lines are GeoJSON objects made with turf.js library.
+     * 
+     * @param {Array} antDirs Antenna directivity data from the file reader object.
+     * @returns Antenna directivity GeoJSON line.
+     * 
+     * @function
+     */
     calcAntennas: function (antDirs) {
 
         return antDirs.map(
