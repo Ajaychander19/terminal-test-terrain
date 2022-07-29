@@ -81,7 +81,7 @@ var csvread = {
             let result = await this.#promiseFile();
 
             // Splitting file content by lines...
-            flines = result.split('\r\n');
+            flines = result.split(result.includes('\r\n') ? '\r\n' : '\n');
 
             // FSM state.
             let state = 0;
