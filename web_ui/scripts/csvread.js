@@ -5,70 +5,70 @@ var csvread = {
         // Attributes
 
         // File reading.
-        #file
-        #freader
+        _file
+        _freader
 
         // Measurements columns.
-        #earfcns
-        #pcis
+        _earfcns
+        _pcis
 
         // Points of data
-        #points
+        _points
 
         // Measurements.
-        #rsrps
-        #rssis
-        #rsrqs
-        #cinrs
+        _rsrps
+        _rssis
+        _rsrqs
+        _cinrs
 
         // Associations
-        #assocs
-        #reverseAssocs
+        _assocs
+        _reverseAssocs
 
         // Directivity
-        #antDirs
-        #sectDels
+        _antDirs
+        _sectDels
 
-        #antennas
+        _antennas
 
         // Minimum / maximums.
-        #minRSRP
-        #minRSRQ
-        #minRSSI
-        #minCINR
+        _minRSRP
+        _minRSRQ
+        _minRSSI
+        _minCINR
 
-        #maxRSRP
-        #maxRSRQ
-        #maxRSSI
-        #maxCINR
+        _maxRSRP
+        _maxRSRQ
+        _maxRSSI
+        _maxCINR
 
         
         constructor(file) {
-            this.#file = file;
-            this.#earfcns = [];
-            this.#pcis = [];
-            this.#points = {};
-            this.#rsrps = [];
-            this.#rsrqs = [];
-            this.#rssis = [];
-            this.#cinrs = [];
-            this.#assocs = {};
-            this.#reverseAssocs = {};
-            this.#antDirs = [];
-            this.#sectDels = [];
-            this.#antennas = {};
+            this._file = file;
+            this._earfcns = [];
+            this._pcis = [];
+            this._points = {};
+            this._rsrps = [];
+            this._rsrqs = [];
+            this._rssis = [];
+            this._cinrs = [];
+            this._assocs = {};
+            this._reverseAssocs = {};
+            this._antDirs = [];
+            this._sectDels = [];
+            this._antennas = {};
 
-            this.#minRSRP = null;
-            this.#minRSRQ = null;
-            this.#minRSSI = null;
-            this.#minCINR = null;
+            this._minRSRP = null;
+            this._minRSRQ = null;
+            this._minRSSI = null;
+            this._minCINR = null;
     
-            this.#maxRSRP = null;
-            this.#maxRSRQ = null;
-            this.#maxRSSI = null;
-            this.#maxCINR = null;
+            this._maxRSRP = null;
+            this._maxRSRQ = null;
+            this._maxRSSI = null;
+            this._maxCINR = null;
 
-            this.#freader = new FileReader();
+            this._freader = new FileReader();
 
         }
 
@@ -78,7 +78,7 @@ var csvread = {
             let flines = null;
 
             // Reading file...
-            let result = await this.#promiseFile();
+            let result = await this._promiseFile();
 
             // Splitting file content by lines...
             flines = result.split(result.includes('\r\n') ? '\r\n' : '\n');
@@ -127,7 +127,7 @@ var csvread = {
                                 if (llen < 6) throw new Error(
                                     'Error: line ' + lineNum + ': MEAS_EARFCNS line must contain at least 6 fields.')
 
-                                for (let j = 5; j < llen; j++) this.#earfcns.push(parseInt(line[j]));
+                                for (let j = 5; j < llen; j++) this._earfcns.push(parseInt(line[j]));
                                 measEarfcns = true;
                                 break;
 
@@ -139,9 +139,9 @@ var csvread = {
                                 if (llen < 6) throw new Error(
                                     'Error: line ' + lineNum + ': MEAS_PCIS line must contain at least 6 fields.')
 
-                                for (let j = 5; j < llen; j++) this.#pcis.push(parseInt(line[j]));
+                                for (let j = 5; j < llen; j++) this._pcis.push(parseInt(line[j]));
 
-                                if (this.#earfcns.length !== this.#pcis.length) throw new Error(
+                                if (this._earfcns.length !== this._pcis.length) throw new Error(
                                     'Error: line ' + lineNum + ': EARFCN count is different of PCI count.');
 
                                 measLines = true;
@@ -152,7 +152,7 @@ var csvread = {
                                 if (!measLines) throw new Error(
                                     'Error: line ' + lineNum + ': missing MEAS_EARFCNS or MEAS_PCIS line before this line.')
 
-                                if (llen != this.#earfcns.length + 5) throw new Error(
+                                if (llen != this._earfcns.length + 5) throw new Error(
                                     'Error: line ' + lineNum + ': more measurements than EARFCN / PCI found.')
 
                                 // Choosing in which table measurement will be added...    
@@ -179,36 +179,36 @@ var csvread = {
                                 switch (line[4]) {
 
                                     case 'RSRP':
-                                        toAdd = this.#rsrps;
+                                        toAdd = this._rsrps;
 
-                                        this.#minRSRP || (this.#minRSRP = localMin);
-                                        this.#maxRSRP || (this.#maxRSRP = localMax);
+                                        this._minRSRP || (this._minRSRP = localMin);
+                                        this._maxRSRP || (this._maxRSRP = localMax);
 
-                                        if (this.#minRSRP > localMin) this.#minRSRP = localMin;
-                                        if (this.#maxRSRP < localMax) this.#maxRSRP = localMax;
+                                        if (this._minRSRP > localMin) this._minRSRP = localMin;
+                                        if (this._maxRSRP < localMax) this._maxRSRP = localMax;
 
                                         break;
 
                                     case 'RSRQ':
-                                        toAdd = this.#rsrqs;
+                                        toAdd = this._rsrqs;
 
-                                        this.#minRSRQ || (this.#minRSRQ = localMin);
-                                        this.#maxRSRQ || (this.#maxRSRQ = localMax);
+                                        this._minRSRQ || (this._minRSRQ = localMin);
+                                        this._maxRSRQ || (this._maxRSRQ = localMax);
 
-                                        if (this.#minRSRQ > localMin) this.#minRSRQ = localMin;
-                                        if (this.#maxRSRQ < localMax) this.#maxRSRQ = localMax;
+                                        if (this._minRSRQ > localMin) this._minRSRQ = localMin;
+                                        if (this._maxRSRQ < localMax) this._maxRSRQ = localMax;
 
                                         break;
 
                                     case 'RSSI':
-                                        toAdd = this.#rssis;
+                                        toAdd = this._rssis;
 
                                         
-                                        this.#minRSSI || (this.#minRSSI = localMin);
-                                        this.#maxRSSI || (this.#maxRSSI = localMax);
+                                        this._minRSSI || (this._minRSSI = localMin);
+                                        this._maxRSSI || (this._maxRSSI = localMax);
 
-                                        if (this.#minRSSI > localMin) this.#minRSSI = localMin;
-                                        if (this.#maxRSSI < localMax) this.#maxRSSI = localMax;
+                                        if (this._minRSSI > localMin) this._minRSSI = localMin;
+                                        if (this._maxRSSI < localMax) this._maxRSSI = localMax;
 
                                         break;
 
@@ -228,8 +228,8 @@ var csvread = {
                                 let cinr = csvread.parseNum(line[10], lineNum);
 
                                 // Filling serving EARFCN / PCI measurements dictionnary...
-                                if (this.#points[earfcn] === undefined) this.#points[earfcn] = {}
-                                if (this.#points[earfcn][pci] === undefined) this.#points[earfcn][pci] = []
+                                if (this._points[earfcn] === undefined) this._points[earfcn] = {}
+                                if (this._points[earfcn][pci] === undefined) this._points[earfcn][pci] = []
 
                                 // Point to add.
                                 let point = {
@@ -244,13 +244,13 @@ var csvread = {
                                 };
 
                                 // Updating max and min CINR properties.
-                                this.#minCINR || (this.#minCINR = cinr);
-                                this.#maxCINR || (this.#maxCINR = cinr);
+                                this._minCINR || (this._minCINR = cinr);
+                                this._maxCINR || (this._maxCINR = cinr);
 
-                                if (this.#minCINR > cinr) this.#minCINR = cinr;
-                                if (this.#maxCINR < cinr) this.#maxCINR = cinr;
+                                if (this._minCINR > cinr) this._minCINR = cinr;
+                                if (this._maxCINR < cinr) this._maxCINR = cinr;
 
-                                this.#points[earfcn][pci].push(point);
+                                this._points[earfcn][pci].push(point);
 
                                 break;
 
@@ -266,15 +266,15 @@ var csvread = {
 
                                 // Generating antennas data from deliimters.
 
-                                if (this.#antennas[cartoNum] === undefined) 
-                                    this.#antennas[cartoNum] = {lat: latA, lng: lngA, dels: []};
+                                if (this._antennas[cartoNum] === undefined) 
+                                    this._antennas[cartoNum] = {lat: latA, lng: lngA, dels: []};
 
                                 let delVect = {
                                     latB: csvread.parseNum(line[4], lineNum),
                                     lngB: csvread.parseNum(line[5], lineNum)
                                 };
 
-                                this.#antennas[cartoNum].dels.push(delVect);
+                                this._antennas[cartoNum].dels.push(delVect);
 
                                 break;
 
@@ -292,7 +292,7 @@ var csvread = {
                                     lngB: csvread.parseNum(line[6], lineNum)
                                 };
 
-                                this.#antDirs.push(antVect);
+                                this._antDirs.push(antVect);
 
                                 break;
 
@@ -305,9 +305,9 @@ var csvread = {
                                 let earfcn_ = csvread.parseNum(line[5], lineNum);
                                 let pci_ = csvread.parseNum(line[6], lineNum);
 
-                                this.#assocs[carto] || (this.#assocs[carto] = []);
+                                this._assocs[carto] || (this._assocs[carto] = []);
 
-                                this.#assocs[carto].push({
+                                this._assocs[carto].push({
                                     antNum: csvread.parseNum(line[2], lineNum),
                                     tac: csvread.parseNum(line[3], lineNum),
                                     cid: csvread.parseNum(line[4], lineNum),
@@ -327,48 +327,48 @@ var csvread = {
 
         }
 
-        #promiseFile() {
+        _promiseFile() {
             return new Promise((resolve, reject) => {
-                this.#freader.onload = (e) => resolve(this.#freader.result);
-                this.#freader.onerror = reject;
-                this.#freader.readAsText(this.#file);
+                this._freader.onload = (e) => resolve(this._freader.result);
+                this._freader.onerror = reject;
+                this._freader.readAsText(this._file);
             })
 
         }
 
-        get earfcns() { return utils.deepCopy(this.#earfcns); }
+        get earfcns() { return utils.deepCopy(this._earfcns); }
 
-        get pcis() { return utils.deepCopy(this.#pcis); }
+        get pcis() { return utils.deepCopy(this._pcis); }
 
-        get rsrps() { return utils.deepCopy(this.#rsrps); }
+        get rsrps() { return utils.deepCopy(this._rsrps); }
         
-        get rsrqs() { return utils.deepCopy(this.#rsrqs); }
+        get rsrqs() { return utils.deepCopy(this._rsrqs); }
 
-        get rssis() { return utils.deepCopy(this.#rssis); }
+        get rssis() { return utils.deepCopy(this._rssis); }
 
-        get cinrs() { return utils.deepCopy(this.#cinrs); }
+        get cinrs() { return utils.deepCopy(this._cinrs); }
 
-        get points() { return utils.deepCopy(this.#points); }
+        get points() { return utils.deepCopy(this._points); }
 
-        get assocs() { return utils.deepCopy(this.#assocs); }
+        get assocs() { return utils.deepCopy(this._assocs); }
 
-        get antennaDirections() { return utils.deepCopy(this.#antDirs); }
+        get antennaDirections() { return utils.deepCopy(this._antDirs); }
 
-        get antennas() { return utils.deepCopy(this.#antennas); }
+        get antennas() { return utils.deepCopy(this._antennas); }
 
-        get reverseAssocs() { return utils.deepCopy(this.#reverseAssocs); }
+        get reverseAssocs() { return utils.deepCopy(this._reverseAssocs); }
 
         get extremas() {
 
             return {
-                minRSRP: this.#minRSRP,
-                maxRSRP: this.#maxRSRP,
-                minRSRQ: this.#minRSRQ,
-                maxRSRQ: this.#maxRSRQ,
-                minRSSI: this.#minRSSI,
-                maxRSSI: this.#maxRSSI,
-                minCINR: this.#minCINR,
-                maxCINR: this.#maxCINR,
+                minRSRP: this._minRSRP,
+                maxRSRP: this._maxRSRP,
+                minRSRQ: this._minRSRQ,
+                maxRSRQ: this._maxRSRQ,
+                minRSSI: this._minRSSI,
+                maxRSSI: this._maxRSSI,
+                minCINR: this._minCINR,
+                maxCINR: this._maxCINR,
             };
 
         }

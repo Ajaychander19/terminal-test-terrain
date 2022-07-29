@@ -2,55 +2,55 @@ const drawing = {
 
     Map: class {
 
-        #map
-        #cellLayer
-        #antLayer
-        #assocLayer
+        _map
+        _cellLayer
+        _antLayer
+        _assocLayer
         
-        #tacLayer
-        #pciLayer
+        _tacLayer
+        _pciLayer
         
-        #servingRSRP
-        #servingRSRQ
-        #servingRSSI
-        #servingCINR
+        _servingRSRP
+        _servingRSRQ
+        _servingRSSI
+        _servingCINR
         
-        #rsrpLayer
-        #rsrqLayer
-        #rssiLayer
-        #cinrLayer
+        _rsrpLayer
+        _rsrqLayer
+        _rssiLayer
+        _cinrLayer
 
-        #nonFilteredTAC
-        #nonFilteredPCI
+        _nonFilteredTAC
+        _nonFilteredPCI
 
 
         constructor(map) {
-            this.#map = map;
+            this._map = map;
 
-            this.#cellLayer = L.layerGroup();
-            this.#tacLayer = L.layerGroup();
-            this.#pciLayer = L.layerGroup();
+            this._cellLayer = L.layerGroup();
+            this._tacLayer = L.layerGroup();
+            this._pciLayer = L.layerGroup();
 
-            this.#servingRSRP = drawing.hexBin('RSRP', styles.hexColor(0, 1));
-            this.#servingRSRQ = drawing.hexBin('RSRQ', styles.hexColor(0, 1));
-            this.#servingRSSI = drawing.hexBin('RSSI', styles.hexColor(0, 1));
-            this.#servingCINR = drawing.hexBin('CINR', styles.hexColor(0, 1));
+            this._servingRSRP = drawing.hexBin('RSRP', styles.hexColor(0, 1));
+            this._servingRSRQ = drawing.hexBin('RSRQ', styles.hexColor(0, 1));
+            this._servingRSSI = drawing.hexBin('RSSI', styles.hexColor(0, 1));
+            this._servingCINR = drawing.hexBin('CINR', styles.hexColor(0, 1));
 
-            this.#rsrpLayer = drawing.hexBin('RSRP', styles.hexColor(0, 1));
-            this.#rsrqLayer = drawing.hexBin('RSRQ', styles.hexColor(0, 1));
-            this.#rssiLayer = drawing.hexBin('RSSI', styles.hexColor(0, 1));
-            this.#cinrLayer = drawing.hexBin('CINR', styles.hexColor(0, 1));
+            this._rsrpLayer = drawing.hexBin('RSRP', styles.hexColor(0, 1));
+            this._rsrqLayer = drawing.hexBin('RSRQ', styles.hexColor(0, 1));
+            this._rssiLayer = drawing.hexBin('RSSI', styles.hexColor(0, 1));
+            this._cinrLayer = drawing.hexBin('CINR', styles.hexColor(0, 1));
 
-            this.#assocLayer = L.layerGroup();
+            this._assocLayer = L.layerGroup();
 
-            this.#nonFilteredTAC = null;
-            this.#nonFilteredPCI = null;
+            this._nonFilteredTAC = null;
+            this._nonFilteredPCI = null;
 
         }
 
         drawCells(voronoi, antFeats, delFeats) {
 
-            this.#cellLayer.clearLayers();
+            this._cellLayer.clearLayers();
 
             // GeoJSON features of Voronoi cells.
             let vorFeats = voronoi.features;
@@ -61,11 +61,11 @@ const drawing = {
             delLayer.bringToBack();
             
             // Grouping these layers
-            vorLayer.addTo(this.#cellLayer);
-            delLayer.addTo(this.#cellLayer);
+            vorLayer.addTo(this._cellLayer);
+            delLayer.addTo(this._cellLayer);
 
             // Antennas layer (always displayed by default).
-            this.#antLayer = L.geoJson(turf.featureCollection(antFeats), styles.styleAntenna());
+            this._antLayer = L.geoJson(turf.featureCollection(antFeats), styles.styleAntenna());
     
         }
 
@@ -171,7 +171,7 @@ const drawing = {
 
         drawAssocs(assocs, antennas, checkEarfcns, checkPcis, updateMethod, earfcns=null, pcis=null) {
 
-            this.#assocLayer.clearLayers();
+            this._assocLayer.clearLayers();
 
             for (let cartoNum in assocs) {
 
@@ -185,7 +185,7 @@ const drawing = {
                     this.drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, updateMethod, earfcns, pcis),
                     {closeOnClick: false, autoClose: false}
                 );
-                marker.addTo(this.#assocLayer);
+                marker.addTo(this._assocLayer);
 
             }
 
@@ -347,85 +347,85 @@ const drawing = {
 
         drawServingRSRP(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
-                this.#servingRSRP, points, (_e, _p, pt) => pt.rsrp,
+                this._servingRSRP, points, (_e, _p, pt) => pt.rsrp,
                 min, max, earfcns, pcis,
             );
         }
 
         drawServingRSRQ(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
-                this.#servingRSRQ, points, (_e, _p, pt) => pt.rsrq,
+                this._servingRSRQ, points, (_e, _p, pt) => pt.rsrq,
                 min, max, earfcns, pcis
             );
         }
 
         drawServingRSSI(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
-                this.#servingRSSI, points, (_e, _p, pt) => pt.rssi,
+                this._servingRSSI, points, (_e, _p, pt) => pt.rssi,
                 min, max, earfcns, pcis
             );
         }
 
         drawServingCINR(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
-                this.#servingCINR, points, (_e, _p, pt) => pt.cinr,
+                this._servingCINR, points, (_e, _p, pt) => pt.cinr,
                 min, max, earfcns, pcis
             );
         }
 
         drawRSRP(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
-            this.drawHex(this.#rsrpLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
+            this.drawHex(this._rsrpLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
         }
 
         drawRSRQ(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
-            this.drawHex(this.#rsrqLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
+            this.drawHex(this._rsrqLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
         }
 
         drawRSSI(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
-            this.drawHex(this.#rssiLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
+            this.drawHex(this._rssiLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
         }
 
         updateTACLayer(points, earfcn=null, pci=null) {
-            this.#nonFilteredTAC = this.drawTAC(points);
-            this.setPointLayer(this.#tacLayer, this.#nonFilteredTAC, earfcn, pci); 
+            this._nonFilteredTAC = this.drawTAC(points);
+            this.setPointLayer(this._tacLayer, this._nonFilteredTAC, earfcn, pci); 
         }
 
         updatePCILayer(points, earfcn=null, pci=null, col=1) {
-            this.#nonFilteredPCI = this.drawPCI(points, col);
-            this.setPointLayer(this.#pciLayer, this.#nonFilteredPCI, earfcn, pci); 
+            this._nonFilteredPCI = this.drawPCI(points, col);
+            this.setPointLayer(this._pciLayer, this._nonFilteredPCI, earfcn, pci); 
         }
 
 
 
-        setCellLayer(b) { this.#setLayerVisibility(this.#cellLayer, b); }
+        setCellLayer(b) { this._setLayerVisibility(this._cellLayer, b); }
 
-        setAntLayer(b) { this.#setLayerVisibility(this.#antLayer, b); }
+        setAntLayer(b) { this._setLayerVisibility(this._antLayer, b); }
 
-        setTACLayer(b) { this.#setLayerVisibility(this.#tacLayer, b); }
+        setTACLayer(b) { this._setLayerVisibility(this._tacLayer, b); }
 
-        setPCILayer(b) { this.#setLayerVisibility(this.#pciLayer, b); }
+        setPCILayer(b) { this._setLayerVisibility(this._pciLayer, b); }
 
-        setAssocLayer(b) { this.#setLayerVisibility(this.#assocLayer, b); }
+        setAssocLayer(b) { this._setLayerVisibility(this._assocLayer, b); }
 
-        setServingRSRP(b) { this.#setLayerVisibility(this.#servingRSRP, b); }
+        setServingRSRP(b) { this._setLayerVisibility(this._servingRSRP, b); }
 
-        setServingRSRQ(b) { this.#setLayerVisibility(this.#servingRSRQ, b); }
+        setServingRSRQ(b) { this._setLayerVisibility(this._servingRSRQ, b); }
 
-        setServingRSSI(b) { this.#setLayerVisibility(this.#servingRSSI, b); }
+        setServingRSSI(b) { this._setLayerVisibility(this._servingRSSI, b); }
 
-        setServingCINR(b) { this.#setLayerVisibility(this.#servingCINR, b); }
+        setServingCINR(b) { this._setLayerVisibility(this._servingCINR, b); }
 
-        setRSRP(b) { this.#setLayerVisibility(this.#rsrpLayer, b); }
+        setRSRP(b) { this._setLayerVisibility(this._rsrpLayer, b); }
 
-        setRSRQ(b) { this.#setLayerVisibility(this.#rsrqLayer, b); }
+        setRSRQ(b) { this._setLayerVisibility(this._rsrqLayer, b); }
 
-        setRSSI(b) { this.#setLayerVisibility(this.#rssiLayer, b); }
+        setRSSI(b) { this._setLayerVisibility(this._rssiLayer, b); }
 
-        // setCINR(b) { this.#setLayerVisibility(this.#cinrLayer, b); }
+        // setCINR(b) { this._setLayerVisibility(this._cinrLayer, b); }
 
-        #setLayerVisibility(layer, b) {
-            if (b && !this.#map.hasLayer(layer)) layer.addTo(this.#map);
-            else if (!b && this.#map.hasLayer(layer)) layer.removeFrom(this.#map);
+        _setLayerVisibility(layer, b) {
+            if (b && !this._map.hasLayer(layer)) layer.addTo(this._map);
+            else if (!b && this._map.hasLayer(layer)) layer.removeFrom(this._map);
         }
 
         drawSelectors(earfcns, pcis) {

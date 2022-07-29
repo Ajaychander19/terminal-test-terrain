@@ -10,29 +10,29 @@ const app = {
      */
     App: class {
 
-        #map                        // Leaflet map.
-        #drawingMap                 // Map object to wrap the Leaflet map.
-        #fileReader                 // CSVReader object.
+        _map                        // Leaflet map.
+        _drawingMap                 // Map object to wrap the Leaflet map.
+        _fileReader                 // CSVReader object.
 
-        #earfcnOnServing = true;    // true if "Serving EARFCN" is selected.
-        #pciOnServing = true;       // true if "Serving PCI" is selected.
-        #onServing = true;          // true if serving measurement layers must be dispalyed.
+        _earfcnOnServing = true;    // true if "Serving EARFCN" is selected.
+        _pciOnServing = true;       // true if "Serving PCI" is selected.
+        _onServing = true;          // true if serving measurement layers must be dispalyed.
 
-        #selEarfcns = null;         // Selected EARFCNs (with drop down menu).
-        #selPcis = null;            // Selected PCIs (with drop down menu).
+        _selEarfcns = null;         // Selected EARFCNs (with drop down menu).
+        _selPcis = null;            // Selected PCIs (with drop down menu).
 
-        #checkEarfcns = [];         // Selected EARFCNs (with sites checkboxes).
-        #checkPcis = [];            // Select PCIs (with sites checkboxes).
+        _checkEarfcns = [];         // Selected EARFCNs (with sites checkboxes).
+        _checkPcis = [];            // Select PCIs (with sites checkboxes).
 
-        #allSites = true;           // true if "All Sites" is selected in Sites.
+        _allSites = true;           // true if "All Sites" is selected in Sites.
 
-        #altCol = 1;                // Alternate PCI color value.
+        _altCol = 1;                // Alternate PCI color value.
 
         // Corresponds to layer checkboxes states, true if the checkbox is checked.
-        #rsrpChecked = false;
-        #rsrqChecked = false;
-        #rssiChecked = false;
-        #cinrChecked = false;
+        _rsrpChecked = false;
+        _rsrqChecked = false;
+        _rssiChecked = false;
+        _cinrChecked = false;
 
         /**
          * Application class constructor.
@@ -52,15 +52,15 @@ const app = {
             };
 
             // Creating the map.
-            this.#map = L.map('map', styles.mapStyle(baseMaps['Base Layer']));
+            this._map = L.map('map', styles.mapStyle(baseMaps['Base Layer']));
 
             this.reset();   // Resetting UI.
 
             // Adding background layers. 
-            L.control.layers(baseMaps, null, { collapsed: false }).addTo(this.#map);
+            L.control.layers(baseMaps, null, { collapsed: false }).addTo(this._map);
 
             // Wrapping the map in a map drawing object.
-            this.#drawingMap = new drawing.Map(this.#map);
+            this._drawingMap = new drawing.Map(this._map);
 
             // Setting up UI Events.
             this.attributeEvents();
@@ -75,13 +75,13 @@ const app = {
          */
         update() {
 
-            let points = this.#fileReader.points;       // Serving points.
-            let earfcns = this.#fileReader.earfcns;     // EARFCNs
-            let pcis = this.#fileReader.pcis;           // PCIs
-            let selEarfcns = this.#selEarfcns;          // EARFCNs selected with drop down menu.
-            let selPcis = this.#selPcis;                // PCIs selected with drop down menu.
-            let checkEarfcns = this.#checkEarfcns;      // EARFCNs selected with checkboxes.
-            let checkPcis = this.#checkPcis;            // PCIs selected with sites checkboxes.
+            let points = this._fileReader.points;       // Serving points.
+            let earfcns = this._fileReader.earfcns;     // EARFCNs
+            let pcis = this._fileReader.pcis;           // PCIs
+            let selEarfcns = this._selEarfcns;          // EARFCNs selected with drop down menu.
+            let selPcis = this._selPcis;                // PCIs selected with drop down menu.
+            let checkEarfcns = this._checkEarfcns;      // EARFCNs selected with checkboxes.
+            let checkPcis = this._checkPcis;            // PCIs selected with sites checkboxes.
 
             // Extremums
             const RSRP_MIN = -140;
@@ -105,23 +105,23 @@ const app = {
             let onlySitesEarpcis = utils.subEarpci(filtEarpcis.earfcns, filtEarpcis.pcis, checkEarfcns, checkPcis);
             
             // Final EARFCNs and PCIs list.
-            let finalEarfcns = (this.#allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
-            let finalPcis = (this.#allSites) ? selPcis : onlySitesEarpcis.pcis;
+            let finalEarfcns = (this._allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
+            let finalPcis = (this._allSites) ? selPcis : onlySitesEarpcis.pcis;
 
             // Updating TAC / PCI layers.
-            this.#drawingMap.updatePCILayer(points, finalEarfcns, finalPcis, this.#altCol);
-            this.#drawingMap.updateTACLayer(points, finalEarfcns, finalPcis);
+            this._drawingMap.updatePCILayer(points, finalEarfcns, finalPcis, this._altCol);
+            this._drawingMap.updateTACLayer(points, finalEarfcns, finalPcis);
 
             // Updating serving measurement layers.
-            this.#drawingMap.drawServingRSRP(points, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
-            this.#drawingMap.drawServingRSRQ(points, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis);
-            this.#drawingMap.drawServingRSSI(points, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);
-            this.#drawingMap.drawServingCINR(points, CINR_MIN, CINR_MAX, finalEarfcns, finalPcis);
+            this._drawingMap.drawServingRSRP(points, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
+            this._drawingMap.drawServingRSRQ(points, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis);
+            this._drawingMap.drawServingRSSI(points, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);
+            this._drawingMap.drawServingCINR(points, CINR_MIN, CINR_MAX, finalEarfcns, finalPcis);
         
             // Updating global measurement layers.
-            this.#drawingMap.drawRSRP(this.#fileReader.rsrps, earfcns, pcis, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
-            this.#drawingMap.drawRSRQ(this.#fileReader.rsrqs, earfcns, pcis, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis);
-            this.#drawingMap.drawRSSI(this.#fileReader.rssis, earfcns, pcis, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);
+            this._drawingMap.drawRSRP(this._fileReader.rsrps, earfcns, pcis, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
+            this._drawingMap.drawRSRQ(this._fileReader.rsrqs, earfcns, pcis, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis);
+            this._drawingMap.drawRSSI(this._fileReader.rssis, earfcns, pcis, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);
         
         }
 
@@ -133,31 +133,31 @@ const app = {
          */
         updateDisplay() {
 
-            if (this.#onServing) {
+            if (this._onServing) {
 
                 // Displaying serving measurement layers.
 
-                this.#drawingMap.setServingRSRP(this.#rsrpChecked);
-                this.#drawingMap.setServingRSRQ(this.#rsrqChecked);
-                this.#drawingMap.setServingRSSI(this.#rssiChecked);
-                this.#drawingMap.setServingCINR(this.#cinrChecked);
+                this._drawingMap.setServingRSRP(this._rsrpChecked);
+                this._drawingMap.setServingRSRQ(this._rsrqChecked);
+                this._drawingMap.setServingRSSI(this._rssiChecked);
+                this._drawingMap.setServingCINR(this._cinrChecked);
 
-                this.#drawingMap.setRSRP(false);
-                this.#drawingMap.setRSRQ(false);
-                this.#drawingMap.setRSSI(false);
+                this._drawingMap.setRSRP(false);
+                this._drawingMap.setRSRQ(false);
+                this._drawingMap.setRSSI(false);
 
             } else {
 
                 // Displaying global measurement layers.
 
-                this.#drawingMap.setRSRP(this.#rsrpChecked);
-                this.#drawingMap.setRSRQ(this.#rsrqChecked);
-                this.#drawingMap.setRSSI(this.#rssiChecked);
+                this._drawingMap.setRSRP(this._rsrpChecked);
+                this._drawingMap.setRSRQ(this._rsrqChecked);
+                this._drawingMap.setRSSI(this._rssiChecked);
 
-                this.#drawingMap.setServingRSRP(false);
-                this.#drawingMap.setServingRSRQ(false);
-                this.#drawingMap.setServingRSSI(false);
-                this.#drawingMap.setServingCINR(false);
+                this._drawingMap.setServingRSRP(false);
+                this._drawingMap.setServingRSRQ(false);
+                this._drawingMap.setServingRSSI(false);
+                this._drawingMap.setServingCINR(false);
 
             }
 
@@ -171,12 +171,12 @@ const app = {
         updateAssocs() {
 
             // Getting selected EARFCNS / PCIS.
-            let earpcis = this.#allSites ? {earfcns: [], pcis: [], indices: []} : utils.subEarpci(this.#fileReader.earfcns,
-                this.#fileReader.pcis, this.#selEarfcns, this.#selPcis)
+            let earpcis = this._allSites ? {earfcns: [], pcis: [], indices: []} : utils.subEarpci(this._fileReader.earfcns,
+                this._fileReader.pcis, this._selEarfcns, this._selPcis)
 
             // Redrawing associated stations pins.
-            this.#drawingMap.drawAssocs(
-                this.#fileReader.assocs, this.#fileReader.antennas, this.#checkEarfcns, this.#checkPcis, 
+            this._drawingMap.drawAssocs(
+                this._fileReader.assocs, this._fileReader.antennas, this._checkEarfcns, this._checkPcis, 
                 () => this.update(), earpcis.earfcns, earpcis.pcis);
 
         }
@@ -190,24 +190,24 @@ const app = {
 
             // Resetting attributes.
 
-            this.#earfcnOnServing = true;
-            this.#pciOnServing = true;
-            this.#onServing = true;
+            this._earfcnOnServing = true;
+            this._pciOnServing = true;
+            this._onServing = true;
 
-            this.#selEarfcns = null;
-            this.#selPcis = null;
+            this._selEarfcns = null;
+            this._selPcis = null;
 
-            this.#checkEarfcns = [];
-            this.#checkPcis = [];
+            this._checkEarfcns = [];
+            this._checkPcis = [];
 
-            this.#rsrpChecked = false;
-            this.#rsrqChecked = false;
-            this.#rssiChecked = false;
-            this.#cinrChecked = false;
+            this._rsrpChecked = false;
+            this._rsrqChecked = false;
+            this._rssiChecked = false;
+            this._cinrChecked = false;
 
-            this.#fileReader = null;
+            this._fileReader = null;
             
-            this.#altCol = 1;
+            this._altCol = 1;
 
             // Clearing drop down selectors.
             document.querySelectorAll('#EARFCN_select, #pci-select').forEach((elt) => elt.innerHTML = '');
@@ -221,13 +221,13 @@ const app = {
             this.enableInputs(false);
 
             // Hiding remaining layers.
-            if (this.#drawingMap) {
+            if (this._drawingMap) {
                 this.updateDisplay();
-                this.#drawingMap.setAntLayer(false);
-                this.#drawingMap.setAssocLayer(false);
-                this.#drawingMap.setCellLayer(false);
-                this.#drawingMap.setTACLayer(false);
-                this.#drawingMap.setPCILayer(false);
+                this._drawingMap.setAntLayer(false);
+                this._drawingMap.setAssocLayer(false);
+                this._drawingMap.setCellLayer(false);
+                this._drawingMap.setTACLayer(false);
+                this._drawingMap.setPCILayer(false);
             }
 
         }
@@ -267,29 +267,29 @@ const app = {
 
                 // Reading file.
                 let file = evt.target.files[0];
-                this.#fileReader = new csvread.CSVReader(file);
-                await this.#fileReader.readFile();  // Wait for file to be read.
+                this._fileReader = new csvread.CSVReader(file);
+                await this._fileReader.readFile();  // Wait for file to be read.
 
                 // Reading antennas data.
-                let antennas = this.#fileReader.antennas;
+                let antennas = this._fileReader.antennas;
 
                 // Processing Voronoi cells, antenna directions and sector delimiters.
                 let vor = processing.calcVoronoi(antennas);
                 let dels = processing.calcDelimiters(vor, antennas);
-                let ants = processing.calcAntennas(this.#fileReader.antennaDirections);
+                let ants = processing.calcAntennas(this._fileReader.antennaDirections);
 
                 // Reading EARFCNs and PCIs.
-                let earfcns = this.#fileReader.earfcns;
-                let pcis = this.#fileReader.pcis;
+                let earfcns = this._fileReader.earfcns;
+                let pcis = this._fileReader.pcis;
 
                 // Drawing Voronoi cells.
-                this.#drawingMap.drawCells(vor, ants, dels);
+                this._drawingMap.drawCells(vor, ants, dels);
                 this.updateAssocs();
 
                 // Displaying base layers.
-                this.#drawingMap.setAntLayer(true);
-                this.#drawingMap.setAssocLayer(true);
-                this.#drawingMap.drawSelectors(earfcns, pcis);
+                this._drawingMap.setAntLayer(true);
+                this._drawingMap.setAssocLayer(true);
+                this._drawingMap.drawSelectors(earfcns, pcis);
 
                 // Enabling inputs.
                 this.enableInputs(true);
@@ -301,23 +301,23 @@ const app = {
 
             // Theoritical cells checkbox.
             document.querySelector('#Theory_Cell').onclick = (evt) => {
-                this.#drawingMap.setCellLayer(evt.target.checked);
+                this._drawingMap.setCellLayer(evt.target.checked);
             };
 
             // TAC checkbox.
             document.querySelector('#Tracking_area').onclick = (evt) => {
-                this.#drawingMap.setTACLayer(evt.target.checked);
+                this._drawingMap.setTACLayer(evt.target.checked);
             };
 
             // PCI checkbox.
             document.querySelector('#PCI').onclick = (evt) => {
-                this.#drawingMap.setPCILayer(evt.target.checked);
+                this._drawingMap.setPCILayer(evt.target.checked);
             };
 
             // RSRP checkbox.
             document.querySelector('#RSRP').onclick = (evt) => {
 
-                this.#rsrpChecked = evt.target.checked;
+                this._rsrpChecked = evt.target.checked;
                 this.updateDisplay();
 
             };
@@ -325,7 +325,7 @@ const app = {
             // RSRQ checkbox.
             document.querySelector('#rsrq').onclick = (evt) => {
                 
-                this.#rsrqChecked = evt.target.checked;
+                this._rsrqChecked = evt.target.checked;
                 this.updateDisplay();
 
             };
@@ -333,7 +333,7 @@ const app = {
             // RSSI checkbox.
             document.querySelector('#rssi').onclick = (evt) => {
                 
-                this.#rssiChecked = evt.target.checked;
+                this._rssiChecked = evt.target.checked;
                 this.updateDisplay();
 
             };
@@ -341,7 +341,7 @@ const app = {
             // CINR checkbox.
             document.querySelector('#cinr').onclick = (evt) => { 
                 
-                this.#cinrChecked = evt.target.checked;
+                this._cinrChecked = evt.target.checked;
                 this.updateDisplay();
 
             };
@@ -349,7 +349,7 @@ const app = {
             // Sites selector.
             document.querySelector('#sites-select').onchange = (evt) => {
 
-                this.#allSites = (evt.target.value === 'all-sites');
+                this._allSites = (evt.target.value === 'all-sites');
                 this.update();
                 this.updateAssocs();
 
@@ -361,13 +361,13 @@ const app = {
                 let val = evt.target.value; // Selector value.
 
                 // On serving cell ?
-                this.#earfcnOnServing = (val === 'serving-earfcn');
+                this._earfcnOnServing = (val === 'serving-earfcn');
 
                 // Choosing EARFCN selection.
-                this.#selEarfcns = (!this.#earfcnOnServing && val !== 'all-earfcns') ? 
+                this._selEarfcns = (!this._earfcnOnServing && val !== 'all-earfcns') ? 
                     [parseInt(val)] : null;
 
-                this.#onServing = this.#earfcnOnServing || this.#pciOnServing;
+                this._onServing = this._earfcnOnServing || this._pciOnServing;
 
                 // Updating UI.
                 this.update();
@@ -382,11 +382,11 @@ const app = {
 
                 let val = evt.target.value;
 
-                this.#pciOnServing = (val === 'serving-pci');
+                this._pciOnServing = (val === 'serving-pci');
 
-                this.#selPcis = (!this.#pciOnServing && val !== 'all-pcis') ? [parseInt(val)] : null;
+                this._selPcis = (!this._pciOnServing && val !== 'all-pcis') ? [parseInt(val)] : null;
                 
-                this.#onServing = this.#earfcnOnServing || this.#pciOnServing;
+                this._onServing = this._earfcnOnServing || this._pciOnServing;
 
                 this.update();
                 this.updateDisplay();
@@ -400,7 +400,7 @@ const app = {
             // Alternative color button.
             document.querySelector('#ColorAlt').onclick = (evt) => {
 
-                this.#altCol = evt.target.checked ? 0 : 1;
+                this._altCol = evt.target.checked ? 0 : 1;
                 this.update();
 
             }
