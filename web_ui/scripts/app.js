@@ -82,7 +82,21 @@ const app = {
             let selPcis = this.#selPcis;                // PCIs selected with drop down menu.
             let checkEarfcns = this.#checkEarfcns;      // EARFCNs selected with checkboxes.
             let checkPcis = this.#checkPcis;            // PCIs selected with sites checkboxes.
-            let extr = this.#fileReader.extremas;       // Minimum and maximum values of measurements.
+
+            // Extremums
+            const RSRP_MIN = -140;
+            const RSRP_MAX = -44;
+
+            const RSRQ_MIN = -20;
+            const RSRQ_MAX = -3;
+
+            // TODO Deteminate range for RSSI.
+            const RSSI_MIN = -120;
+            const RSSI_MAX = -30;
+
+            // TODO Determinate range for CINR.
+            const CINR_MIN = -20;
+            const CINR_MAX = 20;
 
             // Filtering EARFCNs and PCIs following drop down menus selection.
             let filtEarpcis = utils.subEarpci(earfcns, pcis, selEarfcns, selPcis);
@@ -99,15 +113,15 @@ const app = {
             this.#drawingMap.updateTACLayer(points, finalEarfcns, finalPcis);
 
             // Updating serving measurement layers.
-            this.#drawingMap.drawServingRSRP(points, extr.minRSRP, extr.maxRSRP, finalEarfcns, finalPcis);
-            this.#drawingMap.drawServingRSRQ(points, extr.minRSRQ, extr.maxRSRQ, finalEarfcns, finalPcis);
-            this.#drawingMap.drawServingRSSI(points, extr.minRSSI, extr.maxRSSI, finalEarfcns, finalPcis);
-            this.#drawingMap.drawServingCINR(points, extr.minCINR, extr.maxCINR, finalEarfcns, finalPcis);
+            this.#drawingMap.drawServingRSRP(points, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
+            this.#drawingMap.drawServingRSRQ(points, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis);
+            this.#drawingMap.drawServingRSSI(points, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);
+            this.#drawingMap.drawServingCINR(points, CINR_MIN, CINR_MAX, finalEarfcns, finalPcis);
         
             // Updating global measurement layers.
-            this.#drawingMap.drawRSRP(this.#fileReader.rsrps, earfcns, pcis, extr.minRSRP, extr.maxRSRP, finalEarfcns, finalPcis);
-            this.#drawingMap.drawRSRQ(this.#fileReader.rsrqs, earfcns, pcis, extr.minRSRQ, extr.maxRSRQ, finalEarfcns, finalPcis);
-            this.#drawingMap.drawRSSI(this.#fileReader.rssis, earfcns, pcis, extr.minRSSI, extr.maxRSSI, finalEarfcns, finalPcis);
+            this.#drawingMap.drawRSRP(this.#fileReader.rsrps, earfcns, pcis, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
+            this.#drawingMap.drawRSRQ(this.#fileReader.rsrqs, earfcns, pcis, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis);
+            this.#drawingMap.drawRSSI(this.#fileReader.rssis, earfcns, pcis, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);
         
         }
 

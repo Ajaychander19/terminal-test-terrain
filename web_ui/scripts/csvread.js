@@ -108,11 +108,11 @@ var csvread = {
 
                 switch (state) {
 
-                    case 0:
+                    case 0:     // Jumping DEFINE part.
                         if (first === 'DEFINE') state = 1;
                         break;
 
-                    case 1:
+                    case 1:     // Jumping CONTENT part.
                         if (first === 'CONTENT') state = 2;
                         break;
 
@@ -171,10 +171,11 @@ var csvread = {
                                 for (let j = 5; j < llen; j++) 
                                     series.meas.push(csvread.parseNum(line[j], lineNum, true));
 
-
+                                // Minimum and maximum of the series.
                                 let localMin = Math.min(...(series.meas.filter((e) => e !== null)));
                                 let localMax = Math.max(...(series.meas.filter((e) => e !== null)));
 
+                                // Updating minimum / maximum properties following measurement type.
                                 switch (line[4]) {
 
                                     case 'RSRP':
@@ -242,6 +243,7 @@ var csvread = {
                                     cinr: cinr,
                                 };
 
+                                // Updating max and min CINR properties.
                                 this.#minCINR || (this.#minCINR = cinr);
                                 this.#maxCINR || (this.#maxCINR = cinr);
 
@@ -257,9 +259,12 @@ var csvread = {
                                 if (llen < 6) throw new Error(
                                     'Error: line ' + lineNum + ': DELIMITER line must contain at least 6 fields.');
 
+                                // Delimiter data.
                                 let cartoNum = csvread.parseNum(line[1], lineNum);
                                 let latA = csvread.parseNum(line[2], lineNum);
                                 let lngA = csvread.parseNum(line[3], lineNum);
+
+                                // Generating antennas data from deliimters.
 
                                 if (this.#antennas[cartoNum] === undefined) 
                                     this.#antennas[cartoNum] = {lat: latA, lng: lngA, dels: []};
@@ -299,9 +304,6 @@ var csvread = {
                                 let carto = csvread.parseNum(line[1], lineNum);
                                 let earfcn_ = csvread.parseNum(line[5], lineNum);
                                 let pci_ = csvread.parseNum(line[6], lineNum);
-
-                                this.#reverseAssocs[earfcn_] || (this.#reverseAssocs[earfcn_] = {});
-                                this.#reverseAssocs[earfcn_][pci_] || (this.#reverseAssocs[earfcn_][pci_] = carto);
 
                                 this.#assocs[carto] || (this.#assocs[carto] = []);
 
