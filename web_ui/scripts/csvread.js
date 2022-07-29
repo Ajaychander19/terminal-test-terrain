@@ -7,7 +7,8 @@ var csvread = {
 
     /**
      * CSV input file reading class.
-     * Recognizes the input CSV file using a finite state machine, then store these data.
+     * Recognizes the input CSV file using a finite state machine,
+     * then store data of the file.
      * 
      * @constructor
      */

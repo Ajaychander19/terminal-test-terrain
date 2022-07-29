@@ -233,11 +233,11 @@ const drawing = {
          * 
          * @param {*} assocs Association data.
          * @param {*} antennas Antennas data;
-         * @param {*} checkEarfcns Checked EARFCNs (in checkboxes).
-         * @param {*} checkPcis Checked PCIs (in checkboxes).
+         * @param {*} checkEarfcns Checked EARFCNs (in checkboxes) array.
+         * @param {*} checkPcis Checked PCIs (in checkboxes) array.
          * @param {*} updateMethod Pins updating () => () function.
-         * @param {Array} earfcns Selected EARFCNs (selector)
-         * @param {Array} pcis Selected PCIs (selector).
+         * @param {Array} earfcns Selected EARFCNs.
+         * @param {Array} pcis Selected PCIs.
          * 
          * @function
          */
@@ -266,15 +266,18 @@ const drawing = {
         }
 
         /**
+         * Draw the popup of an associated site.
          * 
-         * @param {number} cartoNum 
-         * @param {*} assoc 
-         * @param {*} checkEarfcns 
-         * @param {*} checkPcis 
-         * @param {*} updateMethod 
-         * @param {*} earfcns 
-         * @param {*} pcis 
-         * @returns 
+         * @param {number} cartoNum Cartoradio number of the site.
+         * @param {*} assoc Association data.
+         * @param {Array} checkEarfcns List of EARFCNs selected using checkboxes.
+         * @param {function} checkPcis List of PCIs selected using checkboxes.
+         * @param {function} updateMethod Layer update method.
+         * @param {Array} earfcns Selected EARFCNs.
+         * @param {Array} pcis  Selected PCIs.
+         * @returns The div element of the popup.
+         * 
+         * @function
          */
         drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, updateMethod, earfcns=null, pcis=null) {
 
@@ -342,6 +345,15 @@ const drawing = {
 
         }
 
+        /**
+         * Write serving points on a group layer.
+         * @param {*} layer Leaflet group layer.
+         * @param {*} pointLayers Dictionary of points layers, classed by EARFCN / PCI.
+         * @param {*} earfcns Selected EARFCNs.
+         * @param {*} pcis  Selected PCIs.
+         * 
+         * @function
+         */
         setPointLayer(layer, pointLayers, earfcns=null, pcis=null) {
 
             // Check if tables have the same length.
@@ -398,6 +410,19 @@ const drawing = {
 
         }
 
+        /**
+         * Draws a global measurements heatmap layer.
+         * @param {*} layer Layer to draw on.
+         * @param {*} measurements Global measurement data.
+         * @param {Array} earfcns EARFCNs for list of (EARFCN, PCI) pairs.
+         * @param {Array} pcis PCIs for list of (EARFCN, PCI) pairs.
+         * @param {number} min Minimum value.
+         * @param {number} max Maximum value.
+         * @param {Array} reqEarfcns Selected EARFCNs
+         * @param {Array} reqPcis Selected PCIs.
+         * 
+         * @function
+         */
         drawHex(layer, measurements, earfcns, pcis, min, max, reqEarfcns=null, reqPcis=null) {
 
             let hexData = [];
@@ -427,10 +452,34 @@ const drawing = {
 
         }
 
+        /**
+         * Draw the TAC layer from serving points data.
+         * @param {*} points Serving points data.
+         * @returns Return an object containing multiple TAC points layers associated to EARFCNs / PCIs.
+         * 
+         * @function
+         */
         drawTAC(points) { return this.drawPoints(points, (_e, _pc, p) => p.tac, styles.tacColor); }
 
+        /**
+         * Draw the PCI layer from serving points data.
+         * @param {*} points Serving points data.
+         * @returns Return an object containing multiple PCI points layers associated to EARFCNs / PCIs.
+         * 
+         * @function
+         */
         drawPCI(points, col=1) { return this.drawPoints(points, (_e, pc, _p) => pc, (p) => styles.pciColor(p, col)); }
 
+        /**
+         * Draws the serving RSRP layer.
+         * @param {function} points Serving measurement points.
+         * @param {number} min Minimum RSRP value (used for the color range).
+         * @param {number} max Maximum RSRP value (used for the color range).
+         * @param {Array} earfcns Selected EARFCNs
+         * @param {Array} pcis Selected PCIs.
+         * 
+         * @function
+         */
         drawServingRSRP(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
                 this._servingRSRP, points, (_e, _p, pt) => pt.rsrp,
@@ -438,6 +487,16 @@ const drawing = {
             );
         }
 
+        /**
+         * Draws the serving RSRQ layer.
+         * @param {function} points Serving measurement points.
+         * @param {number} min Minimum RSRQ value (used for the color range).
+         * @param {number} max Maximum RSRQ value (used for the color range).
+         * @param {Array} earfcns Selected EARFCNs
+         * @param {Array} pcis Selected PCIs.
+         * 
+         * @function
+         */
         drawServingRSRQ(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
                 this._servingRSRQ, points, (_e, _p, pt) => pt.rsrq,
@@ -445,6 +504,17 @@ const drawing = {
             );
         }
 
+
+        /**
+         * Draws the serving RSSI layer.
+         * @param {function} points Serving measurement points.
+         * @param {number} min Minimum RSSI value (used for the color range).
+         * @param {number} max Maximum RSSI value (used for the color range).
+         * @param {Array} earfcns Selected EARFCNs
+         * @param {Array} pcis Selected PCIs.
+         * 
+         * @function
+         */
         drawServingRSSI(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
                 this._servingRSSI, points, (_e, _p, pt) => pt.rssi,
@@ -452,6 +522,16 @@ const drawing = {
             );
         }
 
+        /**
+         * Draws the serving CINR layer.
+         * @param {function} points Serving measurement points.
+         * @param {number} min Minimum CINR value (used for the color range).
+         * @param {number} max Maximum CINR value (used for the color range).
+         * @param {Array} earfcns Selected EARFCNs
+         * @param {Array} pcis Selected PCIs.
+         * 
+         * @function
+         */
         drawServingCINR(points, min, max, earfcns=null, pcis=null) {
             this.drawServingHex(
                 this._servingCINR, points, (_e, _p, pt) => pt.cinr,
@@ -459,91 +539,242 @@ const drawing = {
             );
         }
 
+        /**
+         * Draws the global RSRP layer.
+         * 
+         * @param {*} measurements Global RSRP measurement data.
+         * @param {Array} earfcns EARFCNs for list of (EARFCN, PCI) pairs.
+         * @param {Array} pcis PCIs for list of (EARFCN, PCI) pairs.
+         * @param {number} min Minimum RSRP value.
+         * @param {number} max Maximum RSRP value.
+         * @param {Array} reqEarfcns Selected EARFCNs
+         * @param {Array} reqPcis Selected PCIs.
+         * 
+         * @function
+         */
         drawRSRP(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
             this.drawHex(this._rsrpLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
         }
 
+        /**
+         * Draws the global RSRQ layer.
+         * 
+         * @param {*} measurements Global RSRQ measurement data.
+         * @param {Array} earfcns EARFCNs for list of (EARFCN, PCI) pairs.
+         * @param {Array} pcis PCIs for list of (EARFCN, PCI) pairs.
+         * @param {number} min Minimum RSRQ value.
+         * @param {number} max Maximum RSRQ value.
+         * @param {Array} reqEarfcns Selected EARFCNs
+         * @param {Array} reqPcis Selected PCIs.
+         * 
+         * @function
+         */
         drawRSRQ(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
             this.drawHex(this._rsrqLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
         }
 
+        /**
+         * Draws the global RSSI layer.
+         * 
+         * @param {*} measurements Global RSSI measurement data.
+         * @param {Array} earfcns EARFCNs for list of (EARFCN, PCI) pairs.
+         * @param {Array} pcis PCIs for list of (EARFCN, PCI) pairs.
+         * @param {number} min Minimum RSSI value.
+         * @param {number} max Maximum RSSI value.
+         * @param {Array} reqEarfcns Selected EARFCNs
+         * @param {Array} reqPcis Selected PCIs.
+         * 
+         * @function
+         */
         drawRSSI(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
             this.drawHex(this._rssiLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
         }
-
+        
+        /**
+         * Updates the TAC layer.
+         * 
+         * @param {*} points Serving points data.
+         * @param {Array} earfcn Selected EARFCNs.
+         * @param {Array} pci  Selected PCIs.
+         * 
+         * @function
+         */
         updateTACLayer(points, earfcn=null, pci=null) {
             this._nonFilteredTAC = this.drawTAC(points);
             this.setPointLayer(this._tacLayer, this._nonFilteredTAC, earfcn, pci); 
         }
 
+        /**
+         * Updates the PCI layer.
+         * 
+         * @param {*} points Serving points data.
+         * @param {Array} earfcn Selected EARFCNs.
+         * @param {Array} pci  Selected PCIs.
+         * 
+         * @function
+         */
         updatePCILayer(points, earfcn=null, pci=null, col=1) {
             this._nonFilteredPCI = this.drawPCI(points, col);
             this.setPointLayer(this._pciLayer, this._nonFilteredPCI, earfcn, pci); 
         }
 
 
-
+        /**
+         * Sets Voronoi cells layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setCellLayer(b) { this._setLayerVisibility(this._cellLayer, b); }
 
+        /**
+         * Sets antennas layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setAntLayer(b) { this._setLayerVisibility(this._antLayer, b); }
 
+        /**
+         * Sets TAC layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setTACLayer(b) { this._setLayerVisibility(this._tacLayer, b); }
 
+        /**
+         * Sets PCI layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setPCILayer(b) { this._setLayerVisibility(this._pciLayer, b); }
 
+        /**
+         * Sets association layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setAssocLayer(b) { this._setLayerVisibility(this._assocLayer, b); }
 
+        /**
+         * Sets serving RSRP layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setServingRSRP(b) { this._setLayerVisibility(this._servingRSRP, b); }
 
+        /**
+         * Sets serving RSRQ layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setServingRSRQ(b) { this._setLayerVisibility(this._servingRSRQ, b); }
 
+        /**
+         * Sets serving RSSI layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setServingRSSI(b) { this._setLayerVisibility(this._servingRSSI, b); }
 
+        /**
+         * Sets serving CINR layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setServingCINR(b) { this._setLayerVisibility(this._servingCINR, b); }
 
+        /**
+         * Sets global RSRP layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setRSRP(b) { this._setLayerVisibility(this._rsrpLayer, b); }
 
+        /**
+         * Sets global RSRQ layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setRSRQ(b) { this._setLayerVisibility(this._rsrqLayer, b); }
 
+        /**
+         * Sets global RSSI layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         */
         setRSSI(b) { this._setLayerVisibility(this._rssiLayer, b); }
 
         // setCINR(b) { this._setLayerVisibility(this._cinrLayer, b); }
 
+
+        /**
+         * Sets the visibility of a layer.
+         * @param {*} layer Layer. 
+         * @param {boolean} b true to set the layer visible.
+         * 
+         * @function
+         * @private
+         */
         _setLayerVisibility(layer, b) {
             if (b && !this._map.hasLayer(layer)) layer.addTo(this._map);
             else if (!b && this._map.hasLayer(layer)) layer.removeFrom(this._map);
         }
 
+        /**
+         * Draws EARFCNs / PCIs selectors.
+         * @param {Array} earfcns EARFCNs from (EARFCN, PCI) layer list.
+         * @param {Array} pcis PCIs from (EARFCN, PCI) layer list.
+         * 
+         * @function
+         */
         drawSelectors(earfcns, pcis) {
 
-
+            // Getting selector elements.
             let pciSelector = document.querySelector('#pci-select');
             let earSelector = document.querySelector('#EARFCN_select');
 
+            // Adding "Serving" and "All" options.
             earSelector.innerHTML = '<option value="serving-earfcn">Serving EARFCN</option>'
                 + '<option value="all-earfcns">All EARFCNs</option>';
             pciSelector.innerHTML = '<option value="serving-pci">Serving PCI</option>'
                 + '<option value="all-pcis">All PCIs</option>';
 
+            // Order relation used to sort EARFCNs and PCIs numbers.
             let order = (a, b) => {
                 
                 let numA = parseInt(a);
                 let numB = parseInt(b);
 
-                if (a === b) return 0;
-                else if (a < b) return -1;
+                if (numA === numB) return 0;
+                else if (numA < numB) return -1;
                 else return 1;
 
             }
 
+            // Adding EARFCNs options.
             earfcns.sort(order).forEach(
                 (earfcn) => {
 
+                    // Selector used to ensure we add only once time the same option.
                     if (!document.querySelector('#EARFCN_select option[value="' + earfcn + '"]')) {
                     
+                        // Creating option element.
                         let option = document.createElement('option');
                         option.setAttribute('value', earfcn);
                         option.innerHTML = earfcn;
+
+                        // Adding it.
                         earSelector.append(option);
 
                     }
@@ -551,6 +782,7 @@ const drawing = {
                 }
             );
 
+            // Adding PCIs options.
             pcis.sort(order).forEach(
                 (pci) => {
 
@@ -564,16 +796,29 @@ const drawing = {
                     }
 
                 }
-            )
+            );
 
         }
 
     },
 
+    /**
+     * Creates an heatmap layer, with a custom tooltip displayable while hovering the layer.
+     * Hexagons on the heatmap represents the minimum data point over this hexagon.
+     * 
+     * @param {String} tooltip Hover tooltip text.
+     * @param {*} options Style of the layer.
+     * 
+     * @returns The new hex layer.
+     * 
+     * @function
+     */
     hexBin: function (tooltip, options) {
 
+        // Creating the layer with style.
         let hex = L.hexbinLayer(options);
 
+        // Minimum point selection function.
         let minFunct = function (d) {
             let tempArray = d.map((i) => i.o[2]);
             return Math.min.apply(null, tempArray);
@@ -581,6 +826,7 @@ const drawing = {
 
         hex._fn.colorValue = minFunct;
 
+        // Handler used to show the tooltip.
         hex.hoverHandler(
             L.HexbinHoverHandler.tooltip({
                 tooltipContent: (d) => tooltip + ': ' + minFunct(d)
