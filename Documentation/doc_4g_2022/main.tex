@@ -120,11 +120,11 @@ initial text=$ $,
     
     \addcontentsline{toc}{section}{Introduction}
     \section*{Introduction}
-    At IMT Atlantique, the Adopnet team uses since 2019 a 4G network analysis software. This software, written with Python programming language, has for main purpose to visualize on a map measurements taken on the 4G mobile network. Usually, these measurements are done in exterior, with one or several devices connected to a measurement tool. Originally, this tool was the ZK-Samp tool, consisting in a measurement device which was taking measurements from one or several phones connected to it. The tool was taking global signal measurements, geolocated and associated to a timestamp. The original program has been developed in order to allow the user to visualize easily global signal measurements in a more concise way, to easily link these measurements to a particular network cell \cite{trieu_visualization_2019}. \newline
+    At IMT Atlantique, the Adopnet team uses since 2019 a 4G network analysis software. This software, written with the Python programming language, has for main purpose to visualize on a map measurements taken on the 4G LTE mobile network. Usually, these measurements are done in exterior, with one or several devices connected to a measurement tool. Originally, this tool was the ZK-Samp tool, consisting in a measurement device which was taking measurements from one or several phones connected to it. The tool was taking global signal measurements, geolocated and associated to a timestamp. The original program has been developed in order to allow the user to visualize easily global signal measurements in a more concise way, to easily link these measurements to a particular network cell \cite{trieu_visualization_2019}. \newline
     
     However, the ZK-Samp tool of the Adopnet team doesn't work anymore, and the company which was producing it no longer exists. The Adopnet team uses now Accuver Xcal-M, a software which can do geolocated global measurements over the network like the ZK-Samp tool, but can also do measurements for each detected cells as well, no matter if the user equipment is actively connected to these cells. Xcal-M produces a data format (Accuver Open Format, or AOF) which is slightly different of the data format produced by the ZK-Samp tool, and it is necessary to adapt the original analysis program to this new format. The format of some intermediate files needs also to be changed for readability reasons, and the visualization must also be improved due to the fact the file format of Xcal-M is more rich.\newline
     
-    The purpose of our work on this program is to implement previously mentioned changes ; this report aims to document these changes, for usability, understanding and maintainability purposes. We will first focus on a presentation of the software and how use it, before we present the data processing methods used in the software, to present next the visualization part of the program.
+    The purpose of our work on this program is to implement previously mentioned changes ; this report aims to document these changes, for usability, understanding and maintainability purposes. We will first focus on a presentation of the software and how use it, before we present data processings methods used in the software, to present next the visualization part of the program.
 
     \newpage
     
@@ -146,7 +146,7 @@ initial text=$ $,
     \label{LTE Network Architecture}
     \end{figure}
     
-    A Radio Access Network uses base stations to communicate with User Equipments. These base stations are equipped of several antennas, with can send data to and receive data from User Equipements \cite{bouguen_lte_2012}. Every base station covers a geographical zone called a cell. Antennas of base stations  are oriented to cover a specific zone of the cell, called a sector. Usually, cells are divided in three sectors, every sectors often covering an angle of approximately 120° around the base station ; however, it is possible to encounter cells with more or less sectors. \newline
+    A Radio Access Network uses base stations to communicate with User Equipments. These base stations are equipped of several antennas, with can send data to and receive data from User Equipments \cite{bouguen_lte_2012}. Every base station covers a geographical zone called a cell. Antennas of base stations  are oriented to cover a specific zone of the cell, called a sector. Usually, cells are divided in three sectors, every sectors often covering an angle of approximately 120° around the base station ; however, it is possible to encounter cells with more or less sectors. \newline
     
     In the e-UTRAN network, bases stations are called eNodeB. \newline
     
@@ -178,7 +178,7 @@ initial text=$ $,
     
     Next, the user can use other functionalities of the program. The \textbf{Field-test *.csv to *.pcap and AOF-like *.csv conversion} button allow the user to choose an Accuver Open Format measurement file, and produce a PCAP trace readable by Wireshark, and a CSV\footnote{Commas Separated Values, textual format readable by spreadsheets which represents data tabularly.} file constructed like an AOF file, which contains information about cells, geolocations of measurement points, and measurements classed by EARFCN and cell identifiers. Every measurement in this output file possess a timestamp, which locates information in time. \newline
     
-    The user can also use the button \textbf{Cartoradio File Conversion} to produce information about antennas in several AOF-shaped CSV output files, from datasets from the ANFR\footnote{Agence Nationale des Fréquences, french organization that manages the allocation of frequency bands of the country.} website Cartoradio. Exportable datasets from Cartoradio contains several CSV files. Two of them are used  here: the \texttt{Sites\_Cartoradio.csv} and \texttt{Antennes\_Emetteurs\_Bandes\_Cartoradio.csv}: the first file contains information about base stations, their geolocation, their height and several information about the place were they are located, and the second file contains data about each antenna found on the exported zone, such as directivity information (azimuth), used technology (LTE for 4G), frequecy bands or operators. Two output files are produced per operator, a "sites" (eg. \texttt{sites\_SFR.csv}) file which associates each antenna to its base station data and to a sector delimitation. Sector delimitation data are also produced separately in the file for the visualization. "Rejected" files (eg. \texttt{rejected\_SFR.csv} contain same kind of information, except antennas contained in this file are below the ground level: separate these antennas from others allow the software to not visualize underground base station, which can be encountered for example in metro tunnels and stations, in order to avoid to overestimate the cell range, which is in reality very limited. \newline
+    The user can also use the button \textbf{Cartoradio File Conversion} to produce information about antennas in several AOF-shaped CSV output files, from datasets from the ANFR\footnote{Agence Nationale des Fréquences, french organization that manages the allocation of frequency bands of the country.} website Cartoradio. Exportable datasets from Cartoradio contains several CSV files. Two of them are used  here: the \texttt{Sites\_Cartoradio.csv} and \texttt{Antennes\_Emetteurs\_Bandes\_Cartoradio.csv}: the first file contains information about base stations, their geolocation, their height and several information about the place were they are located, and the second file contains data about each antenna found on the exported zone, such as directivity information (azimuth), used technology (LTE for 4G), frequency bands or operators. Two output files are produced per operator, a "sites" (eg. \texttt{sites\_SFR.csv}) file which associates each antenna to its base station data and to a sector delimitation. Sector delimitation data are also produced separately in the file for the visualization. "Rejected" files (eg. \texttt{rejected\_SFR.csv} contain same kind of information, except antennas contained in this file are below the ground level: separate these antennas from others allow the software to not visualize underground base station, which can be encountered for example in metro tunnels and stations, in order to avoid to overestimate the cell range, which is in reality very limited. \newline
     
     \begin{figure}[H]
     \centering
@@ -187,7 +187,7 @@ initial text=$ $,
     \label{Cartoradio user interface}
     \end{figure}
     
-    The \textbf{Cell Association Processing} feature take as input a "sites" file produced by the Cartoradio File Conversion step and a CSV file produced by the Field-test functionality. This feature associates antennas from the first file with measurement points from the second file: details of the association calculation will be given in nexts parts. Groups of points, corresponding to a given cell and a given EARFCN, are also created. Measurement points associated with antennas and measurement values, measurement values and sectors data used by the visualization are stored in a final output CSV file.
+    The \textbf{Cell Association Processing} feature take as input a "sites" file produced by the Cartoradio File Conversion step and a CSV file produced by the Field-test functionality. This feature associates antennas from the first file with measurement points from the second file: details of the association calculation will be given in the next parts. Groups of points, corresponding to a given cell and a given EARFCN, are also created. Measurement points associated with antennas and measurement values, measurement values and sectors data used by the visualization are stored in a final output CSV file.
     
     \subsubsection{Data visualization}
     The software allows the user to visualize measurements points on a graphical interface. This interface is in fact a local web app which can be used through a web browser. \newline
@@ -207,13 +207,13 @@ initial text=$ $,
     
     In the "Sites" menu, it is possible to select two options: "All sites" display all measurements from all sites, "Only selected sites" allows the user to chose which ERAFCN / PCI from an associated it wants to see, by clicking on the associated site pins and check the corresponding EARFCN / PCI. \newline
     
-    In the bottom right corner of the screen, frames "EARFCN" and "PCI" contains two drop-down lists, which respectively allow the user to choose an EARFCN and a PCI. If an EARFCN and / or PCI is chosen, measurements will be filtered on the map, allowing to only see global measurements with corresponding EARFCN / PCI. Other possible choices are serving EARFCNs and PCIs, which displays EARFCNs and / or PCIs from the serving antennas, and "All EARFCNs" / "All PCIs" options allowd the user to visualise global measurements for all EARFCNs and PCIs. \newline
+    In the bottom right corner of the screen, frames "EARFCN" and "PCI" contains two drop-down lists, which respectively allow the user to choose an EARFCN and a PCI. If an EARFCN and / or PCI is chosen, measurements will be filtered on the map, allowing to only see global measurements with corresponding EARFCN / PCI. Other possible choices are serving EARFCNs and PCIs, which displays EARFCNs and / or PCIs from the serving antennas, and "All EARFCNs" / "All PCIs" options allows the user to visualise global measurements for all EARFCNs and PCIs. \newline
     
     \subsection{Python program structure}
     
     The Python program is divided into several modules, several of them being entirely dedicated to one of the  functionalities of the software. \newline
     
-    The bootable part of the program is situated in the module \texttt{Interface.py}, which contains the \texttt{GUI} class, which is the main frame (window) of the program. The library used for the interface is \texttt{tkinter}, which is distributed in Python standard library. This module must be run in order to execute the program. \newline
+    The bootable part of the program is situated in the module \texttt{Interface.py}, which contains the \texttt{GUI} class, which is the main Frame (window) of the program. The library used for the interface is \texttt{tkinter}, which is distributed in Python standard library. This module must be run in order to execute the program. \newline
     
     The module \texttt{xcalyzer.py} is dedicated to the "Field-test *.csv to *.pcap and AOF-like *.csv conversion" functionality. It contains the parsing class \texttt{XcalConverter} for the AOF format, which arranges data stored in the input AOF file to produce the output file of this functionality. \newline
     
@@ -226,9 +226,9 @@ initial text=$ $,
     Several libraries are also used in the program. These libraries are the following:
     
     \begin{itemize}
-        \item Pandas: used to do data treatments (grouping, natural joining, filtering) on massive datasets.
+        \item Pandas: used to do data treatments (grouping, natural joins, filtering) on massive datasets.
         \item SciPy: used here to calculate theoretical cells.
-        \item Shapely: used to geometrical calculations.
+        \item Shapely: used to do geometrical calculations.
         \item Numpy: used here to do vectorized calculations.
     \end{itemize}
     
@@ -276,7 +276,7 @@ CONTENT\n
     \label{Syntax of the AOF / CSV file format}
 \end{figure}
     
-    The file is divided in two parts, a \texttt{DEFINE} part and a \texttt{CONTENT} part. In the \texttt{DEFINE} part, data entry types are specified: at the beginning of the line, a non-empty string, using only alphanumeric characters, defines the name of the entry. Following fields names, separated by the character \texttt{'|'}, should be defined with a non-empty, alphanumeric string; each entry defnition, which take one line, should contain at least an entry name and one field name. There can be zero, one ore more entry definitions. The \texttt{CONTENT} part contains data entries, which occupy one line each. Data entries are identified by entries names (non-empty alphanumeric strings), and several values, which can be empty, and made of all characters which are not spacing characters, unless the \texttt{'|'} character, which is used to separate values of an entry. \newline
+    The file is divided in two parts, a \texttt{DEFINE} part and a \texttt{CONTENT} part. In the \texttt{DEFINE} part, data entry types are specified: at the beginning of the line, a non-empty string, using only alphanumeric characters, defines the name of the entry. Following fields names, separated by the character \texttt{'|'}, should be defined with a non-empty, alphanumeric string; each entry definition, which take one line, should contain at least an entry name and one field name. There can be zero, one ore more entry definitions. The \texttt{CONTENT} part contains data entries, which occupy one line each. Data entries are identified by entries names (non-empty alphanumeric strings), and several values, which can be empty, and made of all characters which are not spacing characters, unless the \texttt{'|'} character, which is used to separate values of an entry. \newline
     
     More informally, an example of valid CSV / AOF file can be found below:
     
@@ -299,9 +299,9 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
         \label{fig:my_label}
     \end{figure}
     
-    In the program, this file format is handled by the module \texttt{csvtools}. This module contains a writer class, \texttt{CSVWriter}, and a reader class, \texttt{CSVReader}. \texttt{CSVWriter} requires to write in the file an header, which is a dictionnary used to define the \texttt{DEFINE} part, which use as keys names of entries and as values lists of field names . A line can be added to the \texttt{CONTENT} file with a list beginning with the corresponding entry name, followed by values, associated by indexes to corresponding fields in the header. \newline
+    In the program, this file format is handled by the module \texttt{csvtools}. This module contains a writer class, \texttt{CSVWriter}, and a reader class, \texttt{CSVReader}. \texttt{CSVWriter} requires to write in the file an header, which is a dictionary used to define the \texttt{DEFINE} part, which use as keys names of entries and as values lists of field names . A line can be added to the \texttt{CONTENT} file with a list beginning with the corresponding entry name, followed by values, associated by indexes to corresponding fields in the header. \newline
     
-    \texttt{CSVReader} reads file data. The file is firstly opened temporarly, the corresponding header is generated first following the \texttt{DEFINE} part, and syntactic and semantic controls are done on the file. Secondly, the file is closed and reopened, and the user can read line per line the \texttt{CONTENT} section. \newline
+    \texttt{CSVReader} reads file data. The file is firstly opened temporarily, the corresponding header is generated first following the \texttt{DEFINE} part, and syntactic and semantic controls are done on the file. Secondly, the file is closed and reopened, and the user can read line per line the \texttt{CONTENT} section. \newline
     
     As the language of the file does not define nested structures, and follows a linear sequence, we can identify it as a regular language, which can be recognized by a finite state machine. This finite state machine use as symbols first elements of each lines: at each transition, a new line is read. For the first reading of the file, we implemented the following finite state machine, using actions (numbered in \textbf{bold} on transitions) to do syntactic and semantic controls:
     
@@ -326,8 +326,8 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
     Corresponding actions are:
     
     \begin{enumerate}[label=\textbf{(\arabic*)}: ]
-        \item Use the first symbol of the line as entry name. Verify that the line contains field names. Verify that entry name follows the pattern \texttt{\textbackslash w+}. For each field name, verify that the file name follows the pattern \texttt{\textbackslash w+}. Expand header dictionary.
-        \item Use the first symbol of the line as entry name. Verify that follows the pattern \texttt{\textbackslash w+} and belongs to header keys. Verify that the line contains values. For each value, verify that values follows the pattern \verb*!([^\s|]| )!.
+        \item Use the first symbol of the line as entry name. Verify that the line contains field names. Verify that the entry name follows the pattern \texttt{\textbackslash w+}. For each field name, verify that the file name follows the pattern \texttt{\textbackslash w+}. Expand header dictionary.
+        \item Use the first symbol of the line as entry name. Verify that this symbol follows the pattern \texttt{\textbackslash w+} and belongs to header keys. Verify that the line contains values. For each value, verify that values follows the pattern \verb*!([^\s|]| )!.
     \end{enumerate}
     
     \subsection{Extraction of data from AOF main input file}
@@ -349,9 +349,9 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
         
     \end{itemize}
     
-    The program also identify each cell using information such as the TAC (Tracking Area Code), the CID (Global Cell Identifier), the PCI (Physical Cell Identifier), and the EARFCN (Extended Absolute Radio Frequency Channel Number) on downlink, which identifies the used frequency band. We can considerate there is one unique couple (EARFCN, PCI) in a large area, which will probably not be entierly covered by the measurement campaign. The program also use PLMN (Public Land Mobile Network) code, which is made of a MCC (Mobile Country Code) number and a MNC (Mobile Network Code) number. \newline
+    The program also identify each cell using information such as the TAC (Tracking Area Code), the CID (Global Cell Identifier), the PCI (Physical Cell Identifier), and the EARFCN (Extended Absolute Radio Frequency Channel Number) on downlink, which identifies the used frequency band. We can considerate there is one unique couple (EARFCN, PCI) in a large area, which will probably not be entirely covered by the measurement campaign. The program also use PLMN (Public Land Mobile Network) code, which is made of a MCC (Mobile Country Code) number and a MNC (Mobile Network Code) number. \newline
     
-    Measurement should also be geolocated.
+    Measurements should also be geolocated.
     
     Data to extract are located in the \texttt{Content} part of the AOF file, in the following traces:
     
@@ -405,7 +405,7 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
     
     In the output file, each row is always associated to a timestamp, but columns, using the first two rows, are now associated to unique EARFCN / PCI couples. Several cells are empty, because there is EARFCN / PCI which are not associated to a RSRP on several timestamps. This representation of measurements can also be applied on RSRQ and RSSI. \newline
     
-    To produce these files, it is needed to know each EARFCN / PCI couple: these couples are identified during syntactic control step. This step ensures that file sections are well formed (correct definition of delimiters). This analysis is done by the \texttt{XcalConverter.first\_read} function which implements the following finite state machine with actions, which uses as inupt symbols fist element of each lines: 
+    To produce these files, it is needed to know each EARFCN / PCI couple: these couples are identified during syntactic control step. This step ensures that file sections are well formed (correct definition of delimiters). This analysis is done by the \texttt{XcalConverter.first\_read} function which implements the following finite state machine with actions, which uses as input symbols first element of each lines: 
     
     \begin{figure}[H]
         \centering
@@ -513,7 +513,7 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
  
     In this dictionary, the row \texttt{i} corresponds to the index \texttt{i} of lists associated to fields. The advantage of this data structure compared to Pandas Dataframe is it is more time efficient to modify. \newline
     
-    In particular, to store measurements by columns each dedicated to an EARFCN / PCI using a this dictionary data structure, we use EARFCNs and PCIs found during the first reading of the file. Measurement from \texttt{QCLTE\_PSCELL} and \texttt{QCLTE\_PNCELL} are stored following this structure, each row being associated to a unique timestamp. In the case where several measurements with the same timestamp are found, values located in columns of the first measurement row are always kept, and values located in columns of the others measurement are copied in the first measurement row only if the corresponding column in the first measurement is empty. The name of corresponding entries in the output file is \texttt{MEASUREMENT}.\newline
+    Particularly, to store measurements by columns each dedicated to an EARFCN / PCI using this dictionary data structure, we use EARFCNs and PCIs found during the first reading of the file. Measurement from \texttt{QCLTE\_PSCELL} and \texttt{QCLTE\_PNCELL} are stored following this structure, each row being associated to a unique timestamp. In the case where several measurements with the same timestamp are found, values located in columns of the first measurement row are always kept, and values located in columns of the others measurement are copied in the first measurement row only if the corresponding column in the first measurement is empty. The name of corresponding entries in the output file is \texttt{MEASUREMENT}.\newline
     
     Concerning \texttt{QCLTE\_PSCELL} measurement values, they are also stored with the CINR in a \texttt{SERVING\_MEAS} entry, which corresponds to the serving cell. \texttt{QCLTE\_CELLINFO} data are stored in \texttt{CELLINFO} entries.
     
@@ -593,7 +593,7 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
         \end{cases}
     \end{align}
     
-    Note that unidirectional antennas are supposed to have sector angle of 120°: this hypothesis is based on the fact antennas sectors has often an angle of approximately 120°. \newline % cite ???
+    Note that unidirectional antennas are supposed to have sector angle of 120°: this hypothesis is based on the fact antennas sectors has often an angle of approximately 120°. \newline
     
     From these calculations, delimiters lines are calculated: these lines are used by the visualization part. They are defined by the geographic coordinates of the base station $i$: $x^{\text{sta}}_{i} \in [-90, 90]$ (latitude) and $y^{\text{sta}}_{i}  \in [-180, 180]$ (longitude), and coordinates $x^{\text{del}}_{i, k} \in [-90, 90]$ and $y^{\text{del}}_{i, k} \in [-180, 180]$, based on each calculated azimuth limits $\alpha^{\text{lim}}_{i, k}$ of base station $i$, where $k \in \mathbb{N}$ is the $k$-th azimuth limit (note that an azimuth limit can be a minimum azimuth or a maximum azimuth of a sector):
     
@@ -644,7 +644,7 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
     \end{figure}
     
     After the initial cell calculations, it is required to remove "open" cells: these cells are situated at the extremities of the set of points, and extend in infinite directions. In SciPy, input points (base station points here) are stored in the array \texttt{Voronoi.points}. For each point of index \texttt{i}, corresponding region number is stored in the array \texttt{Voronoi.point\_region}, at the index \texttt{i}. Then, we can finally get the corresponding region with \texttt{Voronoi.regions} array, each element of this array being a list of indexes of elements from \texttt{Voronoi.vertices} \cite{the_scipy_community_scipyspatialvoronoi_nodate}.
-    In the case of the current cell is an open cell, at least one vertice will be represented by the index \texttt{-1} under default parameters. \cite{the_scipy_community_scipyspatialvoronoi_nodate}.
+    In the case of the current cell is an open cell, at least one vertex will be represented by the index \texttt{-1} under default parameters. \cite{the_scipy_community_scipyspatialvoronoi_nodate}.
     We can eliminate these cells, as the calculation requires cells are convex polygons. Results of this calculation are stored in a DataFrame-like dictionary containing latitude, longitude of each site and the corresponding region number. \newline
     
     \begin{figure}[H]
@@ -657,7 +657,7 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
     We merge then antennas and Voronoi DataFrame issued from Voronoi dictionary over the latitude and longitude, to associate to each antenna the corresponding Voronoi cell. Following \cite{trieu_visualization_2019}
     notations, we will now name $\mathcal{V}_i$ the Voronoi cell of the base station $i$. \newline
     
-    Then, for each group of serving cell measured points of the point association DataFrame with the same EARFCN / PCI, we will calculate the convex hull of these points, using the Shapely library and its class \texttt{shapely.MultiPoint}, and the property \texttt{convex\_hull} of this class. Mathematically, the convex hull of set of points is the smallest convex polygon that contains these point, i.e. the smallest possible polygon which contains all point of the set, and where for two arbitrary points inside the polygon, the line between the two points is also in the polygon. Also according \cite{trieu_visualization_2019}
+    Then, for each group of serving cell measured points of the point association DataFrame with the same EARFCN / PCI, we will calculate the convex hull of these points, using the Shapely library and its class \texttt{shapely.MultiPoint}, and the property \texttt{convex\_hull} of this class. Mathematically, the convex hull of set of points is the smallest convex polygon that contains these points, i.e. the smallest possible polygon which contains all point of the set, and where for two arbitrary points inside the polygon, the line between the two points is also in the polygon. Also according \cite{trieu_visualization_2019}
     notation, for a group of points of same EARFCN / PCI that we will note now $\mathcal{S}_n$, $n \in \mathbb{N}$, we will now use $\mathcal{C}_n$ to designate the corresponding convex hull of this group. \newline
     
     \begin{figure}[H]
@@ -851,13 +851,13 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
     \section{Visualization}
 
     This part aims to document the web front-end application used to visualize measurement campaigns.
-    We will first focus on the general structure of this part, before presenting briefly the principles of
-    working of this application.
+    We will first focus on the general structure of this part, before presenting briefly the some of the inner
+    workings of this application.
     
     \subsection{JavaScript application structure}
 
     This application, stored in the folder \texttt{web\_ui}, is splitted into several files, which are
-    themselves stored in several folder.
+    themselves stored in several folders.
 
     In the main folder, the application web page is stored in \texttt{index.html}. This file a HyperText Markup
     Language File (HTML), and contains the layout of the application. Several styles are applied on this web page, user
@@ -875,7 +875,7 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
         CSV file passed as an input of the application. Data from the file are also stored in this class.
         \item \texttt{drawing.js}: this file contains the class \texttt{drawing.Map}, which can wrap the map component
         of the user interface, and is used to draw layers on the map, following the user selection, with dedicated methods.
-        \item \texttt{processing.js}: processes antennas, cells and sectors data into drawable geographical informations.
+        \item \texttt{processing.js}: processes antennas, cells and sectors data into drawable geographical information.
         \item \texttt{styles.js}: this file defines function to style components of the map (points, cells, heatmap...).
         \item \texttt{utils.js}: this file contains functions for various utilities, which are not classable in the other
         files (array manipulation, object copy...).
@@ -898,12 +898,12 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
     \subsubsection{Selection of EARFCNs and PCIs}
     One of the most important features of the application is the selection by the use of EARFCNs and PCIs
     of data to be displayed. This selection is mostly managed by the \texttt{utils.subEarpcis} function,
-    but is also managed by other functions. Usually, these functions takes two parameters, \texttt{earfcns} and
+    but is also managed by other functions. Usually, these functions take two parameters, \texttt{earfcns} and
     \texttt{pcis}, which have as default values the value \texttt{null}. An \texttt{earfcns} parameter which
     is \texttt{null} means that every EARFCN need to be selected,  a \texttt{pcis} parameter which
     is \texttt{null} means that every PCI need to be selected, and two \texttt{null} parameters means that every
     EARFCN / PCI must be selected. To select no EARFCN / PCI pair, the two parameters must be empty arrays (\texttt{[]}).
-    To select existing EARFCNs and PCIs, the \texttt{earfcns} parameter must contains EARFCNs of choosen pairs, and
+    To select existing EARFCNs and PCIs, the \texttt{earfcns} parameter must contains EARFCNs of chosen pairs, and
     \texttt{pcis} parameter must contain corresponding PCIs.
 
     \subsubsection{Management of layers}
@@ -941,7 +941,12 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
     $h$ by $\dfrac{240}{n}$ steps. We can use to do easily this the d3 library, with \texttt{d3.hsl} function, and use on the
     return value of this function the function \texttt{formatHex()} to obtain the hexadimal RGB value of the color.
 
-    % fig color wheel
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.5\textwidth]{RGB_color_circle.png}
+        \caption{HSL color circle. Used color are situated between 0° and 240°, with cold colors situated around 240° and hot colors around 0°. \newline By Steve11235 - Own work, CC0, \url{https://commons.wikimedia.org/w/index.php?curid=20576730}}
+        \label{Colors HSL}
+    \end{figure}
 
     \subsubsection{Updating policy of the UI}
     As the user can frequently filter data on the visualization, several functions are defined in order to update the user interface.
@@ -950,9 +955,13 @@ entryName2|never|gonna|let|you|down\end{lstlisting}
     \begin{itemize}
         \item \texttt{app.update}: updates layers using selected EARFCN and PCIs by redrawing them. Called on
         every change of selected EARFCN and / or PCI, from selectors or checkboxes.
-        \item \texttt{app.updateDisplay}: hide or show layer, which is different from updating their data.
-        Called every time
+        \item \texttt{app.updateDisplay}: only hide or show layer, doesn't update its data.
+        Called every time a layer is shown or hide (when using the checkboxes at the right of the UI for example).
+        \item \texttt{app.updateAssocs}: updates the associations marks, and the checkboxes in their popups. Called every time EARFCN / PCI data are changed.
     \end{itemize}
+    
+    \section{Conclusion}
+    This program have been built on a previous program, which had calculations and data processings on which the current program have been built. If the current program succeeds to use data of Xcal-M file to provide more detailled visualisation, allowing the user to choose more easily on which EARFCN, PCI and base station it wants to visualize measurements, an huge adaption work has however been done, to enhance the program maintainability and allow the integration of new functionalities. The reimplementation of functionalities, such as association between cells and measurements, increased calculation speeds, but have also proven some limits, as the association can incorrectly asscociate several PCIs to a same antenna. Some of the old vizualisation features, such as the estimating of the coverage of an antenna using convex polygons, have not been reimplemented. The improvement, and the integration of additional functionalities, could be the base of further works on this project.
     
     \printbibliography
     
