@@ -107,82 +107,85 @@ class GUI(tkinter.Frame):
 
     def button_click(self, number):
         """ handle button click event and output text from entry area"""
-        if number == 1:  # Selecting output directory.
 
-            self.change_color('red')
-            self.working_directory = filedialog.askdirectory()
-            self.change_color('green')
+        try:
+            if number == 1:  # Selecting output directory.
 
-        elif number == 2:  # Field-testing trace file.
+                self.change_color('red')
+                self.working_directory = filedialog.askdirectory()
+                self.change_color('green')
 
-            self.change_color('red')
-            files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
+            elif number == 2:  # Field-testing trace file.
 
-            if len(files) != 0:
-                # csvtoPcap(files,self.working_directory)
+                self.change_color('red')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
 
-                for f in files:
-                    conv = xcalyzer.XcalConverter(f)
-                    conv.process(self.working_directory)
+                if len(files) != 0:
+                    # csvtoPcap(files,self.working_directory)
 
-                # Removing temporary files.
-                filelist = [f for f in os.listdir(getPathText(""))]
-                for f in filelist:
-                    os.remove(os.path.join(getPathText(""), f))
+                    for f in files:
+                        conv = xcalyzer.XcalConverter(f)
+                        conv.process(self.working_directory)
+
+                    # Removing temporary files.
+                    filelist = [f for f in os.listdir(getPathText(""))]
+                    for f in filelist:
+                        os.remove(os.path.join(getPathText(""), f))
+
+                else:
+                    messagebox.showinfo("Warning", "Select at least one file")
+
+                self.change_color('green')
+
+            elif number == 3:  # Cartoradio conversion, producing site and zone files.
+
+                self.change_color('red')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
+                if len(files) != 2:
+                    messagebox.showerror("Error", "Two files are expected.")
+                else:
+                    # createSite_json(files,self.working_directory)
+                    site_file = files[0] if 'Sites' in files[0] else files[1]
+                    ant_file = files[0] if 'Antennes' in files[0] else files[1]
+
+                    cartoradio.process_cartoradio(site_file, ant_file, self.working_directory)
+
+                self.change_color('green')
+
+            elif number == 4:  # association
+
+                self.change_color('red')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
+
+                if len(files) != 2:
+                    messagebox.showerror("Error", "Two files expected.")
+                else:
+
+                    # Associate_cell(files, self.working_directory)
+                    site_file = files[0] if 'sites' in files[0] else files[1]
+                    meas_file = files[1] if 'sites' in files[0] else files[0]
+
+                    association.CellAssociator(
+                        meas_file,
+                        site_file,
+                        self.working_directory
+                    ).calculate_association()
+
+                self.change_color('green')
 
             else:
-                messagebox.showinfo("Warning", "Select at least one file")
+                self.change_color('red')
+                url = "file://" + getLeaflet('index.html')
+                try:
+                    print("try to open url", url, " with default browser")
+                    webbrowser.open_new_tab(url)
+                except webbrowser.Error as e:
+                    print("Error: {}", str(e))
 
-            self.change_color('green')
+                self.change_color('green')
 
-        elif number == 3:  # Cartoradio conversion, producing site and zone files.
-
-            self.change_color('red')
-            files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
-            if len(files) != 2:
-                messagebox.showerror("Error", "Two files are expected.")
-            else:
-                # createSite_json(files,self.working_directory)
-                site_file = files[0] if 'Sites' in files[0] else files[1]
-                ant_file = files[0] if 'Antennes' in files[0] else files[1]
-
-                cartoradio.process_cartoradio(site_file, ant_file, self.working_directory)
-
-            self.change_color('green')
-
-        elif number == 4:  # association
-
-            self.change_color('red')
-            files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
-
-            if len(files) != 2:
-                messagebox.showerror("Error", "Two files expected.")
-            else:
-
-                # Associate_cell(files, self.working_directory)
-                site_file = files[0] if 'sites' in files[0] else files[1]
-                meas_file = files[1] if 'sites' in files[0] else files[0]
-
-                association.CellAssociator(
-                    meas_file,
-                    site_file,
-                    self.working_directory
-                ).calculate_association()
-
-            self.change_color('green')
-
-        else:
-            self.change_color('red')
-            url = "file://" + getLeaflet('index.html')
-            try:
-                print("try to open url", url, " with default browser")
-                webbrowser.open_new_tab(url)
-            except webbrowser.Error as e:
-                print("Error: {}", str(e))
-
-            self.change_color('green')
-
-        pass
+        except Exception as e:
+            messagebox.showerror("Runtime Error", "An error occured:\n {}".format(str(e)))
 
 
 # Entry point.
