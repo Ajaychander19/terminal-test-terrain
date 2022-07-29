@@ -1,5 +1,16 @@
+/**
+ * Contains CSVReader class, used to read input file.
+ * 
+ * @constructor
+ */
 var csvread = {
 
+    /**
+     * CSV input file reading class.
+     * Recognizes the input CSV file using a finite state machine, then store these data.
+     * 
+     * @constructor
+     */
     CSVReader: class  {
 
         // Attributes
@@ -23,7 +34,6 @@ var csvread = {
 
         // Associations
         _assocs
-        _reverseAssocs
 
         // Directivity
         _antDirs
@@ -43,6 +53,13 @@ var csvread = {
         _maxCINR
 
         
+        /**
+         * Class constructor.
+         * 
+         * @param {File} File to read.
+         * 
+         * @constructor
+         */
         constructor(file) {
             this._file = file;
             this._earfcns = [];
@@ -53,7 +70,6 @@ var csvread = {
             this._rssis = [];
             this._cinrs = [];
             this._assocs = {};
-            this._reverseAssocs = {};
             this._antDirs = [];
             this._sectDels = [];
             this._antennas = {};
@@ -72,6 +88,15 @@ var csvread = {
 
         }
 
+        /**
+         * Initiates the reading of the input file.
+         * 
+         * This function is asynchronous, and may require to use await keyword to ensure file
+         * has been entierly read before continuing script execution.
+         * 
+         * @async
+         * @function
+         */
         async readFile() {
             
             // Lines of the file which will be read.
@@ -336,28 +361,84 @@ var csvread = {
 
         }
 
+        /**
+         * @returns List of EARFCNs from (EARFCN, PCI) pairs.
+         * 
+         * @function
+         */
         get earfcns() { return utils.deepCopy(this._earfcns); }
 
+        /**
+         * @returns List of PCIs from (EARFCN, PCI) pairs.
+         * 
+         * @function
+         */
         get pcis() { return utils.deepCopy(this._pcis); }
 
+        /**
+         * @returns List of global RSRPs.
+         * 
+         * @function
+         */
         get rsrps() { return utils.deepCopy(this._rsrps); }
         
+        /**
+         * @returns List of global RSRQs.
+         * 
+         * @function
+         */
         get rsrqs() { return utils.deepCopy(this._rsrqs); }
 
+        /**
+         * @returns List of global RSSIs.
+         * 
+         * @function
+         */
         get rssis() { return utils.deepCopy(this._rssis); }
 
+        /**
+         * @returns List of global CINRs.
+         * 
+         * @function
+         */
         get cinrs() { return utils.deepCopy(this._cinrs); }
 
+        /**
+         * @returns Serving measurements points, classed by EARFCN and PCI, containing TAC,
+         * CID, and serving measurements.
+         * 
+         * @function
+         */
         get points() { return utils.deepCopy(this._points); }
 
+        /**
+         * @returns Associations between cartoradio number and
+         * antennas (ant. number, TAC, CID, EARFCN, PCI).
+         * 
+         * @function
+         */
         get assocs() { return utils.deepCopy(this._assocs); }
 
+        /**
+         * @returns Antenna directivity data
+         * 
+         * @function
+         */
         get antennaDirections() { return utils.deepCopy(this._antDirs); }
 
+        /**
+         * @return Antennas data, and sector delimiters data.
+         * 
+         * @function
+         */
         get antennas() { return utils.deepCopy(this._antennas); }
 
-        get reverseAssocs() { return utils.deepCopy(this._reverseAssocs); }
-
+        /**
+         * @return Global measurements minimum and maximums.
+         * 
+         * @function
+         * @deprecated
+         */
         get extremas() {
 
             return {
@@ -375,12 +456,24 @@ var csvread = {
     
     },
 
-    parseNum: function(str, i, null_allowed=false) {
+    /**
+     * Parses a given string in an integer.
+     * 
+     * @param {String} str String to parse. 
+     * @param {number} i Line number (used by CSVReader).
+     * @param {boolean} nullAllowed if the parsing fails, returns null, throws an Error otherwise.
+     * @returns The corresponding number if parsing suceeds, otherwise returns null if nullAllowed
+     * is true.
+     * @throws {Error} if the parsing fails and nullAllowed is false.
+     * 
+     * @function
+     */
+    parseNum: function(str, i, nullAllowed=false) {
 
         let x = parseFloat(str);
 
         if (Number.isNaN(x)) {
-            if (null_allowed) return null;
+            if (nullAllowed) return null;
             else throw new Error('Parsing Error: line ' + i + ': Invalid number: ' + str + '.');
         }
 
