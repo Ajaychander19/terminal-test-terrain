@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: styles.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: styles.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Contains Leaflet style (options) definition functions.
+ * 
+ * @namespace
+ */
+const styles = {
+
+    /**
+     * @returns Sector delimiter style.
+     * 
+     * @function
+     */
+    styleDelimiter: function () {
+        return {
+            color: 'green',
+            weight: 2,
+            opacity: 1,
+            smoothFactor: 1
+        };
+    },
+
+    /**
+     * @returns Antenna directivity "branches" style.
+     * 
+     * @function
+     */
+    styleAntenna: function () {
+        return {
+            color: 'green',
+            weight: 4,
+            opacity: 1,
+            smoothFactor: 1
+        };
+    },
+
+    /**
+     * Heatmap gradient constant.
+     * 
+     * @constant
+     */
+    HEATMAP: [],
+
+    /**
+     * 
+     * @param {number} opac Opacity (0.0-1.0)
+     * @param {String} hexColor Hexadecimal color (RRGGBB).
+     * @returns Voronoi cells style of opacity opac and color hexColor.
+     * 
+     * @function
+     */
+    polyStyle: function (opac, hexColor) {
+
+        return {
+            weight: 2,
+            opacity: 1,
+            color: '#'+ hexColor,
+            dashArray: '5',
+            fillOpacity: opac,
+            fillColor: '#'+ hexColor,
+        };
+
+    },
+
+    /**
+     * 
+     * @param {String} color Hexadecimal color (RRGGBB).
+     * @returns Style of points of color color.
+     * 
+     * @function
+     */
+    pointStyle: function (color)  {
+        return {
+            radius: 3,
+            opacity: 1,
+            color: '#'+color,
+            noMask: true,
+            lineColor: '#'+ color,
+            useAbsoluteRadius: false
+        }
+    },
+
+    /**
+     * 
+     * @param {number} pci PCI value.
+     * @param {number} colorChoice Alternate color for PCI (0 or 1). 
+     * @returns Style of PCI points of pci PCI value and colorChoice alt. color value.
+     * 
+     * @function
+     */
+    pciColor: function (pci, colorChoice) {
+        // originated from the old program.
+
+        let testedVal = (
+            (colorChoice !== 0) ? 
+            (pci % 9) * 57 + Math.trunc(pci / 9)
+            : (pci % 3) * 170 + Math.trunc(pci / 3)
+        ) + colorChoice;
+
+        let colorVal = 10 + testedVal * 32895;
+        
+        return colorVal.toString(16);
+
+    },
+
+    /**
+     * 
+     * @param {number} tac TAC value. 
+     * @returns Color of a TAC point of value tac.
+     * 
+     * @function
+     */
+    tacColor: function (tac) {
+        // originated and readapted from the old program.
+
+        let lcolor = (tac &amp; 0xFF00) >> 8;
+        let rcolor = tac &amp; 0x00FF;
+
+        let rolocr = parseInt(rcolor.toString(2).split("").reverse().join(""), 2);
+
+        let color = lcolor &lt;&lt; 16 | (rcolor &amp; 0x3) &lt;&lt; 14 | rolocr;
+
+        return color.toString(16);
+
+    },
+
+    /**
+     * 
+     * @param {number} min Minimum measurement value.
+     * @param {number} max Maximum measurement value.
+     * @returns Style for heatmap hexagons, with a color range over [min, max].
+     * 
+     * @function
+     */
+    hexColor: function (min, max) {
+
+        // copied from the old program.
+        return {
+			radius : 12,
+			opacity: 0.6,
+			duration: 200,
+
+			colorScaleExtent: [ min, max ],
+			radiusScaleExtent: [ 1, undefined ],
+			colorDomain: null,
+			radiusDomain: null,
+			colorRange: styles.HEATMAP,
+			radiusRange: [ 1, 12 ],
+
+			pointserEvents: 'all'
+        }
+
+    },
+
+    /**
+     * 
+     * @returns The icon of an associated base station.
+     * 
+     * @function
+     */
+    stationIcon: function () {
+
+        // copied from the old program.
+        return L.icon({
+
+            iconUrl: 'wifi-zone-marker.png',
+            shadowUrl: 'site-shadow.png',
+            iconSize:     [32, 32], // size of the icon
+            shadowSize:   [39, 40], // size of the shadow
+            iconAnchor:   [15,28], // point of the icon which will correspond to marker's location
+            shadowAnchor: [12, 36]
+        });
+
+    },
+
+    /**
+     * 
+     * @param {*} baseMap Lealfet map default background.
+     * @returns Style of a Leaflet map with default backround baseMap.
+     * 
+     * @function
+     */
+    mapStyle: function (baseMap) {
+
+        // copied from the old program.
+        return {
+            center: [47.148, 4.474],
+            maxZoom: 100, 
+            zoom: 6,
+            layers: baseMap
+        };
+    },
+
+    /**
+     * Produces a gradient made of a given number of color for HexBin layers.
+     * 
+     * The gradiant is created using RGB-hex from HSL (Hue-Saturation-Luminosity) conversion, 
+     * by iterating over HSL values with H in [240, 0], over the given number of steps, 
+     * and with S: 1.0, L: 0.5.
+     * 
+     * @param {number} stepNum Number of colors.
+     * @returns An Array of stepNum hexadecimal RGB color code, forming an heatmap gradient.
+     * 
+     * @function
+     */
+    generateGradient: function (stepNum) {
+
+        let result = [];
+
+        let floatStep = 240.0 / stepNum;    // Step size.
+
+        // Iterating step by step...
+        for (let i = stepNum; i > 0; i--) {
+
+            let hue = i * floatStep;    // Current hue.
+            hue = hue &lt; 0 ? 0 : hue;    // Avoiding hue being less than 0 due to floating-point errors.
+
+            // Adding new hexadecimal code to results.
+            result.push(d3.hsl(hue, 1.0, 0.5).formatHex())
+
+        }
+
+        return result;
+
+    }
+
+};
+
+(function () { styles.HEATMAP = styles.generateGradient(255); })();</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="app.html">app</a></li><li><a href="drawing.html">drawing</a></li><li><a href="processing.html">processing</a></li><li><a href="styles.html">styles</a></li><li><a href="utils.html">utils</a></li></ul><h3>Classes</h3><ul><li><a href="app.App.html">App</a></li><li><a href="csvread.html">csvread</a></li><li><a href="csvread.CSVReader.html">CSVReader</a></li><li><a href="drawing.Map.html">Map</a></li></ul><h3>Global</h3><ul><li><a href="global.html#antennaDirections">antennaDirections</a></li><li><a href="global.html#antennas">antennas</a></li><li><a href="global.html#assocs">assocs</a></li><li><a href="global.html#attributeEvents">attributeEvents</a></li><li><a href="global.html#cinrs">cinrs</a></li><li><a href="global.html#drawAssocPopup">drawAssocPopup</a></li><li><a href="global.html#drawAssocs">drawAssocs</a></li><li><a href="global.html#drawCells">drawCells</a></li><li><a href="global.html#drawHex">drawHex</a></li><li><a href="global.html#drawPCI">drawPCI</a></li><li><a href="global.html#drawPoints">drawPoints</a></li><li><a href="global.html#drawRSRP">drawRSRP</a></li><li><a href="global.html#drawRSRQ">drawRSRQ</a></li><li><a href="global.html#drawRSSI">drawRSSI</a></li><li><a href="global.html#drawSelectors">drawSelectors</a></li><li><a href="global.html#drawServingCINR">drawServingCINR</a></li><li><a href="global.html#drawServingHex">drawServingHex</a></li><li><a href="global.html#drawServingRSRP">drawServingRSRP</a></li><li><a href="global.html#drawServingRSRQ">drawServingRSRQ</a></li><li><a href="global.html#drawServingRSSI">drawServingRSSI</a></li><li><a href="global.html#drawTAC">drawTAC</a></li><li><a href="global.html#earfcns">earfcns</a></li><li><a href="global.html#enableInputs">enableInputs</a></li><li><a href="global.html#extremas">extremas</a></li><li><a href="global.html#pcis">pcis</a></li><li><a href="global.html#points">points</a></li><li><a href="global.html#readFile">readFile</a></li><li><a href="global.html#reset">reset</a></li><li><a href="global.html#rsrps">rsrps</a></li><li><a href="global.html#rsrqs">rsrqs</a></li><li><a href="global.html#rssis">rssis</a></li><li><a href="global.html#setAntLayer">setAntLayer</a></li><li><a href="global.html#setAssocLayer">setAssocLayer</a></li><li><a href="global.html#setCellLayer">setCellLayer</a></li><li><a href="global.html#setPCILayer">setPCILayer</a></li><li><a href="global.html#setPointLayer">setPointLayer</a></li><li><a href="global.html#setRSRP">setRSRP</a></li><li><a href="global.html#setRSRQ">setRSRQ</a></li><li><a href="global.html#setRSSI">setRSSI</a></li><li><a href="global.html#setServingCINR">setServingCINR</a></li><li><a href="global.html#setServingRSRP">setServingRSRP</a></li><li><a href="global.html#setServingRSRQ">setServingRSRQ</a></li><li><a href="global.html#setServingRSSI">setServingRSSI</a></li><li><a href="global.html#setTACLayer">setTACLayer</a></li><li><a href="global.html#update">update</a></li><li><a href="global.html#updateAssocs">updateAssocs</a></li><li><a href="global.html#updateDisplay">updateDisplay</a></li><li><a href="global.html#updatePCILayer">updatePCILayer</a></li><li><a href="global.html#updateTACLayer">updateTACLayer</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.11</a> on Fri Jul 29 2022 23:52:45 GMT+0200 (heure d’été d’Europe centrale)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

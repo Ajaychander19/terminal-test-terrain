@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Namespace: utils</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Namespace: utils</h1>
+
+    
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>utils</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description">Contains general-purpose function for program.</div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line6">line 6</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".deepCopy"><span class="type-signature">(static) </span>deepCopy<span class="signature">(obj)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Deep-copies an object (copy of the object and its childs), by serializing it in JSON then decoding this JSON.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>obj</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Object to deep-copy.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line17">line 17</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    A deep-copy of obj.
+</div>
+
+
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".indexesOf"><span class="type-signature">(static) </span>indexesOf<span class="signature">(arr, obj)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Finds the indexes of occurences of a given value in an array.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>arr</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Array to search in.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>obj</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Object to search.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line28">line 28</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    An Array of indexes of obj occurences.
+</div>
+
+
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".indexOfEarpci"><span class="type-signature">(static) </span>indexOfEarpci<span class="signature">(earfcns, pcis, earfcn, pci)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Searches an EARFCN and PCI pair amongs EARFCN / PCI lists.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>earfcns</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">EARFCN list to search in.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>pcis</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">PCI list to search in.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>earfcn</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">EARFCN to search.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>pci</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">PCI to search.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line47">line 47</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    The index of the pair in earfcns and pcis if found, -1 otherwise.
+</div>
+
+
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".interPush"><span class="type-signature">(static) </span>interPush<span class="signature">(arrayA, arrayB)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Pushes elements of arrayB in arrayA if not already in arrayA.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>arrayA</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Array where arrayB elements will be inserted.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>arrayB</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Array of elements to be inserted into arrayA.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line148">line 148</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".removeEarpci"><span class="type-signature">(static) </span>removeEarpci<span class="signature">(earfcns, pcis, earfcn, pci)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Remove an EARFCN / PCI pair from lists of EARFCN / PCI.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>earfcns</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">EARFCN list.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>pcis</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">PCI list.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>earfcn</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">EARFCN to remove from list.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>pci</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">PCI to remove from list.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line68">line 68</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".subEarpci"><span class="type-signature">(static) </span>subEarpci<span class="signature">(earfcns, pcis, reqEarfcns, reqPcis)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Filters EARFCN / PCIS from a superset list, using a subset list.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>earfcns</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Superset of EARFCNs</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>pcis</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Superset of PCIs</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>reqEarfcns</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Subset of EARFCNs (if null, represents all EARFCNs from the superset).</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>reqPcis</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Subset of PCIs (if null, represents all PCIs from the superset).</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line91">line 91</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    Object which contains lists of filtered EARFCNs / PCIs, and list of indexes of EARFCNs / PCIspairs in the superset.
+</div>
+
+
+
+    
+
+
+
+
+
+        
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="app.html">app</a></li><li><a href="drawing.html">drawing</a></li><li><a href="processing.html">processing</a></li><li><a href="styles.html">styles</a></li><li><a href="utils.html">utils</a></li></ul><h3>Classes</h3><ul><li><a href="app.App.html">App</a></li><li><a href="csvread.html">csvread</a></li><li><a href="csvread.CSVReader.html">CSVReader</a></li><li><a href="drawing.Map.html">Map</a></li></ul><h3>Global</h3><ul><li><a href="global.html#antennaDirections">antennaDirections</a></li><li><a href="global.html#antennas">antennas</a></li><li><a href="global.html#assocs">assocs</a></li><li><a href="global.html#attributeEvents">attributeEvents</a></li><li><a href="global.html#cinrs">cinrs</a></li><li><a href="global.html#drawAssocPopup">drawAssocPopup</a></li><li><a href="global.html#drawAssocs">drawAssocs</a></li><li><a href="global.html#drawCells">drawCells</a></li><li><a href="global.html#drawHex">drawHex</a></li><li><a href="global.html#drawPCI">drawPCI</a></li><li><a href="global.html#drawPoints">drawPoints</a></li><li><a href="global.html#drawRSRP">drawRSRP</a></li><li><a href="global.html#drawRSRQ">drawRSRQ</a></li><li><a href="global.html#drawRSSI">drawRSSI</a></li><li><a href="global.html#drawSelectors">drawSelectors</a></li><li><a href="global.html#drawServingCINR">drawServingCINR</a></li><li><a href="global.html#drawServingHex">drawServingHex</a></li><li><a href="global.html#drawServingRSRP">drawServingRSRP</a></li><li><a href="global.html#drawServingRSRQ">drawServingRSRQ</a></li><li><a href="global.html#drawServingRSSI">drawServingRSSI</a></li><li><a href="global.html#drawTAC">drawTAC</a></li><li><a href="global.html#earfcns">earfcns</a></li><li><a href="global.html#enableInputs">enableInputs</a></li><li><a href="global.html#extremas">extremas</a></li><li><a href="global.html#pcis">pcis</a></li><li><a href="global.html#points">points</a></li><li><a href="global.html#readFile">readFile</a></li><li><a href="global.html#reset">reset</a></li><li><a href="global.html#rsrps">rsrps</a></li><li><a href="global.html#rsrqs">rsrqs</a></li><li><a href="global.html#rssis">rssis</a></li><li><a href="global.html#setAntLayer">setAntLayer</a></li><li><a href="global.html#setAssocLayer">setAssocLayer</a></li><li><a href="global.html#setCellLayer">setCellLayer</a></li><li><a href="global.html#setPCILayer">setPCILayer</a></li><li><a href="global.html#setPointLayer">setPointLayer</a></li><li><a href="global.html#setRSRP">setRSRP</a></li><li><a href="global.html#setRSRQ">setRSRQ</a></li><li><a href="global.html#setRSSI">setRSSI</a></li><li><a href="global.html#setServingCINR">setServingCINR</a></li><li><a href="global.html#setServingRSRP">setServingRSRP</a></li><li><a href="global.html#setServingRSRQ">setServingRSRQ</a></li><li><a href="global.html#setServingRSSI">setServingRSSI</a></li><li><a href="global.html#setTACLayer">setTACLayer</a></li><li><a href="global.html#update">update</a></li><li><a href="global.html#updateAssocs">updateAssocs</a></li><li><a href="global.html#updateDisplay">updateDisplay</a></li><li><a href="global.html#updatePCILayer">updatePCILayer</a></li><li><a href="global.html#updateTACLayer">updateTACLayer</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.11</a> on Fri Jul 29 2022 23:52:46 GMT+0200 (heure d’été d’Europe centrale)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

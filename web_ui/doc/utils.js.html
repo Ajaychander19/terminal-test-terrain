@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: utils.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: utils.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Contains general-purpose function for program.
+ * 
+ * @namespace
+ */
+const utils = {
+
+    /**
+     * Deep-copies an object (copy of the object and its childs), 
+     * by serializing it in JSON then decoding this JSON.
+     * 
+     * @param {*} obj Object to deep-copy.
+     * @returns A deep-copy of obj.
+     * 
+     * @function
+     */
+    deepCopy: function (obj) { return JSON.parse(JSON.stringify(obj)); },
+
+    /**
+     * Finds the indexes of occurences of a given value in an array.
+     * 
+     * @param {Array} arr Array to search in. 
+     * @param {*} obj Object to search. 
+     * @returns An Array of indexes of obj occurences.
+     * 
+     * @function
+     */
+    indexesOf: function (arr, obj) {
+
+        let result = [];
+        for (let i in arr) if (obj === arr[i]) result.push(parseInt(i));
+        return result;
+
+    },
+
+    /**
+     * Searches an EARFCN and PCI pair amongs EARFCN / PCI lists.
+     * 
+     * @param {Array} earfcns EARFCN list to search in.
+     * @param {Array} pcis PCI list to search in.
+     * @param {number} earfcn EARFCN to search.
+     * @param {number} pci PCI to search.
+     * @returns The index of the pair in earfcns and pcis if found, -1 otherwise.
+     * 
+     * @function
+     */
+    indexOfEarpci: function (earfcns, pcis, earfcn, pci) {
+
+        let earfcnIdx = utils.indexesOf(earfcns, earfcn);
+        let pcisIdx = utils.indexesOf(pcis, pci);
+
+        let inter = earfcnIdx.filter((e) => pcisIdx.includes(e))
+
+        return inter.length !== 0 ? inter[0] : -1;
+
+    },
+
+    /**
+     * Remove an EARFCN / PCI pair from lists of EARFCN / PCI.
+     * 
+     * @param {Array} earfcns EARFCN list.
+     * @param {Array} pcis PCI list.
+     * @param {number} earfcn EARFCN to remove from list.
+     * @param {number} pci PCI to remove from list.
+     * 
+     * @function
+     */
+    removeEarpci: function (earfcns, pcis, earfcn, pci) {
+        
+        let i = utils.indexOfEarpci(earfcns, pcis, earfcn, pci);
+
+        if (i !== -1) {
+            earfcns.splice(i, 1);
+            pcis.splice(i, 1);
+        }
+
+    },
+
+    /**
+     * Filters EARFCN / PCIS from a superset list, using a subset list.
+     * 
+     * @param {Array} earfcns Superset of EARFCNs 
+     * @param {Array} pcis Superset of PCIs
+     * @param {Array} reqEarfcns Subset of EARFCNs (if null, represents all EARFCNs from the superset).
+     * @param {Array} reqPcis Subset of PCIs (if null, represents all PCIs from the superset).
+     * @returns Object which contains lists of filtered EARFCNs / PCIs, and list of indexes of EARFCNs / PCIs
+     * pairs in the superset.
+     * 
+     * @function 
+     */
+    subEarpci: function (earfcns, pcis, reqEarfcns=null, reqPcis=null) {
+
+        // Result object.
+        let result = {earfcns: [], pcis: [], indices: []};
+
+        // Indexes of EARFCNs / PCIs of the subset.
+        let subEarfcnsIdx = [];
+        let subPcisIdx = [];
+
+        // Filling subEarfcnsIdx.
+        if (!reqEarfcns) subEarfcnsIdx = earfcns.map((_, i) => parseInt(i));    // If null : all elements.
+        else reqEarfcns.forEach(
+            (e) => utils.interPush(subEarfcnsIdx, utils.indexesOf(earfcns, e))
+        );
+
+        // Filling subPcisIdx.
+        if (!reqPcis) subPcisIdx = pcis.map((_, i) => parseInt(i));             // If null : all elements.
+        else reqPcis.forEach(
+            (e) => utils.interPush(subPcisIdx, utils.indexesOf(pcis, e))
+        );
+
+
+        subEarfcnsIdx.filter((i) => {    // Filtering over indexes.
+
+            let e = earfcns[i];     // EARFCN associated to the current index.
+            let p = pcis[i];        // PCI associated to the current index.
+
+            // Searching (e, p) pair in reqEarfcn and reqPcis if possible, evaluating in null otherwise.
+            let inter = (reqEarfcns &amp;&amp; reqPcis) ? 
+                utils.indexesOf(reqEarfcns, e).filter(
+                    (ear) => utils.indexesOf(reqPcis, p).includes(ear))
+                : null;
+
+            // Pair found or not possible to find the pair.
+            let sameIndex = (inter) ? inter.length !== 0  : true
+
+            // If pair found (if possible), and PCi found.
+            return subPcisIdx.includes(i) &amp;&amp; sameIndex;
+
+        }).forEach( // Filling result.
+            (i) => {
+                result.earfcns.push(earfcns[i]);
+                result.pcis.push(pcis[i]);
+                result.indices.push(i);
+            }
+        );
+
+        return result;
+
+    },
+
+    /**
+     * Pushes elements of arrayB in arrayA if not already in arrayA.
+     * 
+     * @param {Array} arrayA Array where arrayB elements will be inserted.
+     * @param {Array} arrayB Array of elements to be inserted into arrayA.
+     */
+    interPush: function (arrayA, arrayB) {
+        arrayB.forEach(
+            (elt) => { if (!arrayA.includes(elt)) arrayA.push(elt); }
+        )
+    }
+
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="app.html">app</a></li><li><a href="drawing.html">drawing</a></li><li><a href="processing.html">processing</a></li><li><a href="styles.html">styles</a></li><li><a href="utils.html">utils</a></li></ul><h3>Classes</h3><ul><li><a href="app.App.html">App</a></li><li><a href="csvread.html">csvread</a></li><li><a href="csvread.CSVReader.html">CSVReader</a></li><li><a href="drawing.Map.html">Map</a></li></ul><h3>Global</h3><ul><li><a href="global.html#antennaDirections">antennaDirections</a></li><li><a href="global.html#antennas">antennas</a></li><li><a href="global.html#assocs">assocs</a></li><li><a href="global.html#attributeEvents">attributeEvents</a></li><li><a href="global.html#cinrs">cinrs</a></li><li><a href="global.html#drawAssocPopup">drawAssocPopup</a></li><li><a href="global.html#drawAssocs">drawAssocs</a></li><li><a href="global.html#drawCells">drawCells</a></li><li><a href="global.html#drawHex">drawHex</a></li><li><a href="global.html#drawPCI">drawPCI</a></li><li><a href="global.html#drawPoints">drawPoints</a></li><li><a href="global.html#drawRSRP">drawRSRP</a></li><li><a href="global.html#drawRSRQ">drawRSRQ</a></li><li><a href="global.html#drawRSSI">drawRSSI</a></li><li><a href="global.html#drawSelectors">drawSelectors</a></li><li><a href="global.html#drawServingCINR">drawServingCINR</a></li><li><a href="global.html#drawServingHex">drawServingHex</a></li><li><a href="global.html#drawServingRSRP">drawServingRSRP</a></li><li><a href="global.html#drawServingRSRQ">drawServingRSRQ</a></li><li><a href="global.html#drawServingRSSI">drawServingRSSI</a></li><li><a href="global.html#drawTAC">drawTAC</a></li><li><a href="global.html#earfcns">earfcns</a></li><li><a href="global.html#enableInputs">enableInputs</a></li><li><a href="global.html#extremas">extremas</a></li><li><a href="global.html#pcis">pcis</a></li><li><a href="global.html#points">points</a></li><li><a href="global.html#readFile">readFile</a></li><li><a href="global.html#reset">reset</a></li><li><a href="global.html#rsrps">rsrps</a></li><li><a href="global.html#rsrqs">rsrqs</a></li><li><a href="global.html#rssis">rssis</a></li><li><a href="global.html#setAntLayer">setAntLayer</a></li><li><a href="global.html#setAssocLayer">setAssocLayer</a></li><li><a href="global.html#setCellLayer">setCellLayer</a></li><li><a href="global.html#setPCILayer">setPCILayer</a></li><li><a href="global.html#setPointLayer">setPointLayer</a></li><li><a href="global.html#setRSRP">setRSRP</a></li><li><a href="global.html#setRSRQ">setRSRQ</a></li><li><a href="global.html#setRSSI">setRSSI</a></li><li><a href="global.html#setServingCINR">setServingCINR</a></li><li><a href="global.html#setServingRSRP">setServingRSRP</a></li><li><a href="global.html#setServingRSRQ">setServingRSRQ</a></li><li><a href="global.html#setServingRSSI">setServingRSSI</a></li><li><a href="global.html#setTACLayer">setTACLayer</a></li><li><a href="global.html#update">update</a></li><li><a href="global.html#updateAssocs">updateAssocs</a></li><li><a href="global.html#updateDisplay">updateDisplay</a></li><li><a href="global.html#updatePCILayer">updatePCILayer</a></li><li><a href="global.html#updateTACLayer">updateTACLayer</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.11</a> on Fri Jul 29 2022 23:52:45 GMT+0200 (heure d’été d’Europe centrale)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Namespace: processing</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Namespace: processing</h1>
+
+    
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>processing</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description">Contains data processing methods, used to calculate some geometrical elements from data.</div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="processing.js.html">processing.js</a>, <a href="processing.js.html#line6">line 6</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".calcAntennas"><span class="type-signature">(static) </span>calcAntennas<span class="signature">(antDirs)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Calculates antennas directivity line from antennas directivity data.Produced lines are GeoJSON objects made with turf.js library.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>antDirs</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Antenna directivity data from the file reader object.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="processing.js.html">processing.js</a>, <a href="processing.js.html#line94">line 94</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    Antenna directivity GeoJSON line.
+</div>
+
+
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".calcDelimiters"><span class="type-signature">(static) </span>calcDelimiters<span class="signature">(voronoi, antennas)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Calculates sectors delimitation lines from delimiters data.Produced lines are GeoJSON objects made with turf.js library. Theseline are truncated in order to not go outside corresponding Voronoi cell.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>voronoi</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Voronoi diagram GeoJSON object.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>antennas</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Antennas object from the file reader object.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="processing.js.html">processing.js</a>, <a href="processing.js.html#line48">line 48</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    Array of truncated sector delimitation lines which match with Voronoi cells.
+</div>
+
+
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".calcVoronoi"><span class="type-signature">(static) </span>calcVoronoi<span class="signature">(antennas)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Calculates Voronoi diagram from antennas data.The calculation is done using turf.js Voronoi function, which producesGeoJSON data of the Voronoi diagram.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>antennas</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Antennas object from the file reader object.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="processing.js.html">processing.js</a>, <a href="processing.js.html#line18">line 18</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    GeoJSON Voronoi diagram obtained from antennas.
+</div>
+
+
+
+    
+
+
+
+
+
+        
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="app.html">app</a></li><li><a href="drawing.html">drawing</a></li><li><a href="processing.html">processing</a></li><li><a href="styles.html">styles</a></li><li><a href="utils.html">utils</a></li></ul><h3>Classes</h3><ul><li><a href="app.App.html">App</a></li><li><a href="csvread.html">csvread</a></li><li><a href="csvread.CSVReader.html">CSVReader</a></li><li><a href="drawing.Map.html">Map</a></li></ul><h3>Global</h3><ul><li><a href="global.html#antennaDirections">antennaDirections</a></li><li><a href="global.html#antennas">antennas</a></li><li><a href="global.html#assocs">assocs</a></li><li><a href="global.html#attributeEvents">attributeEvents</a></li><li><a href="global.html#cinrs">cinrs</a></li><li><a href="global.html#drawAssocPopup">drawAssocPopup</a></li><li><a href="global.html#drawAssocs">drawAssocs</a></li><li><a href="global.html#drawCells">drawCells</a></li><li><a href="global.html#drawHex">drawHex</a></li><li><a href="global.html#drawPCI">drawPCI</a></li><li><a href="global.html#drawPoints">drawPoints</a></li><li><a href="global.html#drawRSRP">drawRSRP</a></li><li><a href="global.html#drawRSRQ">drawRSRQ</a></li><li><a href="global.html#drawRSSI">drawRSSI</a></li><li><a href="global.html#drawSelectors">drawSelectors</a></li><li><a href="global.html#drawServingCINR">drawServingCINR</a></li><li><a href="global.html#drawServingHex">drawServingHex</a></li><li><a href="global.html#drawServingRSRP">drawServingRSRP</a></li><li><a href="global.html#drawServingRSRQ">drawServingRSRQ</a></li><li><a href="global.html#drawServingRSSI">drawServingRSSI</a></li><li><a href="global.html#drawTAC">drawTAC</a></li><li><a href="global.html#earfcns">earfcns</a></li><li><a href="global.html#enableInputs">enableInputs</a></li><li><a href="global.html#extremas">extremas</a></li><li><a href="global.html#pcis">pcis</a></li><li><a href="global.html#points">points</a></li><li><a href="global.html#readFile">readFile</a></li><li><a href="global.html#reset">reset</a></li><li><a href="global.html#rsrps">rsrps</a></li><li><a href="global.html#rsrqs">rsrqs</a></li><li><a href="global.html#rssis">rssis</a></li><li><a href="global.html#setAntLayer">setAntLayer</a></li><li><a href="global.html#setAssocLayer">setAssocLayer</a></li><li><a href="global.html#setCellLayer">setCellLayer</a></li><li><a href="global.html#setPCILayer">setPCILayer</a></li><li><a href="global.html#setPointLayer">setPointLayer</a></li><li><a href="global.html#setRSRP">setRSRP</a></li><li><a href="global.html#setRSRQ">setRSRQ</a></li><li><a href="global.html#setRSSI">setRSSI</a></li><li><a href="global.html#setServingCINR">setServingCINR</a></li><li><a href="global.html#setServingRSRP">setServingRSRP</a></li><li><a href="global.html#setServingRSRQ">setServingRSRQ</a></li><li><a href="global.html#setServingRSSI">setServingRSSI</a></li><li><a href="global.html#setTACLayer">setTACLayer</a></li><li><a href="global.html#update">update</a></li><li><a href="global.html#updateAssocs">updateAssocs</a></li><li><a href="global.html#updateDisplay">updateDisplay</a></li><li><a href="global.html#updatePCILayer">updatePCILayer</a></li><li><a href="global.html#updateTACLayer">updateTACLayer</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.11</a> on Fri Jul 29 2022 23:52:46 GMT+0200 (heure d’été d’Europe centrale)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
