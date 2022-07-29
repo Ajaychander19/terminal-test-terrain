@@ -12,6 +12,7 @@ cp user_dlts ~/.config/wireshark/.
 echo "5) Installation terminated"
 source bin/activate
 echo "6) Launching the software"
+mkdir outputFiles
 cd src
 python3 Interface.py
 deactivate
