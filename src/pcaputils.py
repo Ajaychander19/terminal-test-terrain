@@ -1,43 +1,8 @@
 """This module defines functions to manipulate PCAP temporary files."""
 
-# Needed library : pycrate
-from pycrate_asn1dir import RRCLTE
-
 from constantPath import getPathText, getWireshark, getfileName
 
-import binascii
-import json
 import subprocess
-
-
-def produce_asn1(channel: str, payload: str) -> dict:
-    """Produces ASN1-structured dictionary from a payload, following
-    a given message type.
-    
-    Parameters:
-        channel: message channel. Supported channels are 'BCCH:DL_SCH' and 'UL DCCH'.
-        payload: hex string which contains the message binary data.
-
-    Returns:
-        ASN1-structured dictionary generated from the message.
-    """
-    # Extracting RRC message data.
-
-    # Choosing message object.
-    if channel == 'BCCH:DL_SCH':
-        msg_obj = RRCLTE.EUTRA_RRC_Definitions.BCCH_DL_SCH_Message
-    elif channel == 'UL DCCH':
-        msg_obj = RRCLTE.EUTRA_RRC_Definitions.UL_DCCH_Message
-    else:
-        return {}
-
-    # Loading payload...
-    msg_obj.from_uper(
-        binascii.unhexlify(''.join(payload.split(' ')).strip()))
-
-    # Decoding message data.
-    return json.loads(msg_obj.to_json())
-
 
 def reorder_pcap(fname: str, dest: str):
     """Reorders a given PCAP temporary file with reordercap. Produces the resulting
