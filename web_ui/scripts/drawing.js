@@ -1,29 +1,47 @@
+/**
+ * Contains class and methods used to draw data on the Leaflet map.
+ * 
+ * @namespace
+ */
 const drawing = {
 
+    /**
+     * Wraps the map and the layer state to perform drawing and updating operations on them.
+     * 
+     * @class
+     */
     Map: class {
 
-        _map
-        _cellLayer
-        _antLayer
-        _assocLayer
+        _map            // Leaflet Map
+
+        _cellLayer      // Voronoi cell layer.
+        _antLayer       // Antennas layer.
+        _assocLayer     // Association pin layer.
         
-        _tacLayer
-        _pciLayer
+        _tacLayer       // TAC points layer.
+        _pciLayer       // PCI Points layer.
         
-        _servingRSRP
-        _servingRSRQ
-        _servingRSSI
-        _servingCINR
+        _servingRSRP    // Serving RSRP layer
+        _servingRSRQ    // Serving RSRQ layer
+        _servingRSSI    // Serving RSSI layer
+        _servingCINR    // Serving RSRP layer
         
-        _rsrpLayer
-        _rsrqLayer
-        _rssiLayer
-        _cinrLayer
+        _rsrpLayer      // Global RSRP layer
+        _rsrqLayer      // Global RSRQ layer
+        _rssiLayer      // Global RSSI layer
+        _cinrLayer      // Global RSRP layer
 
         _nonFilteredTAC
         _nonFilteredPCI
 
 
+        /**
+         * Class constructor.
+         * 
+         * @param {L.Map} map Leaflet map to wrap.
+         * 
+         * @constructor
+         */
         constructor(map) {
             this._map = map;
 
@@ -39,7 +57,7 @@ const drawing = {
             this._rsrpLayer = drawing.hexBin('RSRP', styles.hexColor(0, 1));
             this._rsrqLayer = drawing.hexBin('RSRQ', styles.hexColor(0, 1));
             this._rssiLayer = drawing.hexBin('RSSI', styles.hexColor(0, 1));
-            this._cinrLayer = drawing.hexBin('CINR', styles.hexColor(0, 1));
+            // this._cinrLayer = drawing.hexBin('CINR', styles.hexColor(0, 1));
 
             this._assocLayer = L.layerGroup();
 
@@ -48,6 +66,15 @@ const drawing = {
 
         }
 
+        /**
+         * Draws Voronoi cells, delimiters and antennas layers.
+         * 
+         * @param {*} voronoi Voronoi diagram GeoJSON
+         * @param {*} antFeats Antennas directivity lines GeoJSON.
+         * @param {*} delFeats Sectors delimiters GeoJSON.
+         * 
+         * @function
+         */
         drawCells(voronoi, antFeats, delFeats) {
 
             this._cellLayer.clearLayers();
@@ -69,6 +96,17 @@ const drawing = {
     
         }
 
+        /**
+         * Draw serving points layer.
+         * @param {*} points Points data
+         * @param {function} valChooser Function that (earfcn, pci, point) => value which 
+         * extracts the value from the point.
+         * @param {function} colorChooser Function (value) => color which calculate the point color.
+         * 
+         * @returns Return an object containing multiple layers associated to EARFCNs / PCIs.
+         * 
+         * @function
+         */
         drawPoints(points, valChooser, colorChooser) {
 
             // Dictionary which contains point layers associated to EARFCNs/PCIs.
@@ -124,34 +162,54 @@ const drawing = {
 
         }
 
+        /**
+         * Draws serving measurement heatmap layer.
+         * 
+         * @param {*} layer Layer to draw on.
+         * @param {function} points Serving measurement points.
+         * @param {function} valChooser Function that (earfcn, pci, point) => value which 
+         * extracts the value from the point.
+         * @param {number} min Minimum value (used for the color range).
+         * @param {number} max Maximum value (used for the color range).
+         * @param {Array} earfcns Selected EARFCNs
+         * @param {Array} pcis Selected PCIs.
+         * 
+         * @function
+         */
         drawServingHex(layer, points, valChooser, min, max, earfcns=null, pcis=null) {
 
+            // Layer data points;
             let hexData = [];
 
+            // EARFCNs and PCIs amongs input points.
             let baseEarfncs = [];
             let basePcis = [];
 
+            // Iterating over points EARFCNs...
             for (let earfcn in points) {
 
                 let pciGroup = points[earfcn];
 
+                // Over PCIs...
                 for (let pci in pciGroup) {
                     baseEarfncs.push(parseInt(earfcn));
                     basePcis.push(parseInt(pci));
                 }
 
-
             }
 
+            // Filtering EARFCNs and PCIs...
             let earpcis = utils.subEarpci(baseEarfncs, basePcis, earfcns, pcis);
             let filtEarfcns = earpcis.earfcns;
             let filtPcis = earpcis.pcis;
 
+            // For each reamining EARFCNs and PCIs...
             for (let i in filtEarfcns) {
 
                 let earfcn = filtEarfcns[i];
                 let pci = filtPcis[i];
 
+                // Pushing asscoiated measurements in hexData...
                 points[earfcn][pci].forEach(
                     (pt) => {
                         let val = valChooser(earfcn, pci, pt);
@@ -161,14 +219,28 @@ const drawing = {
 
             }
 
+            // Drawing the layer.
             layer.options.colorScaleExtent = [min, max];
-
             layer.redraw();
 
+            // Adding data...
             layer.data(hexData);
 
         }
 
+        /**
+         * Draws the pins of the associated pins.
+         * 
+         * @param {*} assocs Association data.
+         * @param {*} antennas Antennas data;
+         * @param {*} checkEarfcns Checked EARFCNs (in checkboxes).
+         * @param {*} checkPcis Checked PCIs (in checkboxes).
+         * @param {*} updateMethod Pins updating () => () function.
+         * @param {Array} earfcns Selected EARFCNs (selector)
+         * @param {Array} pcis Selected PCIs (selector).
+         * 
+         * @function
+         */
         drawAssocs(assocs, antennas, checkEarfcns, checkPcis, updateMethod, earfcns=null, pcis=null) {
 
             this._assocLayer.clearLayers();
@@ -181,6 +253,7 @@ const drawing = {
                 // Creating the marker object.
                 let marker = L.marker([ant.lat, ant.lng], {icon: styles.stationIcon()});
 
+                // Creating popup.
                 marker.bindPopup(
                     this.drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, updateMethod, earfcns, pcis),
                     {closeOnClick: false, autoClose: false}
@@ -192,6 +265,17 @@ const drawing = {
 
         }
 
+        /**
+         * 
+         * @param {number} cartoNum 
+         * @param {*} assoc 
+         * @param {*} checkEarfcns 
+         * @param {*} checkPcis 
+         * @param {*} updateMethod 
+         * @param {*} earfcns 
+         * @param {*} pcis 
+         * @returns 
+         */
         drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, updateMethod, earfcns=null, pcis=null) {
 
             // Content element of the popup.
@@ -224,8 +308,10 @@ const drawing = {
                 let checkId = 'check' + '-' + cartoNum + '-' + earfcn + '-' + pci;
                 checkBox.id = checkId;
 
+                // When clicking the checkbox...
                 checkBox.onclick = (evt) => { 
                     
+                    // ...adding corresponding EARFCN / PCI to checkEARFCN an checkPCI.
                     if (evt.target.checked) {
                         checkEarfcns.push(earfcn);
                         checkPcis.push(pci);
