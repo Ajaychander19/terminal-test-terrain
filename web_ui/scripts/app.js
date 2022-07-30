@@ -193,6 +193,7 @@ const app = {
             this._earfcnOnServing = true;
             this._pciOnServing = true;
             this._onServing = true;
+            this._allSites = true;
 
             this._selEarfcns = null;
             this._selPcis = null;
