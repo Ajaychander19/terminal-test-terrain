@@ -84,7 +84,7 @@ const app = {
             let checkPcis = this._checkPcis;            // PCIs selected with sites checkboxes.
 
             // Extremums
-            const RSRP_MIN = -140;
+            const RSRP_MIN = -120;
             const RSRP_MAX = -44;
 
             const RSRQ_MIN = -20;
