@@ -65,6 +65,7 @@ var csvread = {
             this._file = file;
             this._earfcns = [];
             this._pcis = [];
+            this._nbSamples = [];
             this._points = {};
             this._rsrps = [];
             this._rsrqs = [];
@@ -173,6 +174,19 @@ var csvread = {
                                 measLines = true;
 
                                 break;
+
+                            case 'MEAS_NB':   // Number of measurement for each (EARFCN, PCI) couple
+
+                                if (llen < 6) throw new Error(
+                                    'Error: line ' + lineNum + ': MEAS_PCIS line must contain at least 6 fields.')
+
+                                for (let j = 5; j < llen; j++) this._nbSamples.push(parseInt(line[j]));
+
+                                if (this._nbSamples.length !== this._pcis.length) throw new Error(
+                                    'Error: line ' + lineNum + ': NB-of-samples count is different from PCI count.');
+
+                                break;
+
 
                             case 'MEASUREMENT':
                                 if (!measLines) throw new Error(

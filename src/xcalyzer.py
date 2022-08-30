@@ -61,6 +61,7 @@ class XcalConverter:
 
         self._earfcns = []
         self._pcis = []
+        self._nbsamples = []
 
         self._data_dict = {
             'name': [], 'timestamp': [], 'lat': [], 'lng': [],                          # Common fields
@@ -141,7 +142,7 @@ class XcalConverter:
             - The presence of each section of the file.
             - The structure of messages (especially messages length).
 
-        This function also scans all EARFCNs/PCIs couples present in the file.
+        This function also scans all EARFCNs/PCIs couples present in the file and counts how many times each (EARCN,PCI) couple is found
 
         Raises:
             RuntimeError: if the syntax of the file is invalid.
@@ -253,9 +254,14 @@ class XcalConverter:
                             serving_earfcn = int(line[2])
                             serving_pci = int(line[4])
 
-                            if (serving_earfcn, serving_pci) not in zip(self._earfcns, self._pcis):
-                                self._earfcns.append(serving_earfcn)
+                            # Update the list and increment the counter if necessary, similary code for QCLTE_PNCELL below
+                            CurrentListPciEarfcn = list(zip(self._earfcns, self._pcis)) # list of all (EARFCN,PCI) found
+                            if (serving_earfcn, serving_pci) not in CurrentListPciEarfcn:
+                                self._earfcns.append(serving_earfcn)     # insert a new couple
                                 self._pcis.append(serving_pci)
+                                self._nbsamples.append(1)               # current count is 1 for this couple
+                            else:
+                                self._nbsamples[CurrentListPciEarfcn.index((serving_earfcn, serving_pci))] += 1  # if a couple in the list, increment counter
 
                         elif first == 'QCLTE_CELLINFO':
 
@@ -291,9 +297,13 @@ class XcalConverter:
                                         curr_earfcn = int(curr_cell)
 
                                         # Storing EARFCNs and PCIs
-                                        if (curr_earfcn, curr_pci) not in list(zip(self._earfcns, self._pcis)):
+                                        CurrentListPciEarfcn = list(zip(self._earfcns, self._pcis))
+                                        if (curr_earfcn, curr_pci) not in CurrentListPciEarfcn:
                                             self._earfcns.append(curr_earfcn)
                                             self._pcis.append(curr_pci)
+                                            self._nbsamples.append(1)
+                                        else:
+                                            self._nbsamples[CurrentListPciEarfcn.index((curr_earfcn, curr_pci))] += 1
 
                         elif first == '<Content End>\n':  # File ending.
                             state = 7  # Final state because of EOF.
@@ -502,6 +512,7 @@ class XcalConverter:
         csv_header = {
             'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
             'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
+            'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas_for_1', 'nb_meas_for_2', 'nb_meas_for_3', 'etc'],
             'CELLINFO': ['Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'],
             'MEASURE_SERVING': [
                 'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI',
@@ -515,13 +526,19 @@ class XcalConverter:
 
         with csvtools.CSVWriter(getPathText('csv_tmp.csv'), csv_header) as csv_out:
 
-            # Lists of EARFCN/PCI couples.
+            # List of EARFCN/PCI/NB of samples just for writing the file (not used later)
+            ep_list_saving = list(zip(self._earfcns, self._pcis,self._nbsamples))
+            ep_list_saving.sort()
+
+            # Writing couples in the file.
+            csv_out.write_row(['MEAS_EARFCNS'] + [''] * 4 + [ep[0] for ep in ep_list_saving])
+            csv_out.write_row(['MEAS_PCIS'] + [''] * 4 + [ep[1] for ep in ep_list_saving])
+            csv_out.write_row(['MEAS_NB'] + [''] * 4 + [ep[2] for ep in ep_list_saving])
+
+            # Lists of EARFCN/PCI couples that are used later on
             ep_list = list(zip(self._earfcns, self._pcis))
             ep_list.sort()
 
-            # Writing couples in the file.
-            csv_out.write_row(['MEAS_EARFCNS'] + [''] * 4 + [ep[0] for ep in ep_list])
-            csv_out.write_row(['MEAS_PCIS'] + [''] * 4 + [ep[1] for ep in ep_list])
 
             # Writing data in the CSV file.
             for i in range(len(self._data_dict['name'])):

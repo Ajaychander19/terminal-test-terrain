@@ -1,5 +1,5 @@
 """This module defines CellAssociator class and methods to associate base stations / antennas to each measurement."""
-
+import math
 import os.path
 import pathlib
 
@@ -34,6 +34,7 @@ class CellAssociator:
     _HEADER = {
         'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
         'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
+        'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas_for_1', 'nb_meas_for_2', 'nb_meas_for_3', 'etc'],
         'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values'],
         'DELIMITER': ['Cartoradio_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng'],
         'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
@@ -172,6 +173,12 @@ class CellAssociator:
                     out_wr.write_row(line)
                     out_wr.write_row(lineb)
 
+                elif line[0] == 'MEAS_NB':
+                    if len(line) != len(lineb):
+                        raise RuntimeError('error: MEAS_PCIS and MEAS_NB lines should have the same length.')
+                    out_wr.write_row(line)     # writing the number of meas samples (which is just after the list of PCIS and with the same length)
+
+
                 # Registering measurement data...
                 elif line[0] == 'MEASUREMENT':
 
@@ -292,7 +299,7 @@ class CellAssociator:
         sames EARFCNS/PCIS and base stations."""
 
         # Associations between antennas and EARFCNs / PCIs
-        self._assocs = {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': []}
+        self._assocs = {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': [], 'Score': []}
 
         # Calculating Voronoi cells.
 
@@ -368,117 +375,143 @@ class CellAssociator:
             if card>MIN_NUMBER_OF_MEASURES_FOR_ASSOCIATION:  # if no enough measurement, don't try any association
                 # Calculating weights...
                 weights = v_weight(points_rsrps)
+                totalweight = np.sum(weights)
+                #admission_score = totalweight/card
+                #nb_of_large = (weights> 0.5).sum()
 
-                # For each Voronoi cell...
-                for vor_key in vor_groups.groups.keys():  # i
+                if (totalweight>10):
 
-                    vgroup = vor_groups.get_group(vor_key)  # Group of antennas in the Voronoi cell.
-                    vlen = len(vgroup)  # Number of antennas in the Voronoi cell.
-                    vgroup = vgroup.to_dict('list')
+                    # For each Voronoi cell...
+                    for vor_key in vor_groups.groups.keys():  # i
 
-                    # Polygon of the Voronoi cell.
-                    vor_shape = geom.Polygon(vor.vertices[vor.regions[vor_key]])
+                        vgroup = vor_groups.get_group(vor_key)  # Group of antennas in the Voronoi cell.
+                        vlen = len(vgroup)  # Number of antennas in the Voronoi cell.
+                        vgroup = vgroup.to_dict('list')
 
-                    # Station / polygon distance calculation...
+                        # Polygon of the Voronoi cell.
+                        vor_shape = geom.Polygon(vor.vertices[vor.regions[vor_key]])
 
-                    linear_vor = geom.LinearRing(vor_shape.exterior.coords)
+                        # Station / polygon distance calculation...
 
-                    # BS coords...
-                    vlat = vgroup['Lat'][0]
-                    vlng = vgroup['Lng'][0]
+                        linear_vor = geom.LinearRing(vor_shape.exterior.coords)
 
-                    # Projects the base station point over the current group of points convex hull...
-                    interp = linear_vor.interpolate(
-                        linear_vor.project(geom.Point(vlat, vlng)))
-                    dist = np.sqrt(((vlat - interp.x) ** 2 + (interp.y - vlng) ** 2))
+                        # BS coords...
+                        vlat = vgroup['Lat'][0]
+                        vlng = vgroup['Lng'][0]
 
-                    # Calculating angles between points of base station and north over flat earth projection.
+                        # Projects the base station point over the current group of points convex hull...
+                        interp = linear_vor.interpolate(
+                            linear_vor.project(geom.Point(vlat, vlng)))
+                        dist = np.sqrt(((vlat - interp.x) ** 2 + (interp.y - vlng) ** 2))
 
-                    # Points latitude / longitude...
-                    points_lat = point_group['Lat'].to_numpy()
-                    points_lng = point_group['Lng'].to_numpy()
+                        # Calculating angles between points of base station and north over flat earth projection.
 
-                    # Points coordinates over flat earth projection.
-                    dirs_north = (points_lat - vlat) * (np.pi / 180)
-                    dirs_east = (points_lng - vlng) * (np.pi / 180) * np.cos(vlat / 180 * np.pi)
+                        # Points latitude / longitude...
+                        points_lat = point_group['Lat'].to_numpy()
+                        points_lng = point_group['Lng'].to_numpy()
 
-                    # Angles between north direction and point direction from the current base station.
-                    angles = np.arctan2(dirs_east, dirs_north)
+                        # Points coordinates over flat earth projection.
+                        dirs_north = (points_lat - vlat) * (np.pi / 180)
+                        dirs_east = (points_lng - vlng) * (np.pi / 180) * np.cos(vlat / 180 * np.pi)
 
-                    # Calculate values only if Voronoi cell intersects with the convex hull
-                    # of the current group of points.
-                    if vor_shape.intersects(hulls[gr_key]):
+                        # Angles between north direction and point direction from the current base station.
+                        angles = np.arctan2(dirs_east, dirs_north)
 
-                        # Is each point belonging to the cell ?
-                        points_belongs = v_belongs(points_lat, points_lng, vor_shape)
+                        # Calculate values only if Voronoi cell intersects with the convex hull
+                        # of the current group of points.
+                        if vor_shape.intersects(hulls[gr_key]):
 
-                        for i in range(vlen):  # j
+                            # Is each point belonging to the cell ?
+                            points_belongs = v_belongs(points_lat, points_lng, vor_shape)
 
-                            # Azimuth delimitation of the sector.
-                            az_min = vgroup['AzimuthMin'][i]
-                            az_max = vgroup['AzimuthMax'][i]
+                            for i in range(vlen):  # j
 
-                            # Criteria calculation.
+                                # Azimuth delimitation of the sector.
+                                az_min = vgroup['AzimuthMin'][i]
+                                az_max = vgroup['AzimuthMax'][i]
 
-                            # Angular criteria "sigma".
-                            sigma_sum = v_sigma(angles, weights, az_min, az_max)
-                            sigma = np.sum(sigma_sum) / card
+                                # Criteria calculation.
 
-                            # Cell belonging criteria "phi".
-                            psi_sum = v_psi(points_belongs) * sigma_sum
-                            psi = np.sum(psi_sum) / card
+                                # Angular criteria "sigma".
+                                sigma_vect = v_sigma(angles, weights, az_min, az_max)
+                                sigma = np.sum(sigma_vect) / card  # modification XLXLXL totalweight
 
-                            # Theta criteria calculation.
+                                # Cell belonging criteria "phi".
+                                psi_vect = v_psi(points_belongs) * sigma_vect
+                                psi = np.sum(psi_vect) / card  # modification XLXLXL totalweight
 
-                            theta = calc_theta(sigma, psi)
-                            if not theta == 0.0:
-                                theta_values[
-                                    (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], dist, gr_key)
-                                ] = (sigma, psi, theta)
+                                # Theta criteria calculation.
 
-                # If non-zero theta values have been calculated...
-                if theta_values:
+                                theta = calc_theta(sigma, psi)
+                                if not theta == 0.0:
+                                    theta_values[
+                                        (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], dist, gr_key)
+                                    ] = (sigma, psi, theta)
 
-                    # Choosing one max theta value.
-                    theta_argmax = max(theta_values, key=lambda k: theta_values[k])
-                    theta_max = theta_values[theta_argmax]
+                    # If non-zero theta values have been calculated...
+                    if theta_values:
 
-                    # Check for other max values, equals to the first max value.
-                    theta_argmax = [k for k in theta_values.keys()]
+                        # Choosing one max theta value.
+                        theta_argmax = max(theta_values, key=lambda k: theta_values[k])
+                        theta_max = theta_values[theta_argmax]
 
-                    # Other theta values.
-                    theta_array = np.array([theta_values[k] for k in theta_values.keys()])
+                        # Check for other max values, equals to the first max value.
+                        theta_list = [k for k in theta_values.keys()]
 
-                    # Selecting antennas.
-                    if theta_array.size > 0:
+                        # Other theta values.
+                        theta_array = np.array([theta_values[k] for k in theta_values.keys()])
 
-                        # Select valid antennas following theta values.
-                        valids = v_valid(theta_max, theta_array, 0.08)
+                        # Selecting antennas.
+                        if theta_array.size > 0:
 
-                        # If valid antennas found, choose the antenna with a minimal distance
-                        # with the convex hull of the current group of points.
-                        if valids.size > 0:
-                            if np.all(valids):
-                                min_dist = theta_argmax[0][2]
+                            # Select valid antennas following theta values.
+                            valids = v_valid(theta_max, theta_array, 0.08)
+
+                            # If valid antennas found, choose the antenna with a minimal distance
+                            # with the convex hull of the current group of points.
+                            if np.all(valids):             # for one candidate theta is much higher than for the other
+                                # Inserting data.
+                                insert_data(self._assocs, {
+                                    'Cartoradio_Number': [theta_argmax[0]],
+                                    'Ant_Number': [theta_argmax[1]],
+                                    'TAC': [theta_argmax[3][0]],
+                                    'CID': [theta_argmax[3][1]],
+                                    'EARFCN': [theta_argmax[3][2]],
+                                    'PCI': [theta_argmax[3][3]],
+                                    'Score': [theta_max[2]]
+                                }, 1)
+                            else:
+                                min_dist = theta_argmax[2]
                                 argmin_dist = 0
 
                                 # Selecting minimal base station / convex hull distance.
-                                for i, selected in enumerate(theta_argmax):
+                                for i, selected in enumerate(theta_list):
                                     dst = selected[2]
                                     if dst < min_dist:
                                         min_dist = dst
                                         argmin_dist = i
 
-                                # Inserting data.
-                                insert_data(self._assocs, {
-                                    'Cartoradio_Number': [theta_argmax[argmin_dist][0]],
-                                    'Ant_Number': [theta_argmax[argmin_dist][1]],
-                                    'TAC': [theta_argmax[argmin_dist][3][0]], 'CID': [theta_argmax[argmin_dist][3][1]],
-                                    'EARFCN': [theta_argmax[argmin_dist][3][2]],
-                                    'PCI': [theta_argmax[argmin_dist][3][3]]
-                                }, 1)
-
-
+                                if (theta_argmax[2]/min_dist>1.5):
+                                    insert_data(self._assocs, {
+                                        'Cartoradio_Number': [theta_list[argmin_dist][0]],
+                                        'Ant_Number': [theta_list[argmin_dist][1]],
+                                        'TAC': [theta_list[argmin_dist][3][0]],
+                                        'CID': [theta_list[argmin_dist][3][1]],
+                                        'EARFCN': [theta_list[argmin_dist][3][2]],
+                                        'PCI': [theta_list[argmin_dist][3][3]],
+                                        'Score': [theta_array[argmin_dist][2]]
+                                    }, 1)
+                                else:       # the ratio of distance is not large enough => choose the sector best theta value
+                                    # Inserting data.
+                                    insert_data(self._assocs, {
+                                        'Cartoradio_Number': [theta_argmax[0]],
+                                        'Ant_Number': [theta_argmax[1]],
+                                        'TAC': [theta_argmax[3][0]],
+                                        'CID': [theta_argmax[3][1]],
+                                        'EARFCN': [theta_argmax[3][2]],
+                                        'PCI': [theta_argmax[3][3]],
+                                        'Score': [theta_max[2]]
+                                    }, 1)
 
     def _write_output(self, out_wr: csvt.CSVWriter):
         """PRIVATE METHOD which writes relation calculated by _associate_datas in the output file.
@@ -508,7 +541,7 @@ class CellAssociator:
         for i in range(len(self._assocs['Cartoradio_Number'])):
             out_wr.write_row([
                 'ASSOC', self._assocs['Cartoradio_Number'][i], self._assocs['Ant_Number'][i], self._assocs['TAC'][i],
-                self._assocs['CID'][i], self._assocs['EARFCN'][i], self._assocs['PCI'][i]
+                self._assocs['CID'][i], self._assocs['EARFCN'][i], self._assocs['PCI'][i], self._assocs['Score'][i]
             ])
 
         # Writing points.
@@ -535,13 +568,14 @@ def weight(rsrp: float) -> float:
         Weight of the point, which is 0.15 if the RSRP is lesser than or equal to -100 dBm, 0.6 if the RSRP is between
         -100 dBm and -80 dBm, or 1.0 if the RSRP is greater than or equal to -80 dBm.
     """
-    if rsrp <= -100:
-        return 0.15
-    elif -100 < rsrp < -80:
-        return 0.6
-    else:
-        return 1.0
+    #if rsrp <= -100:
+    #    return 0.15
+    #elif -100 < rsrp < -80:
+    #    return 0.6
+    #else:
+    #    return 1.0
 
+    return 1/(1+math.exp((-90-rsrp)*0.22))
 
 def calc_sigma(a: float, w: float, az_min: float, az_max: float):
     """Calculates the "sigma" angular indicator of one measurement point.
@@ -586,7 +620,7 @@ def belongs(x: float, y: float, shape: geom.Polygon) -> bool:
 
 
 def is_valid(theta_max: float, other_theta: float, threshold: float):
-    """Calculate the validity criteria for antenna selection for a given group of theta value.
+    """Calculate the validity criteria for antenna selection for a given group of theta value, if all outputs are true, there is only one possible association, if an output is false .
 
     Parameters:
         theta_max: max theta value calculated with the group.
@@ -600,4 +634,5 @@ def is_valid(theta_max: float, other_theta: float, threshold: float):
     if theta_max == 0.0 or other_theta / theta_max == 0.0 or theta_max == other_theta:
         return True
     else:
+        #        return other_theta > 0.8     # XL XL XL
         return np.abs(np.log10(other_theta / theta_max)) > threshold
