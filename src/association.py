@@ -483,19 +483,27 @@ class CellAssociator:
 
 
         print(self._assocsProp)
+        # identification for each Ant Number of all measurement groups associated
+        # selection of the group with the highest score
+        # when score 1 is found, elimination because it means points are not enough spread in the cell
+        # trick : non selected (i.e. duplicates) Antenna numbers are forced to 0
         for i in range(len(self._assocsProp['Ant_Number'])):
             imax = i
             NoteMax = self._assocsProp['Score'][i]
-            for j in range(i+1, len(self._assocsProp['Ant_Number'])):
-                if self._assocsProp['Ant_Number'][j] != 0:
-                    if self._assocsProp['Ant_Number'][j]==self._assocsProp['Ant_Number'][i]:
-                        if self._assocsProp['Score'][j]>NoteMax:
-                            imax = j
-                            NoteMax = self._assocsProp['Score'][j]
-                            self._assocsProp['Ant_Number'][i] = 0  # on force numero d'origine a 0 car doublon a ne pas considerer
-                        else:
-                            self._assocsProp['Ant_Number'][j] = 0   # on force numero a 0 car doublon a ne pas reconsiderer
+            if NoteMax == 1:  # score 1 is suspect => elimination
+                self._assocsProp['Ant_Number'][i] = 0  # elimination
+            else:
+                for j in range(i+1, len(self._assocsProp['Ant_Number'])):
+                    if self._assocsProp['Ant_Number'][j] != 0:
+                        if self._assocsProp['Ant_Number'][j]==self._assocsProp['Ant_Number'][i]:
+                            if self._assocsProp['Score'][j]>NoteMax:
+                                imax = j
+                                NoteMax = self._assocsProp['Score'][j]
+                                self._assocsProp['Ant_Number'][i] = 0  # on force numero d'origine a 0 car doublon a ne pas considerer
+                            else:
+                                self._assocsProp['Ant_Number'][j] = 0   # on force numero a 0 car doublon a ne pas reconsiderer
 
+        # creation of the definitive list with only one association per antenna
         for i in range(len(self._assocsProp['Ant_Number'])):
                 if self._assocsProp['Ant_Number'][i] != 0:
                     insert_data(self._assocs, {
