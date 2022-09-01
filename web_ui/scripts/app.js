@@ -85,7 +85,7 @@ const app = {
 
             // Extremums
             const RSRP_MIN = -120;
-            const RSRP_MAX = -44;
+            const RSRP_MAX = -60;
 
             const RSRQ_MIN = -20;
             const RSRQ_MAX = -3;
