@@ -191,40 +191,7 @@ class CellAssociator:
                     if last_earfcn is None or last_pci is None:
                         raise RuntimeError('error: MEASUREMENT encountered before MEASURE_SERVING.')
 
-                    # # Associating measurements to points...
-                    # meas_name = line[4]
-                    #
-                    # if meas_name == 'RSRP' or meas_name == 'RSRQ' or meas_name == 'RSSI':
-                    #
-                    #     # Corresponding index of the measurement following current EARFCN / PCI
-                    #     meas_index = earpcis.index((last_earfcn, last_pci)) + 5
-                    #
-                    #     # Measurement value.
-                    #     val = float(line[meas_index]) if line[meas_index] != '' else None
-                    #
-                    #     # Current measurement timestamp.
-                    #     tstamp = float(line[1])
-                    #
-                    #     # Choosing where to insert data...
-                    #     to_insert = {
-                    #         'Timestamp': [float(line[1])],
-                    #         'RSRP': [val] if meas_name == 'RSRP' else [None],
-                    #         'RSRQ': [val] if meas_name == 'RSRQ' else [None],
-                    #         'RSSI': [val] if meas_name == 'RSSI' else [None],
-                    #     }
-                    #
-                    #     # Timestamp change -> point change...
-                    #     if tstamp != prev_tstamp:
-                    #
-                    #         insert_data(measurements, to_insert, 1)
-                    #         prev_tstamp = tstamp
-                    #         meas_count += 1
-                    #
-                    #     else:   # otherwise merging previous measurement and new measurement.
-                    #
-                    #         fill_data(measurements, to_insert, meas_count - 1, 1)
 
-                    # Copying measurement line into the output file (=/= point association !!!)
                     out_wr.write_row(line)
 
                 elif line[0] == 'MEAS_PCIS':
@@ -299,7 +266,8 @@ class CellAssociator:
         sames EARFCNS/PCIS and base stations."""
 
         # Associations between antennas and EARFCNs / PCIs
-        self._assocs = {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': [], 'Score': []}
+        self._assocsProp = {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': [], 'Score': []}
+        self._assocs =  {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': [], 'Score': []}
 
         # Calculating Voronoi cells.
 
@@ -434,11 +402,11 @@ class CellAssociator:
 
                                 # Angular criteria "sigma".
                                 sigma_vect = v_sigma(angles, weights, az_min, az_max)
-                                sigma = np.sum(sigma_vect) / card  # modification XLXLXL totalweight
+                                sigma = np.sum(sigma_vect) / totalweight  # modification XLXLXL totalweight
 
                                 # Cell belonging criteria "phi".
                                 psi_vect = v_psi(points_belongs) * sigma_vect
-                                psi = np.sum(psi_vect) / card  # modification XLXLXL totalweight
+                                psi = np.sum(psi_vect) / totalweight  # modification XLXLXL totalweight
 
                                 # Theta criteria calculation.
 
@@ -471,7 +439,7 @@ class CellAssociator:
                             # with the convex hull of the current group of points.
                             if np.all(valids):             # for one candidate theta is much higher than for the other
                                 # Inserting data.
-                                insert_data(self._assocs, {
+                                insert_data(self._assocsProp, {
                                     'Cartoradio_Number': [theta_argmax[0]],
                                     'Ant_Number': [theta_argmax[1]],
                                     'TAC': [theta_argmax[3][0]],
@@ -492,7 +460,7 @@ class CellAssociator:
                                         argmin_dist = i
 
                                 if (theta_argmax[2]/min_dist>1.5):
-                                    insert_data(self._assocs, {
+                                    insert_data(self._assocsProp, {
                                         'Cartoradio_Number': [theta_list[argmin_dist][0]],
                                         'Ant_Number': [theta_list[argmin_dist][1]],
                                         'TAC': [theta_list[argmin_dist][3][0]],
@@ -503,7 +471,7 @@ class CellAssociator:
                                     }, 1)
                                 else:       # the ratio of distance is not large enough => choose the sector best theta value
                                     # Inserting data.
-                                    insert_data(self._assocs, {
+                                    insert_data(self._assocsProp, {
                                         'Cartoradio_Number': [theta_argmax[0]],
                                         'Ant_Number': [theta_argmax[1]],
                                         'TAC': [theta_argmax[3][0]],
@@ -512,6 +480,34 @@ class CellAssociator:
                                         'PCI': [theta_argmax[3][3]],
                                         'Score': [theta_max[2]]
                                     }, 1)
+
+
+        print(self._assocsProp)
+        for i in range(len(self._assocsProp['Ant_Number'])):
+            imax = i
+            NoteMax = self._assocsProp['Score'][i]
+            for j in range(i+1, len(self._assocsProp['Ant_Number'])):
+                if self._assocsProp['Ant_Number'][j] != 0:
+                    if self._assocsProp['Ant_Number'][j]==self._assocsProp['Ant_Number'][i]:
+                        if self._assocsProp['Score'][j]>NoteMax:
+                            imax = j
+                            NoteMax = self._assocsProp['Score'][j]
+                            self._assocsProp['Ant_Number'][i] = 0  # on force numero d'origine a 0 car doublon a ne pas considerer
+                        else:
+                            self._assocsProp['Ant_Number'][j] = 0   # on force numero a 0 car doublon a ne pas reconsiderer
+
+        for i in range(len(self._assocsProp['Ant_Number'])):
+                if self._assocsProp['Ant_Number'][i] != 0:
+                    insert_data(self._assocs, {
+                        'Cartoradio_Number': [self._assocsProp['Cartoradio_Number'][i]],
+                        'Ant_Number': [self._assocsProp['Ant_Number'][i]],
+                        'TAC': [self._assocsProp['TAC'][i]],
+                        'CID': [self._assocsProp['CID'][i]],
+                        'EARFCN':[self._assocsProp['EARFCN'][i]],
+                        'PCI': [self._assocsProp['PCI'][i]],
+                        'Score': [self._assocsProp['Score'][i]]
+                    }, 1)
+        print(self._assocs)
 
     def _write_output(self, out_wr: csvt.CSVWriter):
         """PRIVATE METHOD which writes relation calculated by _associate_datas in the output file.
@@ -574,8 +570,8 @@ def weight(rsrp: float) -> float:
     #    return 0.6
     #else:
     #    return 1.0
-
-    return 1/(1+math.exp((-90-rsrp)*0.22))
+    return 1/(1+math.exp((-95-rsrp)*0.15))
+    #return 1/(1+math.exp((-90-rsrp)*0.22))
 
 def calc_sigma(a: float, w: float, az_min: float, az_max: float):
     """Calculates the "sigma" angular indicator of one measurement point.
@@ -602,7 +598,7 @@ def calc_theta(sigma: float, psi: float) -> float:
     Returns:
         theta, where theta = 0.8 * sigma + 0.2 * psi, if theta < 0.25, returns 0.0 otherwise.
     """
-    return 0.0 if psi < 0.25 else (0.8 * sigma + 0.2 * psi)
+    return 0.0 if psi < 0.2 else (0.8 * sigma + 0.2 * psi)
 
 
 def belongs(x: float, y: float, shape: geom.Polygon) -> bool:

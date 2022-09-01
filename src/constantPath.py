@@ -7,6 +7,18 @@ from math import sin, cos, sqrt, atan2, radians
 from datetime import time
 
 
+def getAssocVersion():
+    """give a version number to easily manage different options consistently along the code
+
+    Parameters:
+        void: no parameter
+
+    Returns:
+        An integer. 0 to consider only measures on the serving cell, 1 to consider all measurements
+    """
+    return 1
+
+
 def getPathText(name):
     """Gets the path of a file in the temporary files directory (outputFiles).
 

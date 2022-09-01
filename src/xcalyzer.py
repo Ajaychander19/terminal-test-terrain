@@ -201,9 +201,8 @@ class XcalConverter:
                     elif state == 5:  # Getting phone ID, opening temporary files.
 
                         # TODO Get phone ID (and replace if condition).
-                        if True:
-
-                            self._phone_id = 'phone_1'
+                        if first =='Logging_File_Name':
+                            self._phone_id = 'phone_1'+line[2]
 
                             # Opening files.
                             for k in self._files.keys():
