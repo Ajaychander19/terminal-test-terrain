@@ -329,6 +329,7 @@ class CellAssociator:
         vor_groups = ant_vor_sectors.groupby(['Vor'])
 
         # For each group of point with same EARFCN / PCI...
+        print('looking for possible associations')
         for gr_key in gr_keys:      # n
 
             # "Theta" criteria values.
@@ -383,7 +384,9 @@ class CellAssociator:
                         dirs_east = (points_lng - vlng) * (np.pi / 180) * np.cos(vlat / 180 * np.pi)
 
                         # Angles between north direction and point direction from the current base station.
+                        # minus artan2 should be considered since the angles are CLOCKWISE for azimut
                         angles = np.arctan2(dirs_east, dirs_north)
+                        distBis = np.mean(np.sqrt(dirs_east**2+dirs_north**2))
 
                         # Calculate values only if Voronoi cell intersects with the convex hull
                         # of the current group of points.
@@ -394,11 +397,12 @@ class CellAssociator:
 
                             for i in range(vlen):  # j
 
-                                # Azimuth delimitation of the sector.
-                                az_min = vgroup['AzimuthMin'][i]
-                                az_max = vgroup['AzimuthMax'][i]
+                                # Azimuth delimitation of the sector and conversion in radian
+                                # between -Pi and Pi, Be careful angles are CLOCKWISE
+                                az_min = vgroup['AzimuthMin'][i]* (np.pi / 180)
+                                az_max = vgroup['AzimuthMax'][i]* (np.pi / 180)
 
-                                # Criteria calculation.
+                                        # Criteria calculation.
 
                                 # Angular criteria "sigma".
                                 sigma_vect = v_sigma(angles, weights, az_min, az_max)
@@ -413,8 +417,8 @@ class CellAssociator:
                                 theta = calc_theta(sigma, psi)
                                 if not theta == 0.0:
                                     theta_values[
-                                        (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], dist, gr_key)
-                                    ] = (sigma, psi, theta)
+                                        (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], distBis, gr_key)
+                                    ] = theta
 
                     # If non-zero theta values have been calculated...
                     if theta_values:
@@ -446,8 +450,11 @@ class CellAssociator:
                                     'CID': [theta_argmax[3][1]],
                                     'EARFCN': [theta_argmax[3][2]],
                                     'PCI': [theta_argmax[3][3]],
-                                    'Score': [theta_max[2]]
+                                    'Score': [theta_max]
                                 }, 1)
+                                print('Ant_number=', theta_argmax[1], '   (EARFCN,PCI)=(', theta_argmax[3][2], ',',
+                                    theta_argmax[3][3], ')  score=',theta_max)
+
                             else:
                                 min_dist = theta_argmax[2]
                                 argmin_dist = 0
@@ -459,7 +466,7 @@ class CellAssociator:
                                         min_dist = dst
                                         argmin_dist = i
 
-                                if (theta_argmax[2]/min_dist>1.5):
+                                if (theta_argmax[2]/min_dist>1.01):
                                     insert_data(self._assocsProp, {
                                         'Cartoradio_Number': [theta_list[argmin_dist][0]],
                                         'Ant_Number': [theta_list[argmin_dist][1]],
@@ -467,8 +474,10 @@ class CellAssociator:
                                         'CID': [theta_list[argmin_dist][3][1]],
                                         'EARFCN': [theta_list[argmin_dist][3][2]],
                                         'PCI': [theta_list[argmin_dist][3][3]],
-                                        'Score': [theta_array[argmin_dist][2]]
+                                        'Score': [theta_array[argmin_dist]]
                                     }, 1)
+                                    print('Ant_number=', theta_list[argmin_dist][1], '   (EARFCN,PCI)=(', theta_list[argmin_dist][3][2], ',',
+                                          theta_list[argmin_dist][3][3],')  score=',theta_max, 'Rem : closest')
                                 else:       # the ratio of distance is not large enough => choose the sector best theta value
                                     # Inserting data.
                                     insert_data(self._assocsProp, {
@@ -478,11 +487,13 @@ class CellAssociator:
                                         'CID': [theta_argmax[3][1]],
                                         'EARFCN': [theta_argmax[3][2]],
                                         'PCI': [theta_argmax[3][3]],
-                                        'Score': [theta_max[2]]
+                                        'Score': [theta_max]
                                     }, 1)
+                                    print('Ant_number=', theta_argmax[1], '   (EARFCN,PCI)=(', theta_argmax[3][2], ',',
+                                          theta_argmax[3][3],')  score=',theta_max)
 
 
-        print(self._assocsProp)
+
         # identification for each Ant Number of all measurement groups associated
         # selection of the group with the highest score
         # when score 1 is found, elimination because it means points are not enough spread in the cell
@@ -582,7 +593,7 @@ def weight(rsrp: float) -> float:
     #return 1/(1+math.exp((-90-rsrp)*0.22))
 
 def calc_sigma(a: float, w: float, az_min: float, az_max: float):
-    """Calculates the "sigma" angular indicator of one measurement point.
+    """Calculates the "sigma" angular indicator of one measurement point, angles should be in radian
 
     Parameters:
         a: angle between the north direction and the point direction over flat earth projection.
@@ -593,7 +604,18 @@ def calc_sigma(a: float, w: float, az_min: float, az_max: float):
     Returns:
         the weight of the point if a is between az_min and az_max, 0.0 otherwise.
     """
-    return w if az_min < a < az_max else 0.0
+    if a>4*np.pi or  az_min>4*np.pi or  az_max>4*np.pi:
+        print("possible bug in calc_sigma calc, some angles are in degree not in radio")
+    a = a % (2*np.pi)       # set all angles between 0 and 2Pi
+    az_min = az_min % (2 * np.pi)
+    az_max = az_max % (2 * np.pi)
+
+    if az_min<az_max:
+        return w if az_min < a < az_max else 0.0
+    elif az_min>az_max:
+        return w if a>az_min or a< az_max else 0.0
+    else:
+        return w    #if az_min==az_max this means an omnidirect antenna => always in the sector
 
 
 def calc_theta(sigma: float, psi: float) -> float:
@@ -606,7 +628,7 @@ def calc_theta(sigma: float, psi: float) -> float:
     Returns:
         theta, where theta = 0.8 * sigma + 0.2 * psi, if theta < 0.25, returns 0.0 otherwise.
     """
-    return 0.0 if psi < 0.2 else (0.8 * sigma + 0.2 * psi)
+    return 0.0 if psi < 0.1 else (0.8 * sigma + 0.2 * psi)
 
 
 def belongs(x: float, y: float, shape: geom.Polygon) -> bool:
