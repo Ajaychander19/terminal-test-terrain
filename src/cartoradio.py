@@ -70,8 +70,8 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
         print('Operator {}.'.format(op))
 
         # Opening sites and rejected file.
-        with csvtools.CSVWriter('{0}/sites_{1}.csv'.format(output_dir, op), header) as out_file, \
-                csvtools.CSVWriter('{0}/rejected_{1}.csv'.format(output_dir, op), header) as rej_file:
+        with csvtools.CSVWriter('{0}/cev{1}_sites.csv'.format(output_dir, op), header) as out_file, \
+                csvtools.CSVWriter('{0}/r{1}_rejected.csv'.format(output_dir, op), header) as rej_file:
 
             # Dataset of the current operator
             op_group = op_groups.get_group(op)

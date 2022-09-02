@@ -47,7 +47,7 @@ def createSite_json(listfiles,directory):
         }
     ).drop_duplicates()
 
-    # Grouping JSON data by antennas operators.
+    # Grouping CSV data by antennas operators.
     operators=Antennas.groupby(["Exploitant"])
     operatorNames=["BOUYGUES TELECOM","FREE MOBILE","ORANGE","SFR"]
 
@@ -57,7 +57,7 @@ def createSite_json(listfiles,directory):
             site_zone, carte, rejected = createSitefiles(operators, oper)
 
             # Producing site CSV file.
-            carte.to_csv(directory+"/sites" + "_" + oper + ".csv", sep='\t', encoding='ISO-8859-1')
+            carte.to_csv(directory+"/cev" + oper + "_Sites.csv", sep='\t', encoding='ISO-8859-1')
 
             # Producing JSON site zone file.
             with open(directory+"/sites" + "_" + oper + "_" + "Zone" + ".json", 'w') as outfile:

@@ -1,6 +1,6 @@
 """This module is dedicated to the analysis of AOF files produced by Accuver Xcal."""
 
-from constantPath import getPathText, getfileName
+from constantPath import getPathText, getfileName, getOperatorname
 from dictutils import insert_data, fill_data
 
 import datetime
@@ -644,7 +644,7 @@ class XcalConverter:
         shutil.copy2(getPathText(input_pcap), os.path.join(outdir, output_pcap))
 
         # Producing final JSON file.
-        output_json = 'C{0}_{1}_{2}_{3}.csv'.format(self.mcc, self.mnc, getfileName(self._path), self.phone_id)
+        output_json = 'cev{0}_{1}.csv'.format(getOperatorname(self.mcc, self.mnc), getfileName(self._path))
         shutil.copy2(getPathText('csv_tmp.csv'), os.path.join(outdir, output_json))
 
     def _get_phone_id(self) -> str:

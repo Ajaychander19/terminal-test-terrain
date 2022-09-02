@@ -65,23 +65,24 @@ class GUI(tkinter.Frame):
         self.defaultPath.pack(padx=5, pady=5)
 
         self.pcap_conversion = tkinter.Button(self, command=lambda: self.button_click(2),
-                                              text="Field-test *.csv to *.pcap \n and AOF-like *.csv conversion",
+                                              text="Field-test *.aof to *.pcap \n and AOF-like *.csv conversion",
                                               font=boldFont, background='light green')
         self.pcap_conversion.configure(height=3, width=25)
         self.pcap_conversion.pack(padx=5, pady=5)
         self.pcap_conversion_ttp = CreateToolTip(self.pcap_conversion,
-                                                 "Choosing the Field-test file from the ZkSamp for generating "
-                                                 "Field-test "
-                                                 "json files as well as the pcap files corresponde to operators")
+                                                 "Choose the Field-test Accuver Xcal file "
+                                                 "to produce a measurement file that can be used by the Association "
+                                                 " process as well as a pcap file")
 
         self.cartoradio_files = tkinter.Button(self, command=lambda: self.button_click(3),
-                                               text="Cartoradio File Conversion", font=boldFont,
+                                               text="Cartoradio conversion", font=boldFont,
                                                background='light green')
         self.cartoradio_files.configure(height=3, width=25)
         self.cartoradio_files.pack(padx=5, pady=5)
         self.cartoradio_files_ttp = CreateToolTip(
             self.cartoradio_files,
-            "Choosing two csv files from the cartoradio for generating a new csv file with all the information needed ")
+            "Convert Antennes_Emetteurs_Bandes_Cartoradio and"
+                                                    " Sites_Cartoradio.csv in one tractable site file")
 
         self.association = tkinter.Button(self, command=lambda: self.button_click(4),
                                           text="Cell Association Processing", font=boldFont, background='light green')
@@ -89,7 +90,7 @@ class GUI(tkinter.Frame):
         self.association.pack(padx=5, pady=5)
         self.association_ttp = CreateToolTip(
             self.association,
-            "Choose the .csv site file created from the 'Cartoradio File Conversion' and the json field-test files")
+            "Choose the .csv site file created from the 'Cartoradio File Conversion' and the .csv measurement file")
 
         self.visualizaion = tkinter.Button(self, command=lambda: self.button_click(5),
                                            text="Visualisation", font=boldFont, background='light green')
@@ -118,7 +119,7 @@ class GUI(tkinter.Frame):
             elif number == 2:  # Field-testing trace file.
 
                 self.change_color('red')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',initialfile='*.aof')
 
                 if len(files) != 0:
                     # csvtoPcap(files,self.working_directory)
@@ -140,7 +141,7 @@ class GUI(tkinter.Frame):
             elif number == 3:  # Cartoradio conversion, producing site and zone files.
 
                 self.change_color('red')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',initialfile='*.csv')
                 if len(files) != 2:
                     messagebox.showerror("Error", "Two files are expected.")
                 else:
@@ -155,7 +156,7 @@ class GUI(tkinter.Frame):
             elif number == 4:  # association
 
                 self.change_color('red')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',initialfile='cev*.csv')
 
                 if len(files) != 2:
                     messagebox.showerror("Error", "Two files expected.")

@@ -162,6 +162,35 @@ def getLTEBandname(earfcn):
 #   band={"3000":"LTE 2600","1300":"LTE 1800","6400":"LTE 800","0":"LTE 2100","1501":"LTE 1800","2825":"LTE 2600","6300":"LTE 800","6200":"LTE 800"}
     return band
 
+def getOperatorname(mcc,mnc):
+    """Give the name of the operator for a (mcc,mnc) couple
+
+    Parameter:
+        mcc and mnc :
+
+    Returns:
+         The textual name of operator
+
+    Examples:
+        >>> getOperatorname(208,1)
+        'Orange'
+        >>> getOperatorname(208,10)
+        'LTE 1900'
+        >>> getOperatorname(208,3)
+        'unknown Op'
+    """
+    valmcc=int(mcc)
+    valmnc=int(mnc)
+    name="unknown Op"
+    if valmcc == 208:
+        # source : fr.wikipedia.org/wiki/Mobile_Network_Code
+        if valmnc in  [1, 2]: name="Orange"
+        elif valmnc in  [8, 9, 10, 11, 13]: name="SFR"
+        elif valmnc in  [15, 16]: name="Free"
+        elif valmnc in  [20, 21]: name="Bytel"
+    #print("find the name of (" + mcc + "-" + mnc + ") which is "+ name)
+    return name
+
 def getfileName(path):
     """Gets the file name in an absolute path.
 

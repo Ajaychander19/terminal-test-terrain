@@ -52,7 +52,7 @@ class CellAssociator:
         """
 
         self._in_sites = in_sites   # Sites file path.
-        self._in_meas = in_meas     # Measurements file path.
+        self._in_meas = in_meas     # Measurements file path ad name.
         self._outdir = outdir       # Output file directory.
         self._point_assoc = None    # Association between points and measurements.
         self._antennas = None       # Antennas
