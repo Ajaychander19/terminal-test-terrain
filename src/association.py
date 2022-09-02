@@ -386,7 +386,9 @@ class CellAssociator:
                         # Angles between north direction and point direction from the current base station.
                         # minus artan2 should be considered since the angles are CLOCKWISE for azimut
                         angles = np.arctan2(dirs_east, dirs_north)
-                        distBis = np.mean(np.sqrt(dirs_east**2+dirs_north**2))
+                        distbis = np.mean(np.sqrt(dirs_east ** 2 + dirs_north ** 2))
+                        #distbis = np.mean((dirs_east**2+dirs_north**2)**1.5 * np.exp(points_rsrps*np.log(10)/10)) # version 2 : on singe loi de propagation
+                        #distbis = np.mean((dirs_east ** 2 + dirs_north ** 2) * weights**2)  # version 1 :
 
                         # Calculate values only if Voronoi cell intersects with the convex hull
                         # of the current group of points.
@@ -417,7 +419,7 @@ class CellAssociator:
                                 theta = calc_theta(sigma, psi)
                                 if not theta == 0.0:
                                     theta_values[
-                                        (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], distBis, gr_key)
+                                        (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], distbis, gr_key)
                                     ] = theta
 
                     # If non-zero theta values have been calculated...
@@ -466,7 +468,7 @@ class CellAssociator:
                                         min_dist = dst
                                         argmin_dist = i
 
-                                if (theta_argmax[2]/min_dist>1.01):
+                                if (theta_argmax[2]/min_dist>1.5):
                                     insert_data(self._assocsProp, {
                                         'Cartoradio_Number': [theta_list[argmin_dist][0]],
                                         'Ant_Number': [theta_list[argmin_dist][1]],
