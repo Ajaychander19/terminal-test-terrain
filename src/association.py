@@ -386,9 +386,23 @@ class CellAssociator:
                         # Angles between north direction and point direction from the current base station.
                         # minus artan2 should be considered since the angles are CLOCKWISE for azimut
                         angles = np.arctan2(dirs_east, dirs_north)
-                        distbis = np.mean(np.sqrt(dirs_east ** 2 + dirs_north ** 2))
+                        distPoints = np.sqrt(dirs_east ** 2 + dirs_north ** 2)
+
+                        # calcul d'un score prendant la distance
+                        # principe : si la distance augmente, le signal diminue. On essaye de trouver un produit
+                        # qui soit cosntant idéalement constant et on regarde l'inverse de l'indice de Jain
+                        # valeur 1 : excellent
+                        # valeur>1 : assez mauvais
+
+                        #fact1 = (dirs_east**2+dirs_north**2)**1.5 * np.exp(points_rsrps*np.log(10)/10)
+                        #fact1 =  np.sqrt(dirs_east ** 2 + dirs_north ** 2) * weights**2
+                        #fact2 = fact1 ** 2
+                        #distbis = card * np.sum(fact2) / np.sum(fact1)**2
                         #distbis = np.mean((dirs_east**2+dirs_north**2)**1.5 * np.exp(points_rsrps*np.log(10)/10)) # version 2 : on singe loi de propagation
                         #distbis = np.mean((dirs_east ** 2 + dirs_north ** 2) * weights**2)  # version 1 :
+
+                        # correlation entre distance et poids, si tres proche de -1, distancebis est null, c'est bon
+                        distbis = 1+np.corrcoef(distPoints ** 3.3, np.exp(points_rsrps*np.log(10)/10) )[0][1]
 
                         # Calculate values only if Voronoi cell intersects with the convex hull
                         # of the current group of points.
