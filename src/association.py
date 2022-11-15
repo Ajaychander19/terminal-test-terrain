@@ -514,21 +514,34 @@ class CellAssociator:
         # selection of the group with the highest score
         # when score 1 is found, elimination because it means points are not enough spread in the cell
         # trick : non selected (i.e. duplicates) Antenna numbers are forced to 0
+
+        # first step = reduce all scores equal to 1 that are generally due to not enough point
         for i in range(len(self._assocsProp['Ant_Number'])):
-            imax = i
             NoteMax = self._assocsProp['Score'][i]
-            if NoteMax == 1:  # score 1 is suspect => elimination
-                self._assocsProp['Ant_Number'][i] = 0  # elimination
-            else:
-                for j in range(i+1, len(self._assocsProp['Ant_Number'])):
-                    if self._assocsProp['Ant_Number'][j] != 0:
-                        if self._assocsProp['Ant_Number'][j]==self._assocsProp['Ant_Number'][i]:
-                            if self._assocsProp['Score'][j]>NoteMax:
-                                imax = j
+            if NoteMax == 1:  # score 1 is suspect => reduction of the score
+                self._assocsProp['Score'][i] = NoteMax/3  # reduce the score
+
+        for i in range(len(self._assocsProp['Ant_Number'])):
+            for j in range(i + 1, len(self._assocsProp['Ant_Number'])):
+                if self._assocsProp['Ant_Number'][j] != 0:
+                    if self._assocsProp['Ant_Number'][j] == self._assocsProp['Ant_Number'][i]:  # meme numero d'antenne pour deux associations
+                        if self._assocsProp['EARFCN'][j] == self._assocsProp['EARFCN'][i]:  # meme ARFCN => garder qu'un
+                            if self._assocsProp['Score'][j] > NoteMax:
                                 NoteMax = self._assocsProp['Score'][j]
                                 self._assocsProp['Ant_Number'][i] = 0  # on force numero d'origine a 0 car doublon a ne pas considerer
                             else:
-                                self._assocsProp['Ant_Number'][j] = 0   # on force numero a 0 car doublon a ne pas reconsiderer
+                                self._assocsProp['Ant_Number'][j] = 0  # on force numero a 0 car doublon a ne pas reconsiderer
+                        else:  # differents codes ARFCN
+                            if self._assocsProp['PCI'][j] == self._assocsProp['PCI'][i]:  # meme code PCI => renforce credibilite association
+                                NoteMax = self._assocsProp['Score'][i] + self._assocsProp['Score'][j]  # on force note de chacune a somme des notes
+                                self._assocsProp['Score'][i] = NoteMax
+                                self._assocsProp['Score'][j] = NoteMax
+                            else:  # differents codes EARFCN et differents code PCI
+                                if self._assocsProp['Score'][j] > NoteMax:  # nouveau cas augmente la note
+                                    NoteMax = self._assocsProp['Score'][j]
+                                    self._assocsProp['Ant_Number'][i] = 0  # on force numero d'origine a 0 car doublon a ne pas considerer
+                                else:
+                                    self._assocsProp['Ant_Number'][j] = 0  # on tient pas compte de la nouvelle (si precedente deja trouvee 2 fois, sa note cumulative est normalement superieure => choix majoritaire)
 
         # creation of the definitive list with only one association per antenna
         for i in range(len(self._assocsProp['Ant_Number'])):
