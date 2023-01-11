@@ -348,15 +348,18 @@ class XcalConverter:
             for i in range(self._content_start + 1):
                 aof.readline()
 
-            line = read_line(aof)
+            line = read_line(aof)      # read the first line, other lines are read within the loop
 
             last_meas_index = -1        # Index of the last measurement.
             last_meas_tstamp = -1       # Timestamp of the last measurement.
+            last_tstamp =  get_tstamp(line[1])  # to be sure that the last_tsamp that is related to GPS location is valid even no GPS info at all
+
 
             index = 0   # Current index;
 
             last_gps_ind = -1       # Index of the last GPS estimation group.
             last_pos = (0.0, 0.0)
+            curr_pos = (0.0, 0.0)
 
             # Reading the file line per line...
             while line[0] != '':
@@ -364,11 +367,10 @@ class XcalConverter:
                 l_len = len(line)
                 first = line[0]
 
-                tstamp = 0
-
                 if first != '<Content End>\n':
-
                     tstamp = get_tstamp(line[1])
+                else:
+                    tstamp = last_tstamp  # unchanged time stamp
 
                 if first == 'QCLTE_PSCELL':
 
@@ -491,6 +493,8 @@ class XcalConverter:
                             last_tstamp = tstamp
                         else:
                             last_tstamp = self._data_dict['timestamp'][last_gps_ind]
+                    else:
+                        curr_pos = last_pos
 
                     estimator = generate_estimator(last_pos, curr_pos, last_tstamp, tstamp)
 
