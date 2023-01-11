@@ -20,7 +20,7 @@ def getAssocVersion():
 
 
 def getPathText(name):
-    """Gets the path of a file in the temporary files directory (outputFiles).
+    """Gets the path of a file in the temporary files directory (tmp).
 
     Parameters:
         name: file name.
@@ -31,10 +31,10 @@ def getPathText(name):
 #     print('code origine :', os.path.abspath("..\\outputFiles\\" + name))
     if os.path.isdir(os.path.abspath(name)):
         # print('youp la boum1:', os.path.normpath(os.path.join(os.path.abspath(name), os.path.pardir, 'outputFiles', name)))
-        return os.path.normpath(os.path.join(os.path.abspath(name), os.path.pardir, 'outputFiles', name))
+        return os.path.normpath(os.path.join(os.path.abspath(name), os.path.pardir, 'tmp', name))
     else:
         #print('youp la boum2:', os.path.normpath(os.path.join(os.path.abspath(name), os.path.pardir, os.path.pardir, 'outputFiles', name)))
-        return os.path.normpath(os.path.join(os.path.abspath(name), os.path.pardir, os.path.pardir,  'outputFiles', name))
+        return os.path.normpath(os.path.join(os.path.abspath(name), os.path.pardir, os.path.pardir,  'tmp', name))
     #return os.path.abspath("..\\outputFiles\\" + name)
 
 
