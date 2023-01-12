@@ -18,7 +18,9 @@ _DICT_DISSECTOR = {
     'DL CCCH': 151,
     'UL CCCH': 152,
     'DL DCCH': 153,
-    'UL DCCH': 154
+    'UL DCCH': 154,
+    'NAS EPS': 155,
+    'NAS 5GS': 156
 }
 
 
@@ -39,7 +41,9 @@ class XcalConverter:
         'DL CCCH': 'CCCH_DL_151',
         'UL CCCH': 'CCCH_UL_152',
         'DL DCCH': 'DCCH_DL_153',
-        'UL DCCH': 'DCCH_UL_154'
+        'UL DCCH': 'DCCH_UL_154',
+        'NAS EPS': 'NAS EPS_155',
+        'NAS 5GS': 'NAS 5GS_156'
     }
 
     def __init__(self, path: str):
@@ -84,6 +88,8 @@ class XcalConverter:
             'DL DCCH': None,
             'UL CCCH': None,
             'UL DCCH': None,
+            'NAS EPS': None,
+            'NAS 5GS': None
         }
 
     def process(self, outdir: str):
@@ -230,6 +236,38 @@ class XcalConverter:
 
                             msg_type = line[6 if is_v2 else 5]  # Message type.
                             payload = line[12 if is_v2 else 11]  # Message payload.
+
+                            # Check if the message type is valid.
+                            if msg_type not in self._files.keys():
+                                syntax_error(line_num, "Invalid message type : {}".format(msg_type))
+
+                            # Adding the message to the corresponding file.
+                            self._files[msg_type].write(
+                                '{0}\n0000 {1}\n'.format(line[1], payload))
+
+                        elif first == 'QCLTE_NASMSG':
+                            # Check if the line has a valid length.
+                            if l_len < 7:
+                                syntax_error(line_num, "7 columns expected for LTE NAS messages, {} found.".format(l_len))
+
+                            msg_type = 'NAS EPS'  # Message type.
+                            payload = line[6]  # Message payload.
+
+                            # Check if the message type is valid.
+                            if msg_type not in self._files.keys():
+                                syntax_error(line_num, "Invalid message type : {}".format(msg_type))
+
+                            # Adding the message to the corresponding file.
+                            self._files[msg_type].write(
+                                '{0}\n0000 {1}\n'.format(line[1], payload))
+
+                        elif first == 'QC5GNR_NASMSG':   # calquee sur LTE mais NON TESTEE, XLXLXXL
+                            # Check if the line has a valid length.
+                            if l_len < 10:
+                                syntax_error(line_num, "10 columns expected for 5G NAS messages, {} found.".format(l_len))
+
+                            msg_type = 'NAS 5GS'  # Message type.
+                            payload = line[9]  # Message payload.
 
                             # Check if the message type is valid.
                             if msg_type not in self._files.keys():
