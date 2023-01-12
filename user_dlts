@@ -7,3 +7,5 @@
 "User 5 (DLT=152)","lte-rrc.ul.ccch","0","","0",""
 "User 6 (DLT=153)","lte-rrc.dl.dcch","0","","0",""
 "User 7 (DLT=154)","lte-rrc.ul.dcch","0","","0",""
+"User 8 (DLT=155)","nas-eps_plain","0","","0",""
+"User 9 (DLT=156)","nas-5gs","0","","0",""
