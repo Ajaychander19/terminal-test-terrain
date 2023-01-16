@@ -1,6 +1,5 @@
 /Mesures
 /Mesures_tests
-/tmp
 /outputFiles
 tags
 *.swp
@@ -14,3 +13,6 @@ src/__pycache__
 /*.csv
 /*.pcap
 web_ui/node_modules
+tmp/*
+OUT/*
+

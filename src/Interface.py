@@ -53,7 +53,7 @@ class GUI(tkinter.Frame):
         if platform.system() == "Windows":
             self.working_directory = r"c:\users"
         else:
-            self.working_directory = r"./"
+            self.working_directory = r"../OUT"
 
         self.lnameLabel = tkinter.Label(self, text="COVERAGE OF 4G BASE STATIONS", font=boldFont,
                                         background='light blue')
@@ -113,13 +113,14 @@ class GUI(tkinter.Frame):
             if number == 1:  # Selecting output directory.
 
                 self.change_color('red')
-                self.working_directory = filedialog.askdirectory()
+                self.working_directory = filedialog.askdirectory(title="Select output directory (not tmp)", initialdir="../OUT")
                 self.change_color('green')
 
             elif number == 2:  # Field-testing trace file.
 
                 self.change_color('red')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',initialfile='*.aof')
+                #files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',initialfile='*.aof')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
 
                 if len(files) != 0:
                     # csvtoPcap(files,self.working_directory)
