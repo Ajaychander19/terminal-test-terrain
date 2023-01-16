@@ -119,8 +119,7 @@ class GUI(tkinter.Frame):
             elif number == 2:  # Field-testing trace file.
 
                 self.change_color('red')
-                #files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',initialfile='*.aof')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file', filetypes = (("AOF file","*.aof"),("all files","*.*")))
 
                 if len(files) != 0:
                     # csvtoPcap(files,self.working_directory)
@@ -142,7 +141,7 @@ class GUI(tkinter.Frame):
             elif number == 3:  # Cartoradio conversion, producing site and zone files.
 
                 self.change_color('red')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',initialfile='*.csv')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file', filetypes = (("CSV file","*.csv"),("all files","*.*")))
                 if len(files) != 2:
                     messagebox.showerror("Error", "Two files are expected.")
                 else:
@@ -157,7 +156,7 @@ class GUI(tkinter.Frame):
             elif number == 4:  # association
 
                 self.change_color('red')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',initialfile='cev*.csv')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',filetypes = (("CSV file","*.csv"),("all files","*.*")))
 
                 if len(files) != 2:
                     messagebox.showerror("Error", "Two files expected.")
