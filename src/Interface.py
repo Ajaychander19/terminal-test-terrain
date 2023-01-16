@@ -59,7 +59,7 @@ class GUI(tkinter.Frame):
                                         background='light blue')
         self.lnameLabel.pack(padx=5, pady=5)
 
-        self.defaultPath = tkinter.Button(self, command=lambda: self.button_click(1), text="Configuration",
+        self.defaultPath = tkinter.Button(self, command=lambda: self.button_click(1), text="Select output directory",
                                           font=boldFont, background='light green')
         self.defaultPath.configure(height=3, width=25)
         self.defaultPath.pack(padx=5, pady=5)
