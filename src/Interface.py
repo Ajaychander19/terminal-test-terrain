@@ -51,7 +51,7 @@ class GUI(tkinter.Frame):
         self.pack()
         boldFont = font.Font(size=14, weight="bold", family='Arial')
         if platform.system() == "Windows":
-            self.working_directory = r"c:\users"
+            self.working_directory = r"../OUT"
         else:
             self.working_directory = r"../OUT"
 
