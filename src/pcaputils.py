@@ -75,7 +75,7 @@ def produce_pcap(path: str, dest: str, diss_num: int):
     # Preparing text2pcap call.
     t2p_argc = [
         getWireshark('text2pcap'),  # Wireshark command path.
-        '-t', '%F %H:%M:%S.%f',  # Time format to use in the pcap file.
+        '-t', '%F %H:%M:%S.',  # Time format to use in the pcap file.
         input_txt,  # Input .txt file.
         output_pcap,  # Output .pcap file.
         '-l', str(diss_num)  # Number of the dissector to be called.
