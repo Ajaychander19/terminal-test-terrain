@@ -156,7 +156,7 @@ class GUI(tkinter.Frame):
             elif number == 4:  # association
 
                 self.change_color('red')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',filetypes = (("CSV file","*.csv"),("all files","*.*")))
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',filetypes = (("cev CSV file","cev*.csv"),("all files","*.*")))
 
                 if len(files) != 2:
                     messagebox.showerror("Error", "Two files expected.")
