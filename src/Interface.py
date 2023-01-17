@@ -51,15 +51,15 @@ class GUI(tkinter.Frame):
         self.pack()
         boldFont = font.Font(size=14, weight="bold", family='Arial')
         if platform.system() == "Windows":
-            self.working_directory = r"../OUT"
+            self.working_directory = r"../donnees"
         else:
-            self.working_directory = r"../OUT"
+            self.working_directory = r"../donnees"
 
         self.lnameLabel = tkinter.Label(self, text="COVERAGE OF 4G BASE STATIONS", font=boldFont,
                                         background='light blue')
         self.lnameLabel.pack(padx=5, pady=5)
 
-        self.defaultPath = tkinter.Button(self, command=lambda: self.button_click(1), text="Select output directory",
+        self.defaultPath = tkinter.Button(self, command=lambda: self.button_click(1), text="Select data directory",
                                           font=boldFont, background='light green')
         self.defaultPath.configure(height=3, width=25)
         self.defaultPath.pack(padx=5, pady=5)
@@ -113,7 +113,7 @@ class GUI(tkinter.Frame):
             if number == 1:  # Selecting output directory.
 
                 self.change_color('red')
-                self.working_directory = filedialog.askdirectory(title="Select output directory (not tmp)", initialdir="../OUT")
+                self.working_directory = filedialog.askdirectory(title="Select data directory (not tmp)", initialdir=self.working_directory)
                 self.change_color('green')
 
             elif number == 2:  # Field-testing trace file.

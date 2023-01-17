@@ -9,10 +9,9 @@ lib64
 pyvenv.cfg
 /share
 src/__pycache__
-/*.json
-/*.csv
-/*.pcap
+*.json
+*.csv
+*.pcap
 web_ui/node_modules
 tmp/*
-OUT/*
 
