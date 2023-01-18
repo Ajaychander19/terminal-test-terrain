@@ -61,10 +61,10 @@ class CellAssociator:
         """Calculates the association between EARFCNs / PCIs and base stations."""
 
         print('Calculating association...')
-
-        with csvt.CSVWriter(
-                os.path.join(self._outdir, 'assoc_{0}_{1}.csv'.format(
-                    pathlib.Path(self._in_meas).stem, pathlib.Path(self._in_sites).stem)), self._HEADER) as out_wr:
+        file_name = os.path.join(self._outdir, 'assoc_{0}_{1}.csv'.format(
+                    pathlib.Path(self._in_meas).stem.replace("cev",""),
+                    pathlib.Path(self._in_sites).stem.replace("cev","")))
+        with csvt.CSVWriter(file_name, self._HEADER) as out_wr:
 
             print('Reading measurements...')
             self._read_measurements(out_wr)
