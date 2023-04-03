@@ -70,9 +70,9 @@ class GUI(tkinter.Frame):
         self.pcap_conversion.configure(height=3, width=25)
         self.pcap_conversion.pack(padx=5, pady=5)
         self.pcap_conversion_ttp = CreateToolTip(self.pcap_conversion,
-                                                 "Choose the Field-test Accuver Xcal file "
+                                                 "Choose the Field-test Accuver Xcal files "
                                                  "to produce a measurement file that can be used by the Association "
-                                                 " process as well as a pcap file")
+                                                 " process, produce a pcap file if only 1 file is selected")
 
         self.cartoradio_files = tkinter.Button(self, command=lambda: self.button_click(3),
                                                text="Cartoradio conversion", font=boldFont,
@@ -120,8 +120,14 @@ class GUI(tkinter.Frame):
 
                 self.change_color('red')
                 files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file', filetypes = (("AOF file","*.aof"),("all files","*.*")))
+                nbfiles = len(files)
+                if nbfiles > 1:
+                    XcalMerged = xcalyzer.XcalMerger()
+                    f = XcalMerged.merge(self.working_directory,files)
+                    conv = xcalyzer.XcalConverter(f)
+                    conv.process_nopcap(self.working_directory)
 
-                if len(files) != 0:
+                elif len(files) != 0:
                     # csvtoPcap(files,self.working_directory)
 
                     for f in files:

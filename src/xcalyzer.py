@@ -1,7 +1,7 @@
 """This module is dedicated to the analysis of AOF files produced by Accuver Xcal."""
 
 from constantPath import getPathText, getfileName, getOperatorname
-from dictutils import insert_data, fill_data
+from dictutils import extract_int, insert_data, fill_data
 
 import datetime
 import os
@@ -22,6 +22,100 @@ _DICT_DISSECTOR = {
     'NAS EPS': 155,
     'NAS 5GS': 156
 }
+
+class XcalMerger:
+    """This class is used to merge several Accuver Xcal AOF files into only one file
+        Assumptions : all headers are equivalent (i.e. from <AOF_Information_START> til <Description_End> (this is normally true)
+        The merged file has only
+        """
+
+    def __init__(self):
+
+       print('Merging AOF files...')
+
+    def merge(self, path: str, filetuple):
+       """Merge several AOF files into one AOF file.
+            The files are sorted in chronological order.
+            The resulting file has the AOF_Information and the Description of the oldest input file.
+            (Implicit Assumption : all descriptions are identical).
+            The name of the merged file starts with the name of the oldest, finishes with the name of the latest and has.
+            a number that is computed with all other files in between..
+
+            Parameters:
+                path: working directory.
+                filetuple: a tuple of all AOF file names that should be merged.
+            Returns:
+                the name of the merged file (including the disk and the directory)
+       """
+
+       import heapq
+       import datetime
+       self.path = path
+       filetime = ()        # tuple that gives the time of the file (included in the file itself)
+       filename = ()        # tuple that gives the name of the file (included in the file itself)
+       startindex=()        # tuple of integers that gives the index of the first line with real content
+       endindex=()          # tuple of integers that gives the index of the last line (before <Content End>)
+
+       # parse all files to find the name, the date and the line number for which the real content strat
+       for name in filetuple:
+           with open(name, 'r') as aof:
+               l=0      # l is a counter of line in the file, used to keep memory of where the data really start
+               while l<6553600:
+                    line = read_line(aof)  # the file is read line after line (je sais c'est bourrin),
+                    l=l+1
+                    if line[0] == '<Content Start>\n':
+                        break
+
+               while l<6553600:
+                    line = read_line(aof)  # Current line.
+                    l=l+1
+                    if line[0] == 'Logging_File_Name':
+                        horodatage = datetime.datetime.fromisoformat(line[1]) # Python complex time structure is used
+                        filetime = filetime+(horodatage,)
+                        filename = filename+(line[2],)
+                        startindex = startindex+(l,)    # Not a sum but an inclusion in the t-uple
+                        break
+
+               while l < 6553600:
+                   line = read_line(aof)  # Current line.
+                   if line[0] == '<Content End>\n':
+                       endindex = endindex + (l-1,)  # Not a sum but an inclusion in the t-uple, l-1 because Content End line is not kept
+                       break
+                   l = l + 1
+
+       lastLog = max(filetime)
+       i = filetime.index(lastLog)
+       mergedFileName=filename[i][1: -4]        # store the name of the latest AOF file
+       firstLog = min(filetime)
+       istart = filetime.index(firstLog)
+       FirstPartFileName=filename[istart][1: -4]  # store the name of the earliest AOF file
+
+       value=0
+       for j in range(2, len(filetuple)):     # study all AOF file between the earliest and the latest (both excluded)
+           timestring = heapq.nsmallest(j, filetime)
+           i = filetime.index(timestring[j - 1])
+           value = value+int(extract_int(filename[i]))  # convert in integer and sum
+       mergedFileName = self.path + "/M" + FirstPartFileName +"-"+str(value)+"-"+ mergedFileName + ".aof"
+
+       with open(mergedFileName, "w") as new_created_file:   #Now, we can really merge the files
+            file = open(filetuple[istart], "r")
+            for k in range(0, endindex[istart]+1):        #keep all lines of the ealiest log except the last one
+                    line = file.readline()
+                    new_created_file.write(line)
+            file.close()
+
+            for j in range(2,len(filetuple)+1):
+                    timestring = heapq.nsmallest(j, filetime)
+                    i = filetime.index(timestring[j-1])
+                    file = open(filetuple[i], "r")
+                    for k in range(1, startindex[i]):     #read all lines  of the descrption part but to not keep
+                        line = file.readline()
+                    for k in range(startindex[i], endindex[i]+1):
+                       line = file.readline()
+                       new_created_file.write(line)
+                    file.close()
+            new_created_file.write("<Content End>\n")
+            return mergedFileName
 
 
 class XcalConverter:
@@ -92,6 +186,29 @@ class XcalConverter:
             'NAS 5GS': None
         }
 
+#    def readuntil(self, filename: str,keyword: str):
+        #        l=0
+        #        while l < 65535:
+        #           line = read_line(filename)  # Current line.
+        #           if line[0] == 'Log File Setting':
+        #               filetime[i] = line[1]
+        #                break
+    #            l = l + 1
+
+    def process_nopcap(self, outdir: str):
+        """Processes the AOF file (without producing pcap).
+
+        Calls the following subfunctions:
+            - parse_aof: parses the AOF file, and produces the csv output file in temp directory.
+            - finalizeNoPcap: produces final csv files.
+
+        Parameters:
+            outdir: output directory.
+
+        """
+        self.parse_aof()
+        self.finalizeNoPcap(outdir)
+
     def process(self, outdir: str):
         """Processes the AOF file.
 
@@ -111,6 +228,35 @@ class XcalConverter:
         self.merge_pcaps()
         self.reorder_pcap()
         self.finalize(outdir)
+
+    def parse_aof(self):
+        """Parses the associated AOF file.
+
+        The parsing produce temporary files .txt files, one for each Wireshark
+        dissector. These files can be used by text2pcap.
+
+        The first output CSV file is also produced by this function ; firstly, the AOF file syntax is checked.
+        The lengths of messages and the structure of the different sections of the file are checked. EARFCN / PCIs
+        couples are also referenced during this step. Then, during the second step, the file is re-read, and all
+        data inside it are processed, to make the EARFCNs and PCIs / Measurements tables.
+
+        The output file produced is written in CSV, with a syntax based on the AOF format.
+
+        Raises:
+            RuntimeError: if an error occurred during the analysis of the AOF file.
+        """
+
+        print('Parsing AOF file...')
+        self.first_read()
+        print('AOF file parsing done.')
+
+        print('Data processing...')
+        self.second_read()
+        print('Data processing done.')
+
+        print('Producing CSV file...')
+        self.produce_csv_file()
+        print('CSV file produced.')
 
     def parse_aof(self):
         """Parses the associated AOF file.
@@ -663,6 +809,22 @@ class XcalConverter:
             raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
 
         return '{0}_{1}.{2}'.format(self.DICT_FILES_NAMES[fkey], self._phone_id, ext)
+
+    def finalizeNoPcap(self, outdir: str):
+        """Produces the final files in the output directory but does not generate pcap
+
+        The produced files are MCC_MNC_ID.pcap, which contains all messages packets,
+        and CMCC_MNC_FNAME_ID.json, which contains all measurement and SIB information
+        used for the Cell Association Processing; here, MCC and MNC designate the MCC/MNC
+        of the current operator, ID the identifier used to designate the phone, and FNAME the
+        AOF file name parsed.
+
+        Parameters:
+            outdir: output directory.
+        """
+        # Producing final JSON file.
+        output_json = 'cev{0}_{1}.csv'.format(getOperatorname(self.mcc, self.mnc), getfileName(self._path))
+        shutil.copy2(getPathText('csv_tmp.csv'), os.path.join(outdir, output_json))
 
     def finalize(self, outdir: str):
         """Produces the final files in the output directory.

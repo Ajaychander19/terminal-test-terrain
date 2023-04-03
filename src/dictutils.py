@@ -1,3 +1,15 @@
+import re
+
+def extract_int(x):
+    """extract the digits of any string
+
+    Source code is taken from : https://stackoverflow.com/questions/17336943/removing-non-numeric-characters-from-a-string
+
+    Example : x="9ab.8f7" => return "987"
+    """
+    return re.sub('[^\d]', '', x)
+
+
 def insert_data(d1: dict, d2: dict, length: int):
     """Insert data of a dictionary d2 in another dictionary d1.
 
