@@ -24,6 +24,7 @@ class Viavilyzer:
     instead 'Date' and 'Time' """
     def time_stamp(filename):
         data = pd.read_csv(filename)
+        date = data['Date'][0]
         data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--') & (data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
         start = time.mktime(datetime.datetime.strptime(((data['Time'][0]).split("CET")[0]).replace(" ", ""),
                                                        "%H:%M:%S.%f%p").timetuple())
@@ -33,21 +34,22 @@ class Viavilyzer:
                                                                      "%H:%M:%S.%f%p").timetuple()))
             data.loc[index, 'Timestamp'] = x
         data = data.drop(['Date', 'Time'], axis=1)
-        return data
+        return data, date
 
     """ List all the tuples (arfcn, pci, beam_index) of a csv file and their number of measurements """
     def read_measures(filename):
-        data = Viavilyzer.time_stamp(filename)
+        data, date = Viavilyzer.time_stamp(filename)
         tuples = Viavilyzer.earfcn_pci_beam(data)
         l = list(tuples)
         occs = [0] * len(l)
+        techno = data['Technology (5G NR LTE FDD LTE TDD)'][0]
 
         for index, row in data.iterrows():
             arfcn = conv.freq_to_arfcn(int(row['Center Frequency (MHz)']))
             pci = int(row['PCI'])
             beam_index = int(row['SSB Index'])
             occs[l.index((arfcn, pci, beam_index))] += 1
-        return l, occs
+        return l, occs, techno, date
 
     """ Return a set of tuples (arfcn, pci, beam_index) from a dataframe"""
     def earfcn_pci_beam(df):
@@ -87,8 +89,11 @@ class Viavilyzer:
 
     """Produce a measurement file"""
     def produce_csv_file(filename):
-        l, occs  = Viavilyzer.read_measures(filename)
+        l, occs, techno, date = Viavilyzer.read_measures(filename)
         csv_header = {
+            'VERSION': ['Version'],
+            'DATE': ['Date'],
+            'TECHNO': ['Techno'],
             'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
             'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
             'MEAS_BEAMS': ['NA', 'NA', 'NA', 'NA', 'BEAM1', 'BEAM2', 'BEAM3', 'etc'],
@@ -100,7 +105,7 @@ class Viavilyzer:
             ],
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
         }
-        data = Viavilyzer.time_stamp(filename)
+        data, date = Viavilyzer.time_stamp(filename)
         #print(len(data))
         # tous les 5 secondes
         min = 0
@@ -108,6 +113,9 @@ class Viavilyzer:
         end = int(round(data['Timestamp'][len(data)-1]))
 
         with csvtools.CSVWriter('csv_tmp.csv', csv_header) as csv_out:
+            csv_out.write_row(['VERSION'] + ['2.0'])
+            csv_out.write_row(['DATE'] + [date])
+            csv_out.write_row(['TECHNO'] + [techno])
             csv_out.write_row(['MEAS_EARFCNS'] + [''] * 4 + [(int(epb[0])) for epb in l])
             csv_out.write_row(['MEAS_PCIS'] + [''] * 4 + [(int(epb[1])) for epb in l])
             csv_out.write_row(['MEAS_BEAMS'] + [''] * 4 + [(int(epb[2])) for epb in l])
