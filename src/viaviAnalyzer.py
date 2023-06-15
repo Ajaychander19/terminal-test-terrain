@@ -41,11 +41,11 @@ class Viavilyzer:
         }
         data = pd.read_csv(filename)
         date = data['Date'][0]
-        data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--') & (data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
+        data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--')  & (data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
         start = time.mktime(datetime.datetime.strptime(((data['Time'][0]).split("CET")[0]).replace(" ", ""),
                                                        "%H:%M:%S.%f%p").timetuple())
         data.insert(0, 'Timestamp', 0.0)
-        data.astype(dtype_mapping)
+        data = data.astype(dtype_mapping)
         for index, row in data.iterrows():
             x = abs(start - time.mktime(datetime.datetime.strptime(((row['Time']).split("CET")[0]).replace(" ",""),
                                                                      "%H:%M:%S.%f%p").timetuple()))
@@ -62,9 +62,9 @@ class Viavilyzer:
         techno = data['Technology (5G NR LTE FDD LTE TDD)'][0]
 
         for index, row in data.iterrows():
-            arfcn = conv.freq_to_arfcn(int(row['Center Frequency (MHz)']))
-            pci = int(row['PCI'])
-            beam_index = int(row['SSB Index'])
+            arfcn = conv.freq_to_arfcn(row['Center Frequency (MHz)'])
+            pci = row['PCI']
+            beam_index = row['SSB Index']
             occs[l.index((arfcn, pci, beam_index))] += 1
         return l, occs, techno, date
 
@@ -74,26 +74,25 @@ class Viavilyzer:
         pcis = []
         beam_indexes = []
         for index, row in df.iterrows():
-            arfcns.append(conv.freq_to_arfcn(int(row['Center Frequency (MHz)'])))
-            pcis.append(int(row['PCI']))
-            beam_indexes.append(int(row['SSB Index']))
+            arfcns.append(conv.freq_to_arfcn(row['Center Frequency (MHz)']))
+            pcis.append(row['PCI'])
+            beam_indexes.append(row['SSB Index'])
         return set(zip(arfcns, pcis, beam_indexes))
 
     """Return the row of the serving PCI between two timestamps """
     def get_best_pci(min, max, df):
-        sub_df = df[(df['Timestamp'].astype(float) >= min) & (df['Timestamp'].astype(float) < max)]
+        sub_df = df[(df['Timestamp'] >= min) & (df['Timestamp'] < max)]
         tuples = Viavilyzer.earfcn_pci_beam(sub_df)
         for t in tuples:
-            pci = int(t[1])
-            ssb_index = int(t[2])
             freq = t[0]
+            pci = t[1]
+            ssb_index = t[2]
             max_rsrp = -150.0
             max_row = None
-            current_measurements = []
+            current_measurements = [0.0] * len(tuples)
             for index, row in sub_df.iterrows():
-                if index > 0:
-                    if int(row['PCI']) == pci and conv.freq_to_arfcn(row['Center Frequency (MHz)']) == freq and int(row['SSB Index']) == ssb_index:
-                        current_measurements.append(conv.dbm_to_watt(float(row['S-SS RSRP / RSRP (dBm)'])))
+                if row['PCI'] == pci and conv.freq_to_arfcn(row['Center Frequency (MHz)']) == freq and row['SSB Index'] == ssb_index:
+                    current_measurements.append(conv.dbm_to_watt(row['S-SS RSRP / RSRP (dBm)']))
             total = 0.0
             for x in current_measurements:
                 total+=x
@@ -133,9 +132,9 @@ class Viavilyzer:
             csv_out.write_row(['VERSION'] + ['2.0'])
             csv_out.write_row(['DATE'] + [date])
             csv_out.write_row(['TECHNO'] + [techno])
-            csv_out.write_row(['MEAS_EARFCNS'] + [''] * 4 + [(int(epb[0])) for epb in l])
-            csv_out.write_row(['MEAS_PCIS'] + [''] * 4 + [(int(epb[1])) for epb in l])
-            csv_out.write_row(['MEAS_BEAMS'] + [''] * 4 + [(int(epb[2])) for epb in l])
+            csv_out.write_row(['MEAS_EARFCNS'] + [''] * 4 + [epb[0] for epb in l])
+            csv_out.write_row(['MEAS_PCIS'] + [''] * 4 + [epb[1] for epb in l])
+            csv_out.write_row(['MEAS_BEAMS'] + [''] * 4 + [epb[2] for epb in l])
             csv_out.write_row(['MEAS_NB'] + [''] * 4 + [occs[l.index(epb)] for epb in l])
 
             serving_pci = -1
@@ -145,7 +144,7 @@ class Viavilyzer:
                     csv_out.write_row(['CELLINFO'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']] + [x['Center Frequency (MHz)']] + [x['PCI']] + [x['PCI']])
                 serving_pci = x['PCI']
                 csv_out.write_row(['MEASURE_SERVING'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']] + [x['Center Frequency (MHz)']] + [x['PCI']] + [x['S-SS RSRP / RSRP (dBm)']] + [x['S-SS RSRQ / RSRQ (dB)']] + [x['S-SS RSSI / S-SS RSSI (dBm)']] + [x['S-SS SINR / RS SINR (dB)']] + [x['Time Error (us)']])
-                sub_df = data[(data['Timestamp'].astype(float) >= min) & (data['Timestamp'].astype(float) < max) & (data['PCI'] != serving_pci)]
+                sub_df = data[(data['Timestamp'] >= min) & (data['Timestamp'] < max) & (data['PCI'] != serving_pci)]
                 min+=5
                 max+=5
                 """
