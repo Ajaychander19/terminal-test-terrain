@@ -37,7 +37,7 @@ class Viavilyzer:
             'S-SS SINR / RS SINR (dB)': float,
             'S-SS RSSI / S-SS RSSI (dBm)': float,
             'Time Error (us)': float,
-            'Timestamp' : float
+            'Timestamp': float
         }
         data = pd.read_csv(filename)
         date = data['Date'][0]
@@ -60,13 +60,12 @@ class Viavilyzer:
         l = list(tuples)
         occs = [0] * len(l)
         techno = data['Technology (5G NR LTE FDD LTE TDD)'][0]
-
         for index, row in data.iterrows():
             arfcn = conv.freq_to_arfcn(row['Center Frequency (MHz)'])
             pci = row['PCI']
             beam_index = row['SSB Index']
             occs[l.index((arfcn, pci, beam_index))] += 1
-        return l, occs, techno, date
+        return l, occs, techno, date, data
 
     """ Return a set of tuples (arfcn, pci, beam_index) from a dataframe"""
     def earfcn_pci_beam(df):
@@ -105,7 +104,7 @@ class Viavilyzer:
 
     """Produce a measurement file"""
     def produce_csv_file(filename):
-        l, occs, techno, date = Viavilyzer.read_measures(filename)
+        l, occs, techno, date, data = Viavilyzer.read_measures(filename)
         csv_header = {
             'VERSION': ['Version'],
             'DATE': ['Date'],
@@ -121,8 +120,6 @@ class Viavilyzer:
             ],
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
         }
-        data, date = Viavilyzer.time_stamp(filename)
-        #print(len(data))
         # tous les 5 secondes
         min = 0
         max = 5
