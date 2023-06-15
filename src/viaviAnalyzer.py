@@ -23,12 +23,29 @@ class Viavilyzer:
     """Convert time string column of a csv file into timestamp and return dataframe with a new column 'Timestamp' 
     instead 'Date' and 'Time' """
     def time_stamp(filename):
+        dtype_mapping = {
+            'Date': str,
+            'Time': str,
+            'Latitude': float,
+            'Longitude': float,
+            'Center Frequency (MHz)': float,
+            'Technology (5G NR LTE FDD LTE TDD)': str,
+            'PCI': int,
+            'SSB Index': int,
+            'S-SS RSRP / RSRP (dBm)': float,
+            'S-SS RSRQ / RSRQ (dB)': float,
+            'S-SS SINR / RS SINR (dB)': float,
+            'S-SS RSSI / S-SS RSSI (dBm)': float,
+            'Time Error (us)': float,
+            'Timestamp' : float
+        }
         data = pd.read_csv(filename)
         date = data['Date'][0]
         data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--') & (data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
         start = time.mktime(datetime.datetime.strptime(((data['Time'][0]).split("CET")[0]).replace(" ", ""),
                                                        "%H:%M:%S.%f%p").timetuple())
         data.insert(0, 'Timestamp', 0.0)
+        data.astype(dtype_mapping)
         for index, row in data.iterrows():
             x = abs(start - time.mktime(datetime.datetime.strptime(((row['Time']).split("CET")[0]).replace(" ",""),
                                                                      "%H:%M:%S.%f%p").timetuple()))
