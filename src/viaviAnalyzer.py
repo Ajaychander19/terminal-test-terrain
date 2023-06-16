@@ -105,6 +105,15 @@ class Viavilyzer:
                 max_row['S-SS RSRP / RSRP (dBm)'] = max_rsrp
         return max_row, sub_df
 
+    def get_measurements(name, triplets, df):
+        measurements = []
+        for t in triplets:
+            for index, row in df.iterrows():
+                if row['PCI'] == t[1] and conv.freq_to_arfcn(row['Center Frequency (MHz)']) == t[0] and row['SSB Index'] == t[2]:
+                    measurements += [row[name]]
+                    break
+            measurements += ['']
+        return measurements
     """Produce a measurement file"""
     def produce_csv_file(filename, interval):
         l, occs, techno, date, data = Viavilyzer.read_measures(filename)
@@ -148,9 +157,9 @@ class Viavilyzer:
                     data_timestamp = sub_df[(sub_df['Timestamp'] == j)].reset_index(drop=True)
                     if len(data_timestamp) > 0:
                         t = data_timestamp.iloc[0]
-                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRP']) #+ data_timestamp[0][['RSRP']])
-                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRQ'])
-                        #csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + [r['RSSI'] for r in data_timestamp])
+                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRP'] + Viavilyzer.get_measurements('S-SS RSRP / RSRP (dBm)', l, data_timestamp))
+                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRQ'] + Viavilyzer.get_measurements('S-SS RSRQ / RSRQ (dB)', l, data_timestamp))
+                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSSI'] + Viavilyzer.get_measurements('S-SS RSSI / S-SS RSSI (dBm)', l, data_timestamp))
                 csv_out.write_row(['MEASURE_SERVING'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']]
                                   + [x['Center Frequency (MHz)']] + [x['PCI']] + [x['S-SS RSRP / RSRP (dBm)']]
                                   + [x['S-SS RSRQ / RSRQ (dB)']] + [x['S-SS RSSI / S-SS RSSI (dBm)']]
@@ -171,4 +180,4 @@ fields = ['Date', 'Time', 'Latitude', 'Longitude', 'Center Frequency', 'Technolo
 #dic = viaviparser.dic_viavi(fields, colsnames)
 
 
-Viavilyzer.produce_csv_file("test_files/Save_longchamps_221222161029.csv", 5)
+Viavilyzer.produce_csv_file("test_files/save1000.csv", 5)
