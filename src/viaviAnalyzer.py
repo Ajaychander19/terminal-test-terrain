@@ -105,15 +105,21 @@ class Viavilyzer:
                 max_row['S-SS RSRP / RSRP (dBm)'] = max_rsrp
         return max_row, sub_df
 
-    def get_measurements(name, triplets, df):
-        measurements = []
+    def get_measurements(triplets, df):
+        measurements_RSRQ = []
+        measurements_RSSI = []
+        measurements_RSRP = []
         for t in triplets:
             for index, row in df.iterrows():
                 if row['PCI'] == t[1] and conv.freq_to_arfcn(row['Center Frequency (MHz)']) == t[0] and row['SSB Index'] == t[2]:
-                    measurements += [row[name]]
+                    measurements_RSRQ += [row['S-SS RSRQ / RSRQ (dB)']]
+                    measurements_RSSI += [row['S-SS RSSI / S-SS RSSI (dBm)']]
+                    measurements_RSRP += [row['S-SS RSRP / RSRP (dBm)']]
                     break
-            measurements += ['']
-        return measurements
+            measurements_RSRQ += ['']
+            measurements_RSSI += ['']
+            measurements_RSRP += ['']
+        return measurements_RSRQ, measurements_RSSI, measurements_RSRP
     """Produce a measurement file"""
     def produce_csv_file(filename, interval):
         l, occs, techno, date, data = Viavilyzer.read_measures(filename)
@@ -157,9 +163,10 @@ class Viavilyzer:
                     data_timestamp = sub_df[(sub_df['Timestamp'] == j)].reset_index(drop=True)
                     if len(data_timestamp) > 0:
                         t = data_timestamp.iloc[0]
-                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRP'] + Viavilyzer.get_measurements('S-SS RSRP / RSRP (dBm)', l, data_timestamp))
-                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRQ'] + Viavilyzer.get_measurements('S-SS RSRQ / RSRQ (dB)', l, data_timestamp))
-                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSSI'] + Viavilyzer.get_measurements('S-SS RSSI / S-SS RSSI (dBm)', l, data_timestamp))
+                        measurements_RSRQ, measurements_RSSI, measurements_RSRP = Viavilyzer.get_measurements(l, data_timestamp)
+                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRP'] + measurements_RSRP)
+                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRQ'] + measurements_RSRQ)
+                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSSI'] + measurements_RSSI)
                 csv_out.write_row(['MEASURE_SERVING'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']]
                                   + [x['Center Frequency (MHz)']] + [x['PCI']] + [x['S-SS RSRP / RSRP (dBm)']]
                                   + [x['S-SS RSRQ / RSRQ (dB)']] + [x['S-SS RSSI / S-SS RSSI (dBm)']]
