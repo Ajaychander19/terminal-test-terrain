@@ -46,7 +46,8 @@ class Viavilyzer:
 
         for earfcn in earfcn_list:
             df_earfcn = df_sort[df_sort['Center Frequency (MHz)'] == earfcn]
-            nom_fichier = f"../donnees/viavi_{earfcn}.csv"
+            x = str(conv.freq_to_arfcn(earfcn))
+            nom_fichier = f"../donnees/viavi_{x}.csv"
             df_earfcn.to_csv(nom_fichier)
             files += [nom_fichier]
         return files
@@ -245,7 +246,7 @@ class Viavilyzer:
         end = int(round(data['Timestamp'][len(data)-1]))
 
         earfcn = str(conv.freq_to_arfcn(data['Center Frequency (MHz)'][0]))
-        output_name = f'../donnees/measurements_{earfcn}.csv'
+        output_name = f'../donnees/cev_{earfcn}.csv'
 
         with csvtools.CSVWriter(output_name, csv_header) as csv_out:
             csv_out.write_row(['VERSION'] + ['2.0'])
@@ -260,7 +261,7 @@ class Viavilyzer:
             for i in range(0, end, interval):
                 x, sub_df = Viavilyzer.get_best_pci(min, max, data)
                 if serving_pci != x['PCI']:
-                    csv_out.write_row(['CELLINFO'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']] + [x['Center Frequency (MHz)']] + [x['PCI']] + ['00'] + ['00'] + ['00'] + ['00'])
+                    csv_out.write_row(['CELLINFO'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']] + [earfcn] + [x['PCI']] + ['00'] + ['00'] + ['00'] + ['00'])
                 serving_pci = x['PCI']
                 #for m in sub_df
                 for j in range(min, max):
@@ -272,7 +273,7 @@ class Viavilyzer:
                         csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRQ'] + measurements_RSRQ)
                         csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSSI'] + measurements_RSSI)
                 csv_out.write_row(['MEASURE_SERVING'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']]
-                                  + [x['Center Frequency (MHz)']] + [x['PCI']] + [x['SSB Index']] + [x['S-SS RSRP / RSRP (dBm)']]
+                                  + [earfcn] + [x['PCI']] + [x['SSB Index']] + [x['S-SS RSRP / RSRP (dBm)']]
                                   + [x['S-SS RSRQ / RSRQ (dB)']] + [x['S-SS RSSI / S-SS RSSI (dBm)']]
                                   + [x['S-SS SINR / RS SINR (dB)']] + [x['Time Error (us)']])
                 min += 5
