@@ -6,7 +6,6 @@ import viaviparser
 from src import csvtools, freq_conversion
 from src.freq_conversion import conv
 
-
 class Viavilyzer:
 
     def merge(path: str):
@@ -16,6 +15,10 @@ class Viavilyzer:
         ----------
         path : str
             Path of CSV files
+        Returns
+        -------
+        list[str]
+            List of files
         """
         files = glob.glob(path + "*.csv")
         data = []
@@ -25,6 +28,28 @@ class Viavilyzer:
 
         merge = pd.concat(data)
         merge.to_csv(path + 'measurements_merge.csv', index=False)
+
+    def seperate_op(filename):
+        """Separate measures in different files
+
+        Parameters
+        ----------
+        filename: str
+        """
+        df = pd.read_csv(filename)
+        #conv.freq_to_arfcn(row['Center Frequency (MHz)'])
+        df_sort = df.sort_values('Center Frequency (MHz)')
+
+        earfcn_list = df_sort['Center Frequency (MHz)'].unique()
+
+        files = []
+
+        for earfcn in earfcn_list:
+            df_earfcn = df_sort[df_sort['Center Frequency (MHz)'] == earfcn]
+            nom_fichier = f"../donnees/viavi_{earfcn}.csv"
+            df_earfcn.to_csv(nom_fichier)
+            files += [nom_fichier]
+        return files
 
     def totimestamp(filename :str, threshold: float):
         """Convert time string column of a CSV file into timestamp and return dataframe with a new column 'Timestamp'
@@ -219,7 +244,10 @@ class Viavilyzer:
         max = 5
         end = int(round(data['Timestamp'][len(data)-1]))
 
-        with csvtools.CSVWriter('../donnees/measurements.csv', csv_header) as csv_out:
+        earfcn = str(conv.freq_to_arfcn(data['Center Frequency (MHz)'][0]))
+        output_name = f'../donnees/measurements_{earfcn}.csv'
+
+        with csvtools.CSVWriter(output_name, csv_header) as csv_out:
             csv_out.write_row(['VERSION'] + ['2.0'])
             csv_out.write_row(['DATE'] + [date])
             csv_out.write_row(['TECHNO'] + [techno])
@@ -249,6 +277,11 @@ class Viavilyzer:
                                   + [x['S-SS SINR / RS SINR (dB)']] + [x['Time Error (us)']])
                 min += 5
                 max += 5
+    def produces_csv_op_files(filename):
+        files = Viavilyzer.seperate_op(filename)
+        for f in files:
+            Viavilyzer.produce_csv_file(f, 5, -150.0)
+
     # Tests
 fields = ['Date', 'Time', 'Latitude', 'Longitude', 'Center Frequency', 'Technology', 'PCI', 'SSB Index',
           'S-SS RSRP',
@@ -262,5 +295,5 @@ fields = ['Date', 'Time', 'Latitude', 'Longitude', 'Center Frequency', 'Technolo
 #colsnames = viaviparser.columns_names("test_files/merge.csv")
 #dic = viaviparser.dic_viavi(fields, colsnames)
 
-
-Viavilyzer.produce_csv_file("test_files/save1000.csv", 5, -150.0)
+Viavilyzer.produces_csv_op_files("test_files/save1000.csv")
+#Viavilyzer.produce_csv_file("test_files/save1000.csv", 5, -150.0)
