@@ -117,20 +117,20 @@ class Viavilyzer:
             beam_indexes.append(row['SSB Index'])
         return set(zip(arfcns, pcis, beam_indexes))
 
-    def get_best_pci(start, end, df):
+    def get_best_pci(first, second, df):
         """Return the row of the serving PCI between two timestamps and the subdataframe of all measurements between
         Parameters
         ----------
-        start:
+        first:
             First timestamp
-        end:
+        second:
             Second timestamp
         Returns
         -------
         tuple
             (The row of the serving PCI, a subdataframe)
         """
-        sub_df = df[(df['Timestamp'] >= start) & (df['Timestamp'] <= end)]
+        sub_df = df[(df['Timestamp'] >= first) & (df['Timestamp'] <= second)]
         tuples = Viavilyzer.earfcn_pci_beam(sub_df)
         max_rsrp = -200.0
         max_row = None
@@ -151,7 +151,7 @@ class Viavilyzer:
             if max_rsrp < mean:
                 max_rsrp = mean
                 max_row = current_row
-                max_row['Timestamp'] = max - 1
+                max_row['Timestamp'] = second - 1
                 max_row['S-SS RSRP / RSRP (dBm)'] = max_rsrp
         return max_row, sub_df
 

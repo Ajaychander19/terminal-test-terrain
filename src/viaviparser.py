@@ -19,6 +19,19 @@ def _search_column(list, search):
     return word_max
 
 def dic_viavi(fields, filename):
+    """Search all the real names of columns names in a CSV File
+    Parameters
+    ----------
+    fields: list
+        list of wanted columns names
+    filename: str
+        path of the CSV file
+
+    Returns
+    -------
+    dict
+        A dictionary linking wanted columns names and real names
+    """
     list_of_column_names = _columns_names(filename)
     dic = {}
     for f in fields:
