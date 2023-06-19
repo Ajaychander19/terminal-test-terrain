@@ -26,7 +26,7 @@ class Viavilyzer:
         merge = pd.concat(data)
         merge.to_csv(path + 'merge.csv', index=False)
 
-    def totimestamp(filename :str):
+    def totimestamp(filename :str, threshold: float):
         """Convert time string column of a CSV file into timestamp and return dataframe with a new column 'Timestamp'
          instead 'Date' and 'Time'
 
@@ -34,7 +34,8 @@ class Viavilyzer:
         ----------
         filename : str
             the path of the CSV file
-
+        threshold : float
+            threshold of RSRP PBCH
         Returns
         -------
         tuple
@@ -58,9 +59,11 @@ class Viavilyzer:
         }
         data = pd.read_csv(filename)
         date = data['Date'][0]
-        data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--')  & (data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
+        data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--') & (data['PBCH DM-RS RSRP (dBm) /'] != '--') & (data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
+        data = data[(data['PBCH DM-RS RSRP (dBm) /'].astype(float)) > threshold]
         start = time.mktime(datetime.datetime.strptime(((data['Time'][0]).split("CET")[0]).replace(" ", ""),
                                                        "%H:%M:%S.%f%p").timetuple())
+
         data.insert(0, 'Timestamp', 0.0)
         data = data.astype(dtype_mapping)
         for index, row in data.iterrows():
@@ -70,20 +73,21 @@ class Viavilyzer:
         data = data.drop(['Date', 'Time'], axis=1)
         return data, date
 
-    def read_measures(filename: str):
+    def read_measures(filename: str, threshold):
         """ List all the tuples (arfcn, pci, beam_index) of a csv file and their number of measurements
         Parameters
         ----------
         filename : str
             the path of the CSV file
-
+        threshold: float
+            threshold of RSRP PBCH
         Returns
         -------
         tuple
             (The list of tuples(earfcn-beam-pci), their number of occurences, technology used, the date of the first measure,
             the dataframe)
         """
-        data, date = Viavilyzer.totimestamp(filename)
+        data, date = Viavilyzer.totimestamp(filename , threshold)
         tuples = Viavilyzer.earfcn_pci_beam(data)
         l = list(tuples)
         occs = [0] * len(l)
@@ -183,7 +187,7 @@ class Viavilyzer:
             measurements_RSRP += ['']
         return measurements_RSRQ, measurements_RSSI, measurements_RSRP
 
-    def produce_csv_file(filename, interval):
+    def produce_csv_file(filename, interval, threshold):
         """Produce a measurement file
         Parameters
         ----------
@@ -191,9 +195,10 @@ class Viavilyzer:
             the path of the CSV file
         interval: int
             interval(seconds) to determinate the serving PCI
-
+        threshold: float
+            threshold of RSRP PBCH
         """
-        l, occs, techno, date, data = Viavilyzer.read_measures(filename)
+        l, occs, techno, date, data = Viavilyzer.read_measures(filename, threshold)
         csv_header = {
             'VERSION': ['Version'],
             'DATE': ['Date'],
@@ -258,4 +263,4 @@ fields = ['Date', 'Time', 'Latitude', 'Longitude', 'Center Frequency', 'Technolo
 #dic = viaviparser.dic_viavi(fields, colsnames)
 
 
-Viavilyzer.produce_csv_file("test_files/save1000.csv", 5)
+Viavilyzer.produce_csv_file("test_files/save1000.csv", 5, -150.0)
