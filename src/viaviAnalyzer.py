@@ -9,8 +9,14 @@ from src.freq_conversion import conv
 
 class Viavilyzer:
 
-    """Take the path of CSV files, merge all the CSV files and create a single CSV file"""
     def merge(path: str):
+        """Take the path of CSV files, merge all the CSV files and create a single CSV fileg:
+
+        Parameters
+        ----------
+        path : str
+            Path of CSV files
+        """
         files = glob.glob(path + "*.csv")
         data = []
         for file in files:
@@ -20,9 +26,20 @@ class Viavilyzer:
         merge = pd.concat(data)
         merge.to_csv(path + 'merge.csv', index=False)
 
-    """Convert time string column of a csv file into timestamp and return dataframe with a new column 'Timestamp' 
-    instead 'Date' and 'Time' """
-    def totimestamp(filename):
+    def totimestamp(filename :str):
+        """Convert time string column of a CSV file into timestamp and return dataframe with a new column 'Timestamp'
+         instead 'Date' and 'Time'
+
+        Parameters
+        ----------
+        filename : str
+            the path of the CSV file
+
+        Returns
+        -------
+        tuple
+            (The dataframe, the date of the first measure)
+         """
         dtype_mapping = {
             'Date': str,
             'Time': str,
@@ -53,8 +70,19 @@ class Viavilyzer:
         data = data.drop(['Date', 'Time'], axis=1)
         return data, date
 
-    """ List all the tuples (arfcn, pci, beam_index) of a csv file and their number of measurements """
-    def read_measures(filename):
+    def read_measures(filename: str):
+        """ List all the tuples (arfcn, pci, beam_index) of a csv file and their number of measurements
+        Parameters
+        ----------
+        filename : str
+            the path of the CSV file
+
+        Returns
+        -------
+        tuple
+            (The list of tuples(earfcn-beam-pci), their number of occurences, technology used, the date of the first measure,
+            the dataframe)
+        """
         data, date = Viavilyzer.totimestamp(filename)
         tuples = Viavilyzer.earfcn_pci_beam(data)
         l = list(tuples)
@@ -67,8 +95,19 @@ class Viavilyzer:
             occs[l.index((arfcn, pci, beam_index))] += 1
         return l, occs, techno, date, data
 
-    """ Return a set of tuples (arfcn, pci, beam_index) from a dataframe"""
     def earfcn_pci_beam(df):
+        """ Return a set of tuples (arfcn, pci, beam_index) from a dataframe
+
+        Parameters
+        ----------
+        df : str
+            A dataframe
+
+        Returns
+        -------
+        set
+            set of different earfcn-pci-beam tuples
+        """
         arfcns = []
         pcis = []
         beam_indexes = []
@@ -78,9 +117,20 @@ class Viavilyzer:
             beam_indexes.append(row['SSB Index'])
         return set(zip(arfcns, pcis, beam_indexes))
 
-    """Return the row of the serving PCI between two timestamps """
-    def get_best_pci(min, max, df):
-        sub_df = df[(df['Timestamp'] >= min) & (df['Timestamp'] < max)]
+    def get_best_pci(start, end, df):
+        """Return the row of the serving PCI between two timestamps and the subdataframe of all measurements between
+        Parameters
+        ----------
+        start:
+            First timestamp
+        end:
+            Second timestamp
+        Returns
+        -------
+        tuple
+            (The row of the serving PCI, a subdataframe)
+        """
+        sub_df = df[(df['Timestamp'] >= start) & (df['Timestamp'] <= end)]
         tuples = Viavilyzer.earfcn_pci_beam(sub_df)
         max_rsrp = -200.0
         max_row = None
@@ -105,11 +155,23 @@ class Viavilyzer:
                 max_row['S-SS RSRP / RSRP (dBm)'] = max_rsrp
         return max_row, sub_df
 
-    def get_measurements(triplets, df):
+    def get_measurements(tuples, df):
+        """ Return the measurements of a dataframe separated by categories (RSRQ, RSSI, RSRP)
+        Parameters
+        ----------
+        start:
+            First timestamp
+        end:
+            Second timestamp
+        Returns
+        -------
+        tuple
+            three categorie measurements lists: RSRQ, RSSI, RSRP
+        """
         measurements_RSRQ = []
         measurements_RSSI = []
         measurements_RSRP = []
-        for t in triplets:
+        for t in tuples:
             for index, row in df.iterrows():
                 if row['PCI'] == t[1] and conv.freq_to_arfcn(row['Center Frequency (MHz)']) == t[0] and row['SSB Index'] == t[2]:
                     measurements_RSRQ += [row['S-SS RSRQ / RSRQ (dB)']]
@@ -120,8 +182,17 @@ class Viavilyzer:
             measurements_RSSI += ['']
             measurements_RSRP += ['']
         return measurements_RSRQ, measurements_RSSI, measurements_RSRP
-    """Produce a measurement file"""
+
     def produce_csv_file(filename, interval):
+        """Produce a measurement file
+        Parameters
+        ----------
+        filename : str
+            the path of the CSV file
+        interval: int
+            interval(seconds) to determinate the serving PCI
+
+        """
         l, occs, techno, date, data = Viavilyzer.read_measures(filename)
         csv_header = {
             'VERSION': ['Version'],
