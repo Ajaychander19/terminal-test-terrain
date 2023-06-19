@@ -24,7 +24,7 @@ class Viavilyzer:
             data.append(df)
 
         merge = pd.concat(data)
-        merge.to_csv(path + 'merge.csv', index=False)
+        merge.to_csv(path + 'measurements_merge.csv', index=False)
 
     def totimestamp(filename :str, threshold: float):
         """Convert time string column of a CSV file into timestamp and return dataframe with a new column 'Timestamp'
@@ -209,7 +209,7 @@ class Viavilyzer:
             'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas_for_1', 'nb_meas_for_2', 'nb_meas_for_3', 'etc'],
             'CELLINFO': ['Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'],
             'MEASURE_SERVING': [
-                'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI',
+                'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI', 'Serving_BEAM',
                 'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR', 'Time_error'
             ],
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
@@ -219,7 +219,7 @@ class Viavilyzer:
         max = 5
         end = int(round(data['Timestamp'][len(data)-1]))
 
-        with csvtools.CSVWriter('csv_tmp.csv', csv_header) as csv_out:
+        with csvtools.CSVWriter('../donnees/measurements.csv', csv_header) as csv_out:
             csv_out.write_row(['VERSION'] + ['2.0'])
             csv_out.write_row(['DATE'] + [date])
             csv_out.write_row(['TECHNO'] + [techno])
@@ -244,7 +244,7 @@ class Viavilyzer:
                         csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRQ'] + measurements_RSRQ)
                         csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSSI'] + measurements_RSSI)
                 csv_out.write_row(['MEASURE_SERVING'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']]
-                                  + [x['Center Frequency (MHz)']] + [x['PCI']] + [x['S-SS RSRP / RSRP (dBm)']]
+                                  + [x['Center Frequency (MHz)']] + [x['PCI']] + [x['SSB Index']] + [x['S-SS RSRP / RSRP (dBm)']]
                                   + [x['S-SS RSRQ / RSRQ (dB)']] + [x['S-SS RSSI / S-SS RSSI (dBm)']]
                                   + [x['S-SS SINR / RS SINR (dB)']] + [x['Time Error (us)']])
                 min += 5
