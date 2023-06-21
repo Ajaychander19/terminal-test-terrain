@@ -147,6 +147,15 @@ class Viavilyzer:
             beam_indexes.append(row['SSB Index'])
         return set(zip(arfcns, pcis, beam_indexes))
 
+    def mean(df, unit):
+        if len(df) > 0:
+            total = 0.0
+            for index, row in df.iterrows():
+                total += conv.linearScale(row[unit])
+            mean = total / len(df)
+            return conv.dBscale(mean)
+        else:
+            return -500.0
     def get_best_pci(first, second, df):
         """Return the row of the serving PCI between two timestamps and the subdataframe of all measurements between
         Parameters
@@ -170,21 +179,18 @@ class Viavilyzer:
             ssb_index = t[2]
             current_row = None
             current_measurements = [0.0] * len(tuples)
-            for index, row in sub_df.iterrows():
-                if row['PCI'] == pci and conv.freq_to_arfcn(row['Center Frequency (MHz)']) == freq and row['SSB Index'] == ssb_index:
-                    current_measurements.append(conv.dbm_to_watt(row['S-SS RSRP / RSRP (dBm)']))
-                    current_row = row
-            total = 0.0
-            for x in current_measurements:
-                total+=x
-            mean = total/len(current_measurements)
-            if max_rsrp < mean:
-                max_rsrp = mean
-                max_row = current_row
+            filtered_rows = sub_df[(sub_df['PCI'] == pci) & (sub_df['SSB Index'] == ssb_index)]
+            mean_rsrp = Viavilyzer.mean(filtered_rows, 'S-SS RSRP / RSRP (dBm)')
+            if max_rsrp < mean_rsrp:
+                max_rsrp = mean_rsrp
+                max_row = filtered_rows.iloc[0]
                 max_row['Timestamp'] = second - 1
                 max_row['S-SS RSRP / RSRP (dBm)'] = max_rsrp
-        return max_row, sub_df
+                max_row['S-SS RSRQ / RSRQ (dB)'] = Viavilyzer.mean(filtered_rows, 'S-SS RSRQ / RSRQ (dB)')
+                max_row['S-SS RSSI / S-SS RSSI (dBm)'] = Viavilyzer.mean(filtered_rows, 'S-SS RSSI / S-SS RSSI (dBm)')
+                max_row['S-SS SINR / RS SINR (dB)'] = Viavilyzer.mean(filtered_rows, 'S-SS SINR / RS SINR (dB)')
 
+        return max_row, sub_df
     def get_measurements(tuples, df):
         """ Return the measurements of a dataframe separated by categories (RSRQ, RSSI, RSRP)
         Parameters
@@ -235,8 +241,8 @@ class Viavilyzer:
             'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas_for_1', 'nb_meas_for_2', 'nb_meas_for_3', 'etc'],
             'CELLINFO': ['Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'],
             'MEASURE_SERVING': [
-                'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI', 'Serving_BEAM',
-                'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR', 'Time_error'
+                'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI',
+                'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR'
             ],
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
         }
@@ -273,9 +279,9 @@ class Viavilyzer:
                         csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRQ'] + measurements_RSRQ)
                         csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSSI'] + measurements_RSSI)
                 csv_out.write_row(['MEASURE_SERVING'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']]
-                                  + [earfcn] + [x['PCI']] + [x['SSB Index']] + [x['S-SS RSRP / RSRP (dBm)']]
+                                  + [earfcn] + [x['PCI']] + [x['S-SS RSRP / RSRP (dBm)']]
                                   + [x['S-SS RSRQ / RSRQ (dB)']] + [x['S-SS RSSI / S-SS RSSI (dBm)']]
-                                  + [x['S-SS SINR / RS SINR (dB)']] + [x['Time Error (us)']])
+                                  + [x['S-SS SINR / RS SINR (dB)']])
                 min += 5
                 max += 5
     def produces_csv_op_files(filename):
@@ -296,5 +302,5 @@ fields = ['Date', 'Time', 'Latitude', 'Longitude', 'Center Frequency', 'Technolo
 #colsnames = viaviparser.columns_names("test_files/merge.csv")
 #dic = viaviparser.dic_viavi(fields, colsnames)
 
-Viavilyzer.produces_csv_op_files("test_files/save1000.csv")
+Viavilyzer.produces_csv_op_files("test_files/save100.csv")
 #Viavilyzer.produce_csv_file("test_files/save1000.csv", 5, -150.0)
