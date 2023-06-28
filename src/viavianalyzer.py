@@ -6,6 +6,7 @@ import viaviparser
 from src import csvtools, freq_conversion
 from src.freq_conversion import conv
 
+
 class Viavilyzer:
 
     def merge(path: str):
@@ -37,7 +38,7 @@ class Viavilyzer:
         filename: str
         """
         df = pd.read_csv(filename)
-        #conv.freq_to_arfcn(row['Center Frequency (MHz)'])
+        # conv.freq_to_arfcn(row['Center Frequency (MHz)'])
         df_sort = df.sort_values('Center Frequency (MHz)')
 
         earfcn_list = df_sort['Center Frequency (MHz)'].unique()
@@ -45,14 +46,14 @@ class Viavilyzer:
         files = []
 
         for earfcn in earfcn_list:
-            df_earfcn = df_sort[df_sort['Center Frequency (MHz)'] == earfcn]
+            df_earfcn = df_sort[df_sort['Center Frequency (MHz)'] == earfcn].reset_index(drop=True)
             x = str(conv.freq_to_arfcn(earfcn))
             nom_fichier = f"../donnees/viavi_{x}.csv"
             df_earfcn.to_csv(nom_fichier)
             files += [nom_fichier]
         return files
 
-    def totimestamp(filename :str, threshold: float):
+    def totimestamp(filename: str, threshold: float):
         """Convert time string column of a CSV file into timestamp and return dataframe with a new column 'Timestamp'
          instead 'Date' and 'Time'
 
@@ -85,16 +86,22 @@ class Viavilyzer:
         }
         data = pd.read_csv(filename)
         date = data['Date'][0]
-        data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--') & (data['PBCH DM-RS RSRP (dBm) /'] != '--') & (data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
+        data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--') & (data['PBCH DM-RS RSRP (dBm) /'] != '--') & (
+                    data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
         data = data[(data['PBCH DM-RS RSRP (dBm) /'].astype(float)) > threshold]
-        start = time.mktime(datetime.datetime.strptime(((data['Time'][0]).split("CET")[0]).replace(" ", ""),
+        start = time.mktime(datetime.datetime.strptime(((data['Time'][0]).split("CEST")[0]).replace(" ", ""),
                                                        "%H:%M:%S.%f%p").timetuple())
 
         data.insert(0, 'Timestamp', 0.0)
         data = data.astype(dtype_mapping)
+
+        time_zone = "CET"
+        if "CEST" in data.iloc[0]['Time']:
+            time_zone = "CEST"
+
         for index, row in data.iterrows():
-            x = abs(start - time.mktime(datetime.datetime.strptime(((row['Time']).split("CET")[0]).replace(" ",""),
-                                                                     "%H:%M:%S.%f%p").timetuple()))
+            x = abs(start - time.mktime(datetime.datetime.strptime(((row['Time']).split(time_zone)[0]).replace(" ", ""),
+                                                                   "%H:%M:%S.%f%p").timetuple()))
             data.loc[index, 'Timestamp'] = x
         data = data.drop(['Date', 'Time'], axis=1)
         return data, date
@@ -113,7 +120,7 @@ class Viavilyzer:
             (The list of tuples(earfcn-beam-pci), their number of occurences, technology used, the date of the first measure,
             the dataframe)
         """
-        data, date = Viavilyzer.totimestamp(filename , threshold)
+        data, date = Viavilyzer.totimestamp(filename, threshold)
         tuples = Viavilyzer.earfcn_pci_beam(data)
         l = list(tuples)
         occs = [0] * len(l)
@@ -153,9 +160,11 @@ class Viavilyzer:
             for index, row in df.iterrows():
                 total += conv.linearScale(row[unit])
             mean = total / len(df)
+            #if 'S-SS RSRP / RSRP (dBm)' == unit:
+            #    print("linear: " + str(mean) + "|| dBm: " + str(conv.dBscale(mean)))
             return conv.dBscale(mean)
-        else:
-            return -500.0
+        return -500.0
+
     def get_best_pci(first, second, df):
         """Return the row of the serving PCI between two timestamps and the subdataframe of all measurements between
         Parameters
@@ -170,27 +179,27 @@ class Viavilyzer:
             (The row of the serving PCI, a subdataframe)
         """
         sub_df = df[(df['Timestamp'] >= first) & (df['Timestamp'] <= second)]
+        copy = sub_df.copy()
         tuples = Viavilyzer.earfcn_pci_beam(sub_df)
         max_rsrp = -200.0
         max_row = None
         for t in tuples:
-            freq = t[0]
             pci = t[1]
             ssb_index = t[2]
-            current_row = None
-            current_measurements = [0.0] * len(tuples)
-            filtered_rows = sub_df[(sub_df['PCI'] == pci) & (sub_df['SSB Index'] == ssb_index)]
+            filtered_rows = copy[(copy['PCI'] == pci) & (copy['SSB Index'] == ssb_index)]
+            #print(filtered_rows[['PCI', 'SSB Index', 'S-SS RSRP / RSRP (dBm)']])
             mean_rsrp = Viavilyzer.mean(filtered_rows, 'S-SS RSRP / RSRP (dBm)')
-            if max_rsrp < mean_rsrp:
+            if max_rsrp < mean_rsrp and len(filtered_rows) > 0:
                 max_rsrp = mean_rsrp
-                max_row = filtered_rows.iloc[0]
+                max_row = filtered_rows.iloc[0].copy()
                 max_row['Timestamp'] = second - 1
                 max_row['S-SS RSRP / RSRP (dBm)'] = max_rsrp
                 max_row['S-SS RSRQ / RSRQ (dB)'] = Viavilyzer.mean(filtered_rows, 'S-SS RSRQ / RSRQ (dB)')
                 max_row['S-SS RSSI / S-SS RSSI (dBm)'] = Viavilyzer.mean(filtered_rows, 'S-SS RSSI / S-SS RSSI (dBm)')
                 max_row['S-SS SINR / RS SINR (dB)'] = Viavilyzer.mean(filtered_rows, 'S-SS SINR / RS SINR (dB)')
-
+        #print("MAX " + str(conv.linearScale(max_rsrp)) + " " + str(max_rsrp) +"\n" )
         return max_row, sub_df
+
     def get_measurements(tuples, df):
         """ Return the measurements of a dataframe separated by categories (RSRQ, RSSI, RSRP)
         Parameters
@@ -209,7 +218,8 @@ class Viavilyzer:
         measurements_RSRP = []
         for t in tuples:
             for index, row in df.iterrows():
-                if row['PCI'] == t[1] and conv.freq_to_arfcn(row['Center Frequency (MHz)']) == t[0] and row['SSB Index'] == t[2]:
+                if row['PCI'] == t[1] and conv.freq_to_arfcn(row['Center Frequency (MHz)']) == t[0] and row[
+                    'SSB Index'] == t[2]:
                     measurements_RSRQ += [row['S-SS RSRQ / RSRQ (dB)']]
                     measurements_RSSI += [row['S-SS RSSI / S-SS RSSI (dBm)']]
                     measurements_RSRP += [row['S-SS RSRP / RSRP (dBm)']]
@@ -246,10 +256,10 @@ class Viavilyzer:
             ],
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
         }
-        # tous les 5 secondes
+
         min = 0
-        max = 5
-        end = int(round(data['Timestamp'][len(data)-1]))
+        max = interval
+        end = int(round(data['Timestamp'][len(data) - 1]))
 
         earfcn = str(conv.freq_to_arfcn(data['Center Frequency (MHz)'][0]))
         output_name = f'../donnees/cev_{earfcn}.csv'
@@ -266,41 +276,54 @@ class Viavilyzer:
             serving_pci = -1
             for i in range(0, end, interval):
                 x, sub_df = Viavilyzer.get_best_pci(min, max, data)
+                if x is None:
+                    continue
                 if serving_pci != x['PCI']:
-                    csv_out.write_row(['CELLINFO'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']] + [earfcn] + [x['PCI']] + ['00'] + ['00'] + ['00'] + ['00'])
-                serving_pci = x['PCI']
-                #for m in sub_df
+                    csv_out.write_row(
+                        ['CELLINFO'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']] + [earfcn] + [x['PCI']] + [
+                            '00'] + ['00'] + ['00'] + ['00'])
+                    serving_pci = x['PCI']
+
+                # for m in sub_df
                 for j in range(min, max):
                     data_timestamp = sub_df[(sub_df['Timestamp'] == j)].reset_index(drop=True)
                     if len(data_timestamp) > 0:
                         t = data_timestamp.iloc[0]
-                        measurements_RSRQ, measurements_RSSI, measurements_RSRP = Viavilyzer.get_measurements(l, data_timestamp)
-                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRP'] + measurements_RSRP)
-                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSRQ'] + measurements_RSRQ)
-                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + ['RSSI'] + measurements_RSSI)
+                        measurements_RSRQ, measurements_RSSI, measurements_RSRP = Viavilyzer.get_measurements(l,
+                                                                                                              data_timestamp)
+                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + [
+                            'RSRP'] + measurements_RSRP)
+                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + [
+                            'RSRQ'] + measurements_RSRQ)
+                        csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + [
+                            'RSSI'] + measurements_RSSI)
                 csv_out.write_row(['MEASURE_SERVING'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']]
                                   + [earfcn] + [x['PCI']] + [x['S-SS RSRP / RSRP (dBm)']]
                                   + [x['S-SS RSRQ / RSRQ (dB)']] + [x['S-SS RSSI / S-SS RSSI (dBm)']]
                                   + [x['S-SS SINR / RS SINR (dB)']])
-                min += 5
-                max += 5
+                min += interval
+                max += interval
+
     def produces_csv_op_files(filename):
         files = Viavilyzer.seperate_op(filename)
         for f in files:
-            Viavilyzer.produce_csv_file(f, 5, -150.0)
+            Viavilyzer.produce_csv_file(f, 1, -150.0)
 
     # Tests
+
+
 fields = ['Date', 'Time', 'Latitude', 'Longitude', 'Center Frequency', 'Technology', 'PCI', 'SSB Index',
           'S-SS RSRP',
           'S-SS RSSI', 'S-SS RSRQ', 'S-SS SINR', 'Time Error']
-#Viavilyzer.merge("test_files/")
+# Viavilyzer.merge("test_files/")
 
-#tuples = Viavilyzer.earfcn_pci_beam("test_files/merge.csv")
-#print(tuples)
+# tuples = Viavilyzer.earfcn_pci_beam("test_files/merge.csv")
+# print(tuples)
 
 # Read the columns names of a file
-#colsnames = viaviparser.columns_names("test_files/merge.csv")
-#dic = viaviparser.dic_viavi(fields, colsnames)
+# colsnames = viaviparser.columns_names("test_files/merge.csv")
+# dic = viaviparser.dic_viavi(fields, colsnames)
 
-Viavilyzer.produces_csv_op_files("test_files/save100.csv")
-#Viavilyzer.produce_csv_file("test_files/save1000.csv", 5, -150.0)
+# Viavilyzer.produces_csv_op_files("test_files/FichierTestSFR.csv")
+Viavilyzer.produces_csv_op_files("test_files/6juin.csv")
+# Viavilyzer.produce_csv_file("test_files/save1000.csv", 5, -150.0)

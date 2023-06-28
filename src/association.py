@@ -12,11 +12,6 @@ import scipy.spatial as sp
 
 from dictutils import insert_data, fill_data
 
-
-
-
-#test
-
 class CellAssociator:
     """This class allows to do the association between measurements and mobile network base stations.
 
@@ -142,7 +137,6 @@ class CellAssociator:
 
                     if len(line) < 6:
                         raise RuntimeError('error: MEASURE_SERVING line must contain at least 6 fields')
-
                     insert_data(
                         serving_dict,
                         {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
@@ -190,14 +184,12 @@ class CellAssociator:
                     if not earpcis:
                         raise RuntimeError('error: EARFCNS/PCIS not declared.')
 
-                    if len(earpcis) + 5 != len(line):
-                        raise RuntimeError('error: the measurement does not contains as much values than EARFCNs/PCIs.')
+                    #if len(earpcis) + 5 != len(line):
+                    #    raise RuntimeError('error: the measurement does not contains as much values than EARFCNs/PCIs.')
 
-                    if last_earfcn is None or last_pci is None:
-                        raise RuntimeError('error: MEASUREMENT encountered before MEASURE_SERVING.')
-
-
-                    out_wr.write_row(line)
+                    #if last_earfcn is None or last_pci is None:
+                    #    raise RuntimeError('error: MEASUREMENT encountered before MEASURE_SERVING.')
+                    #out_wr.write_row(line)
 
                 elif line[0] == 'MEAS_PCIS':
                     raise RuntimeError('error: MEAS_PCIS line must be directly preceded by a MEAS_EARFCNS line.')
