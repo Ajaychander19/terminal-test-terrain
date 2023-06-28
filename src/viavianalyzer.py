@@ -39,14 +39,17 @@ class Viavilyzer:
         """
         df = pd.read_csv(filename)
         # conv.freq_to_arfcn(row['Center Frequency (MHz)'])
-        df_sort = df.sort_values('Center Frequency (MHz)')
+        #df_sort = df.sort_values('Center Frequency (MHz)')
+        print(df.iloc[0]['Time'])
+        print(df.iloc[1]['Time'])
+        print(df.iloc[30]['Time'])
 
-        earfcn_list = df_sort['Center Frequency (MHz)'].unique()
+        earfcn_list = df['Center Frequency (MHz)'].unique()
 
         files = []
 
         for earfcn in earfcn_list:
-            df_earfcn = df_sort[df_sort['Center Frequency (MHz)'] == earfcn].reset_index(drop=True)
+            df_earfcn = df[df['Center Frequency (MHz)'] == earfcn].reset_index(drop=True)
             x = str(conv.freq_to_arfcn(earfcn))
             nom_fichier = f"../donnees/viavi_{x}.csv"
             df_earfcn.to_csv(nom_fichier)
@@ -94,14 +97,13 @@ class Viavilyzer:
 
         data.insert(0, 'Timestamp', 0.0)
         data = data.astype(dtype_mapping)
-
         time_zone = "CET"
         if "CEST" in data.iloc[0]['Time']:
             time_zone = "CEST"
 
         for index, row in data.iterrows():
-            x = abs(start - time.mktime(datetime.datetime.strptime(((row['Time']).split(time_zone)[0]).replace(" ", ""),
-                                                                   "%H:%M:%S.%f%p").timetuple()))
+            x = abs(time.mktime(datetime.datetime.strptime(((row['Time']).split(time_zone)[0]).replace(" ", ""),
+                                                                   "%H:%M:%S.%f%p").timetuple()) - start)
             data.loc[index, 'Timestamp'] = x
         data = data.drop(['Date', 'Time'], axis=1)
         return data, date
