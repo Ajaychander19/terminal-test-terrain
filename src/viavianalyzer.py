@@ -40,10 +40,6 @@ class Viavilyzer:
         df = pd.read_csv(filename)
         # conv.freq_to_arfcn(row['Center Frequency (MHz)'])
         #df_sort = df.sort_values('Center Frequency (MHz)')
-        print(df.iloc[0]['Time'])
-        print(df.iloc[1]['Time'])
-        print(df.iloc[30]['Time'])
-
         earfcn_list = df['Center Frequency (MHz)'].unique()
 
         files = []
@@ -327,5 +323,5 @@ fields = ['Date', 'Time', 'Latitude', 'Longitude', 'Center Frequency', 'Technolo
 # dic = viaviparser.dic_viavi(fields, colsnames)
 
 # Viavilyzer.produces_csv_op_files("test_files/FichierTestSFR.csv")
-Viavilyzer.produces_csv_op_files("test_files/6juin.csv")
+#Viavilyzer.produces_csv_op_files("test_files/6juin.csv")
 # Viavilyzer.produce_csv_file("test_files/save1000.csv", 5, -150.0)

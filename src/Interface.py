@@ -10,6 +10,7 @@ from tkinter import messagebox, Canvas
 import xcalyzer
 import cartoradio
 import association
+from src.viavianalyzer import Viavilyzer
 
 
 class CreateToolTip(object):
@@ -64,9 +65,17 @@ class GUI(tkinter.Frame):
         self.defaultPath.configure(height=3, width=25)
         self.defaultPath.pack(padx=5, pady=5)
 
+        self.viavi_conversion = tkinter.Button(self, command=lambda: self.button_click(5),
+                                              text="viavi *.csv conversion",
+                                              font=boldFont, background='light green')
+        self.viavi_conversion.configure(height=3, width=25)
+        self.viavi_conversion.pack(padx=5, pady=5)
+
+        #todo("Faire un bouton pour le viavi")
         self.pcap_conversion = tkinter.Button(self, command=lambda: self.button_click(2),
                                               text="Field-test *.aof to *.pcap \n and AOF-like *.csv conversion",
                                               font=boldFont, background='light green')
+
         self.pcap_conversion.configure(height=3, width=25)
         self.pcap_conversion.pack(padx=5, pady=5)
         self.pcap_conversion_ttp = CreateToolTip(self.pcap_conversion,
@@ -92,7 +101,7 @@ class GUI(tkinter.Frame):
             self.association,
             "Choose the .csv site file created from the 'Cartoradio File Conversion' and the .csv measurement file")
 
-        self.visualizaion = tkinter.Button(self, command=lambda: self.button_click(5),
+        self.visualizaion = tkinter.Button(self, command=lambda: self.button_click(6),
                                            text="Visualisation", font=boldFont, background='light green')
         self.visualizaion.configure(height=3, width=25)
         self.visualizaion.pack(padx=5, pady=5)
@@ -115,7 +124,6 @@ class GUI(tkinter.Frame):
                 self.change_color('red')
                 self.working_directory = filedialog.askdirectory(title="Select data directory (not tmp)", initialdir=self.working_directory)
                 self.change_color('green')
-
             elif number == 2:  # Field-testing trace file.
 
                 self.change_color('red')
@@ -177,6 +185,21 @@ class GUI(tkinter.Frame):
                         site_file,
                         self.working_directory
                     ).calculate_association()
+
+                self.change_color('green')
+
+            elif number == 5:  # viavi file processing
+                self.change_color('red')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',
+                                                    filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
+                #merge
+
+                if len(files) != 0:
+                    # csvtoPcap(files,self.working_directory)
+                    for f in files:
+                        conv = Viavilyzer.produces_csv_op_files(f)
+                else:
+                    messagebox.showinfo("Warning", "Select at least one file")
 
                 self.change_color('green')
 
