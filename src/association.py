@@ -42,6 +42,19 @@ class CellAssociator:
         'POINT': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'RSRP', 'RSRQ', 'RSSI', 'CINR']
     }
 
+    # Association file header V2
+    _HEADER_V2 = {
+        'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
+        'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
+        'MEAS_BEAMS': ['NA', 'NA', 'NA', 'NA', 'BEAM1', 'BEAM2', 'BEAM3', 'etc'],
+        'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas_for_1', 'nb_meas_for_2', 'nb_meas_for_3', 'etc'],
+        'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values'],
+        'DELIMITER': ['Cartoradio_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng'],
+        'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
+        'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI'],
+        'POINT': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'RSRP', 'RSRQ', 'RSSI', 'CINR']
+    }
+
     def __init__(self, in_meas: str, in_sites: str, outdir: str):
         """Class constructor.
 
@@ -56,6 +69,7 @@ class CellAssociator:
         self._outdir = outdir       # Output file directory.
         self._point_assoc = None    # Association between points and measurements.
         self._antennas = None       # Antennas
+        self.version = None         # None => 4G ,v2 => 5G
 
     def calculate_association(self):
         """Calculates the association between EARFCNs / PCIs and base stations."""
@@ -64,7 +78,10 @@ class CellAssociator:
         file_name = os.path.join(self._outdir, 'assoc_{0}_{1}.csv'.format(
                     pathlib.Path(self._in_meas).stem.replace("cev",""),
                     pathlib.Path(self._in_sites).stem.replace("cev","")))
-        with csvt.CSVWriter(file_name, self._HEADER) as out_wr:
+        header = self._HEADER
+        if self.version == "2.0":
+            header = self._HEADER_V2
+        with csvt.CSVWriter(file_name, header) as out_wr:
 
             print('Reading measurements...')
             self._read_measurements(out_wr)
@@ -131,7 +148,8 @@ class CellAssociator:
                         {'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'TAC': [int(line[6])], 'CID': [int(line[7])]},
                         1
                     )
-
+                elif line[0] == 'VERSION' and line[1] == "2.0":
+                    self.version = 2.0
                 # Registering measurements...
                 elif line[0] == 'MEASURE_SERVING':
 
@@ -149,7 +167,7 @@ class CellAssociator:
                     last_earfcn = int(line[4])
                     last_pci = int(line[5])
 
-                # Registering EARFCN / PCI couples...
+                # Registering EARFCN / PCI / BEAM (if V2) tuples...
                 elif line[0] == 'MEAS_EARFCNS':
 
                     if len(line) < 6:
@@ -166,11 +184,19 @@ class CellAssociator:
                     if len(line) != len(lineb):
                         raise RuntimeError('error: MEAS_EARFCNS and MEAS_PCIS line should have the same length.')
 
-                    earpcis = [(int(i), int(j)) for (i, j) in zip(line[5:], lineb[5:])]
+                    earpcis = None
+                    if self.version == "2.0":
+                        linec = meas.read_line()
+                        earpcis = [(int(i), int(j), int(k)) for (i, j, k) in zip(line[5:], lineb[5:], linec[5:])]
+                        out_wr.write_row(line)
+                        out_wr.write_row(lineb)
+                        out_wr.write_row(linec)
+                    else:
+                        # Writing couples in file...
+                        out_wr.write_row(line)
+                        out_wr.write_row(lineb)
+                        earpcis = [(int(i), int(j)) for (i, j) in zip(line[5:], lineb[5:])]
 
-                    # Writing couples in file...
-                    out_wr.write_row(line)
-                    out_wr.write_row(lineb)
 
                 elif line[0] == 'MEAS_NB':
                     if len(line) != len(lineb):
