@@ -23,6 +23,7 @@ var csvread = {
         // Measurements columns.
         _earfcns
         _pcis
+        _beams
 
         // Points of data
         _points
@@ -65,6 +66,7 @@ var csvread = {
             this._file = file;
             this._earfcns = [];
             this._pcis = [];
+            this._beams = [];
             this._nbSamples = [];
             this._points = {};
             this._rsrps = [];
@@ -174,7 +176,9 @@ var csvread = {
                                 measLines = true;
 
                                 break;
-
+                            case 'MEAS_BEAMS':
+                                for (let j = 5; j < llen; j++) this._beams.push(parseInt(line[j]));
+                                break;
                             case 'MEAS_NB':   // Number of measurement for each (EARFCN, PCI) couple
 
                                 if (llen < 6) throw new Error(
