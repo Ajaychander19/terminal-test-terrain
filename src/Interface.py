@@ -58,27 +58,26 @@ class GUI(tkinter.Frame):
 
         self.lnameLabel = tkinter.Label(self, text="COVERAGE OF 4G BASE STATIONS", font=boldFont,
                                         background='light blue')
-        self.lnameLabel.grid(row=0, column=0)
+        self.lnameLabel.pack(padx=5, pady=5)
 
         self.defaultPath = tkinter.Button(self, command=lambda: self.button_click(1), text="Select data directory",
                                           font=boldFont, background='light green')
         self.defaultPath.configure(height=3, width=25)
-        self.defaultPath.grid(row=1, column=0)
+        self.defaultPath.pack(padx=5, pady=5)
 
         self.viavi_conversion = tkinter.Button(self, command=lambda: self.button_click(5),
-                                              text="viavi *.csv\nconversion",
+                                              text="viavi *.csv conversion",
                                               font=boldFont, background='light green')
+        self.viavi_conversion.configure(height=3, width=25)
+        self.viavi_conversion.pack(padx=5, pady=5)
 
-        self.viavi_conversion.configure(height=3, width=12)
-        self.viavi_conversion.grid(row=2, column=0)
-
+        #todo("Faire un bouton pour le viavi")
         self.pcap_conversion = tkinter.Button(self, command=lambda: self.button_click(2),
-                                              text="aof filepro-\ncessing (Xcal)",
+                                              text="Field-test *.aof to *.pcap \n and AOF-like *.csv conversion",
                                               font=boldFont, background='light green')
 
-        self.pcap_conversion.configure(height=3, width=12)
-        self.pcap_conversion.grid(row=2, column=1)
-
+        self.pcap_conversion.configure(height=3, width=25)
+        self.pcap_conversion.pack(padx=5, pady=5)
         self.pcap_conversion_ttp = CreateToolTip(self.pcap_conversion,
                                                  "Choose the Field-test Accuver Xcal files "
                                                  "to produce a measurement file that can be used by the Association "
@@ -88,7 +87,7 @@ class GUI(tkinter.Frame):
                                                text="Cartoradio conversion", font=boldFont,
                                                background='light green')
         self.cartoradio_files.configure(height=3, width=25)
-        self.cartoradio_files.grid(row=3, column=0)
+        self.cartoradio_files.pack(padx=5, pady=5)
         self.cartoradio_files_ttp = CreateToolTip(
             self.cartoradio_files,
             "Convert Antennes_Emetteurs_Bandes_Cartoradio and"
@@ -97,17 +96,18 @@ class GUI(tkinter.Frame):
         self.association = tkinter.Button(self, command=lambda: self.button_click(4),
                                           text="Cell Association Processing", font=boldFont, background='light green')
         self.association.configure(height=3, width=25)
-        self.association.grid(row=4, column=0)
+        self.association.pack(padx=5, pady=5)
         self.association_ttp = CreateToolTip(
             self.association,
             "Choose the .csv site file created from the 'Cartoradio File Conversion' and the .csv measurement file")
+
         self.visualizaion = tkinter.Button(self, command=lambda: self.button_click(6),
                                            text="Visualisation", font=boldFont, background='light green')
         self.visualizaion.configure(height=3, width=25)
-        self.visualizaion.grid(row=5, column=0)
+        self.visualizaion.pack(padx=5, pady=5)
 
         self.canvas = Canvas(self, height=20)
-        self.canvas.grid(row=6, column=0)
+        self.canvas.pack()
         self.color = 'green'
         self.rec = self.canvas.create_rectangle(10000, 20, 20, 2,
                                                 outline="#fb0", fill=self.color)
