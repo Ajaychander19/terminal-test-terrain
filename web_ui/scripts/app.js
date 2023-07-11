@@ -23,6 +23,7 @@ const app = {
 
         _checkEarfcns = [];         // Selected EARFCNs (with sites checkboxes).
         _checkPcis = [];            // Select PCIs (with sites checkboxes).
+        _checkBeams = [];
 
         _allSites = true;           // true if "All Sites" is selected in Sites.
 
@@ -46,7 +47,7 @@ const app = {
                 'Base Layer': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 }),
-                'Dark Layer': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+                'Dark Layer': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolls/{z}/{x}/{y}{r}.png', {
                     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
                 })
             };
@@ -78,6 +79,7 @@ const app = {
             let points = this._fileReader.points;       // Serving points.
             let earfcns = this._fileReader.earfcns;     // EARFCNs
             let pcis = this._fileReader.pcis;           // PCIs
+            let beams = this._fileReader.beams;         // beams
             let selEarfcns = this._selEarfcns;          // EARFCNs selected with drop down menu.
             let selPcis = this._selPcis;                // PCIs selected with drop down menu.
             let checkEarfcns = this._checkEarfcns;      // EARFCNs selected with checkboxes.
@@ -99,10 +101,10 @@ const app = {
             const CINR_MAX = 20;
 
             // Filtering EARFCNs and PCIs following drop down menus selection.
-            let filtEarpcis = utils.subEarpci(earfcns, pcis, selEarfcns, selPcis);
+            let filtEarpcis = utils.subEarpci(earfcns, pcis, null, selEarfcns, selPcis, null);
 
             // Filtering EARFCNs and PCIs using sites checkboxes.
-            let onlySitesEarpcis = utils.subEarpci(filtEarpcis.earfcns, filtEarpcis.pcis, checkEarfcns, checkPcis);
+            let onlySitesEarpcis = utils.subEarpci(filtEarpcis.earfcns, filtEarpcis.pcis,null, checkEarfcns, checkPcis, null);
             
             // Final EARFCNs and PCIs list.
             let finalEarfcns = (this._allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
@@ -171,13 +173,13 @@ const app = {
         updateAssocs() {
 
             // Getting selected EARFCNS / PCIS.
-            let earpcis = this._allSites ? {earfcns: [], pcis: [], indices: []} : utils.subEarpci(this._fileReader.earfcns,
+            let earpcis = this._allSites ? {earfcns: [], pcis: [], beams: [], indices: []} : utils.subEarpci(this._fileReader.earfcns,
                 this._fileReader.pcis, this._selEarfcns, this._selPcis)
 
             // Redrawing associated stations pins.
             this._drawingMap.drawAssocs(
-                this._fileReader.assocs, this._fileReader.antennas, this._checkEarfcns, this._checkPcis, 
-                () => this.update(), earpcis.earfcns, earpcis.pcis);
+                this._fileReader.assocs, this._fileReader.antennas, this._checkEarfcns, this._checkPcis, this._checkBeams,
+                () => this.update(), earpcis.earfcns, earpcis.pcis, earpcis.beams);
 
         }
 
@@ -200,6 +202,7 @@ const app = {
 
             this._checkEarfcns = [];
             this._checkPcis = [];
+            this._checkBeams = [];
 
             this._rsrpChecked = false;
             this._rsrqChecked = false;
