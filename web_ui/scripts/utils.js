@@ -88,14 +88,15 @@ const utils = {
      * 
      * @function 
      */
-    subEarpci: function (earfcns, pcis, reqEarfcns=null, reqPcis=null) {
+    subEarpci: function (earfcns, pcis, /*beams=null,*/ reqEarfcns=null, reqPcis=null/*, reqBeams=null*/) {
 
         // Result object.
-        let result = {earfcns: [], pcis: [], indices: []};
+        let result = {earfcns: [], pcis: []/*, beams: [],*/, indices: []};
 
         // Indexes of EARFCNs / PCIs of the subset.
         let subEarfcnsIdx = [];
         let subPcisIdx = [];
+        //let subBeamsIdx = [];
 
         // Filling subEarfcnsIdx.
         if (!reqEarfcns) subEarfcnsIdx = earfcns.map((_, i) => parseInt(i));    // If null : all elements.
@@ -109,16 +110,28 @@ const utils = {
             (e) => utils.interPush(subPcisIdx, utils.indexesOf(pcis, e))
         );
 
+        // Filling subBeamsIdx.
+        /*if (beams){
+            if (!reqBeams) subBeamsIdx = beams.map((_, i) => parseInt(i));
+            else reqBeams.forEach(
+                (e) => utils.interPush(subBeamsIdx, utils.indexesOf(beams, e))
+            );
+        }*/
+
 
         subEarfcnsIdx.filter((i) => {    // Filtering over indexes.
 
             let e = earfcns[i];     // EARFCN associated to the current index.
             let p = pcis[i];        // PCI associated to the current index.
+            /*let b;
+            if(beams){
+                b = beams[i];
+            }*/
 
             // Searching (e, p) pair in reqEarfcn and reqPcis if possible, evaluating in null otherwise.
-            let inter = (reqEarfcns && reqPcis) ? 
+            let inter = (reqEarfcns && reqPcis) ?
                 utils.indexesOf(reqEarfcns, e).filter(
-                    (ear) => utils.indexesOf(reqPcis, p).includes(ear))
+                    (ear) => utils.indexesOf(reqPcis, p).includes(ear))/*.filter((pci) => utils.indexesOf(reqBeams, b).includes(pci))*/
                 : null;
 
             // Pair found or not possible to find the pair.
@@ -132,6 +145,9 @@ const utils = {
                 result.earfcns.push(earfcns[i]);
                 result.pcis.push(pcis[i]);
                 result.indices.push(i);
+                /*if(beams){
+                    result.beams.push(beams[i]);
+                }*/
             }
         );
 

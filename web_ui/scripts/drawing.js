@@ -241,7 +241,7 @@ const drawing = {
          * 
          * @function
          */
-        drawAssocs(assocs, antennas, checkEarfcns, checkPcis, updateMethod, earfcns=null, pcis=null) {
+        drawAssocs(assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns=null, pcis=null) {
 
             this._assocLayer.clearLayers();
 
@@ -255,7 +255,7 @@ const drawing = {
 
                 // Creating popup.
                 marker.bindPopup(
-                    this.drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, updateMethod, earfcns, pcis),
+                    this.drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis),
                     {closeOnClick: false, autoClose: false}
                 );
                 marker.addTo(this._assocLayer);
@@ -279,8 +279,12 @@ const drawing = {
          * 
          * @function
          */
-        drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, updateMethod, earfcns=null, pcis=null) {
+        drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams=null, updateMethod, earfcns=null, pcis=null, beams=null) {
+            let beam = '<select class="form-control selectpicker" id="beam_select">'
+                + '<option value="all-beams">All BEAMs</option>'
+                '</select>';
 
+            //let beamSelector = document.querySelector('#beam_select');
             // Content element of the popup.
             let popDiv = document.createElement('div');
 
@@ -295,13 +299,20 @@ const drawing = {
 
             let ascEarfcns = assoc.map((asc) => asc.earfcn);
             let ascPcis = assoc.map((asc) => asc.pci);
+            let ascBeams = null;
+            /*if (checkBeams){
+                ascBeams = assoc.map((asc) => asc.beam);
+            }*/
 
             let earpcis = utils.subEarpci(ascEarfcns, ascPcis, earfcns, pcis);
+            //let earpcis = utils.subEarpci(ascEarfcns, ascPcis, ascBeams, earfcns, pcis, beams);
+
 
             for (let i in earpcis.earfcns) {
 
                 let earfcn = earpcis.earfcns[i];
                 let pci = earpcis.pcis[i];
+                //let beam = earpcis.beams[i];
 
                 // Checkbox element.
                 let checkBox = document.createElement('input');
@@ -329,7 +340,7 @@ const drawing = {
                 // Label of the checkbox.
                 let label = document.createElement('label');
                 label.setAttribute('for', checkId);
-                label.innerHTML = earfcn + ' - ' + pci;
+                label.innerHTML = earfcn + ' - ' + pci + beam;
 
                 // Adding it to the checkboxes container div...
                 checkDiv.append(...[
