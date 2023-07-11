@@ -177,7 +177,9 @@ var csvread = {
 
                                 break;
                             case 'MEAS_BEAMS':
-                                for (let j = 5; j < llen; j++) this._beams.push(parseInt(line[j]));
+                                for (let j = 5; j < llen; j++){
+                                    this._beams.push(parseInt(line[j]));
+                                }
                                 break;
                             case 'MEAS_NB':   // Number of measurement for each (EARFCN, PCI) couple
 

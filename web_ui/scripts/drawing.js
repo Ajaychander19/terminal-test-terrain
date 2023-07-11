@@ -241,13 +241,13 @@ const drawing = {
          * 
          * @function
          */
-        drawAssocs(assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns=null, pcis=null) {
+        drawAssocs(assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns=null, pcis=null, beams=null) {
 
             this._assocLayer.clearLayers();
 
             for (let cartoNum in assocs) {
 
-                let assoc = assocs[cartoNum];       // Association between current Cartoradio Num. and EARFCN / PCI.
+                let assoc = assocs[cartoNum];    // Association between current Cartoradio Num. and EARFCN / PCI.
                 let ant = antennas[cartoNum];   // Associated antenna
 
                 // Creating the marker object.
@@ -255,7 +255,7 @@ const drawing = {
 
                 // Creating popup.
                 marker.bindPopup(
-                    this.drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis),
+                    this.drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams),
                     {closeOnClick: false, autoClose: false}
                 );
                 marker.addTo(this._assocLayer);
@@ -280,78 +280,65 @@ const drawing = {
          * @function
          */
         drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams=null, updateMethod, earfcns=null, pcis=null, beams=null) {
+            let bs;
+            for ( let b in beams){
+                bs += '<option value=' + b + '>'+ b + '</option>';
+            }
+
             let beam = '<select class="form-control selectpicker" id="beam_select">'
-                + '<option value="all-beams">All BEAMs</option>'
-                '</select>';
+            + '<option value="all-beams">All BEAMs</option>'
+            + bs;
+            '</select>';
 
             //let beamSelector = document.querySelector('#beam_select');
             // Content element of the popup.
             let popDiv = document.createElement('div');
-
             // Popup title.
             popDiv.innerHTML = '<span class="tooltip-title">' + cartoNum + '</span><br>';
-
             // Checkboxes container element.
             let checkDiv = document.createElement('div');
             checkDiv.classList.add('check-div');
-
             // Inserting checkboxes for each associated EARFCN / PCI...
-
             let ascEarfcns = assoc.map((asc) => asc.earfcn);
             let ascPcis = assoc.map((asc) => asc.pci);
             let ascBeams = null;
             /*if (checkBeams){
-                ascBeams = assoc.map((asc) => asc.beam);
-            }*/
 
+                ascBeams = assoc.map((asc) => asc.beam);
+
+            }*/
             let earpcis = utils.subEarpci(ascEarfcns, ascPcis, null, earfcns, pcis, null);
             //let earpcis = utils.subEarpci(ascEarfcns, ascPcis, ascBeams, earfcns, pcis, beams);
-
-
             for (let i in earpcis.earfcns) {
-
                 let earfcn = earpcis.earfcns[i];
                 let pci = earpcis.pcis[i];
                 //let beam = earpcis.beams[i];
-
                 // Checkbox element.
                 let checkBox = document.createElement('input');
                 checkBox.setAttribute('type', 'checkbox');
-                
                 // Identifying the checkbox.
                 let checkId = 'check' + '-' + cartoNum + '-' + earfcn + '-' + pci;
                 checkBox.id = checkId;
-
                 // When clicking the checkbox...
-                checkBox.onclick = (evt) => { 
-                    
+                checkBox.onclick = (evt) => {
                     // ...adding corresponding EARFCN / PCI to checkEARFCN an checkPCI.
                     if (evt.target.checked) {
                         checkEarfcns.push(earfcn);
                         checkPcis.push(pci);
                     } else utils.removeEarpci(checkEarfcns, checkPcis, earfcn, pci);
-
                     updateMethod();
-
                 };
-
                 if (utils.indexOfEarpci(checkEarfcns, checkPcis, earfcn, pci) !== -1) checkBox.checked = true;
-
                 // Label of the checkbox.
                 let label = document.createElement('label');
                 label.setAttribute('for', checkId);
                 label.innerHTML = earfcn + ' - ' + pci + beam;
-
                 // Adding it to the checkboxes container div...
                 checkDiv.append(...[
                     checkBox, label, document.createElement('br')
                 ]);
-
-
             }
-
             popDiv.append(checkDiv);
-
             return popDiv;
 
         }

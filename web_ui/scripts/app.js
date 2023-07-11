@@ -101,10 +101,10 @@ const app = {
             const CINR_MAX = 20;
 
             // Filtering EARFCNs and PCIs following drop down menus selection.
-            let filtEarpcis = utils.subEarpci(earfcns, pcis, null, selEarfcns, selPcis, null);
+            let filtEarpcis = utils.subEarpci(earfcns, pcis, beams, selEarfcns, selPcis, null);
 
             // Filtering EARFCNs and PCIs using sites checkboxes.
-            let onlySitesEarpcis = utils.subEarpci(filtEarpcis.earfcns, filtEarpcis.pcis,null, checkEarfcns, checkPcis, null);
+            let onlySitesEarpcis = utils.subEarpci(filtEarpcis.earfcns, filtEarpcis.pcis,filtEarpcis.beams, checkEarfcns, checkPcis, null);
             
             // Final EARFCNs and PCIs list.
             let finalEarfcns = (this._allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
@@ -171,10 +171,9 @@ const app = {
          * @function
          */
         updateAssocs() {
-
             // Getting selected EARFCNS / PCIS.
             let earpcis = this._allSites ? {earfcns: [], pcis: [], beams: [], indices: []} : utils.subEarpci(this._fileReader.earfcns,
-                this._fileReader.pcis, this._selEarfcns, this._selPcis)
+                this._fileReader.pcis, this._fileReader._beams, this._selEarfcns, this._selPcis, null);
 
             // Redrawing associated stations pins.
             this._drawingMap.drawAssocs(
