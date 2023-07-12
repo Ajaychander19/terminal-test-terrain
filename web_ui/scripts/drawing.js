@@ -281,8 +281,8 @@ const drawing = {
          */
         drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams=null, updateMethod, earfcns=null, pcis=null, beams=null) {
             let bs;
-            for ( let b in beams){
-                bs += '<option value=' + b + '>'+ b + '</option>';
+            for ( var i = 0; i < beams.length; i++){
+                bs += '<option value=' + beams[i] + '>'+ beams[i] + '</option>';
             }
 
             let beam = '<select class="form-control selectpicker" id="beam_select">'
