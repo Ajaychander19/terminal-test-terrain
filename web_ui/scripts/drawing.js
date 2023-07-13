@@ -280,39 +280,43 @@ const drawing = {
          * @function
          */
         drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams=null, updateMethod, earfcns=null, pcis=null, beams=null) {
-            let bs;
-            for ( var i = 0; i < beams.length; i++){
-                bs += '<option value=' + beams[i] + '>'+ beams[i] + '</option>';
-            }
-
-            let beam = '<select class="form-control selectpicker" id="beam_select">'
-            + '<option value="all-beams">All BEAMs</option>'
-            + bs;
-            '</select>';
-
             //let beamSelector = document.querySelector('#beam_select');
             // Content element of the popup.
             let popDiv = document.createElement('div');
+
             // Popup title.
             popDiv.innerHTML = '<span class="tooltip-title">' + cartoNum + '</span><br>';
+
             // Checkboxes container element.
             let checkDiv = document.createElement('div');
             checkDiv.classList.add('check-div');
+
             // Inserting checkboxes for each associated EARFCN / PCI...
             let ascEarfcns = assoc.map((asc) => asc.earfcn);
             let ascPcis = assoc.map((asc) => asc.pci);
             let ascBeams = null;
-            /*if (checkBeams){
 
-                ascBeams = assoc.map((asc) => asc.beam);
-
-            }*/
-            let earpcis = utils.subEarpci(ascEarfcns, ascPcis, null, earfcns, pcis, null);
-            //let earpcis = utils.subEarpci(ascEarfcns, ascPcis, ascBeams, earfcns, pcis, beams);
+            //let earpcis = utils.subEarpci(ascEarfcns, ascPcis, null, earfcns, pcis, beams);
+            let earpcis = utils.subEarpci(ascEarfcns, ascPcis, beams, earfcns, pcis, null);
             for (let i in earpcis.earfcns) {
                 let earfcn = earpcis.earfcns[i];
                 let pci = earpcis.pcis[i];
-                //let beam = earpcis.beams[i];
+                let bs;
+                let beam;
+
+                if (pcis != null && earfcns != null){
+                    let current_beams = utils.findBeams(earfcns, pcis, beams, earfcn, pci);
+                    for ( var j = 0; j < current_beams.length; j++){
+                        bs += '<option value=' + current_beams[j] + '>'+ current_beams[j] + '</option>';
+                    }
+
+                    beam = '<select class="form-control selectpicker" id="beam_select">'
+                    + '<option value="all-beams">All BEAMs</option>'
+                    + bs;
+                    '</select>';
+
+                }
+
                 // Checkbox element.
                 let checkBox = document.createElement('input');
                 checkBox.setAttribute('type', 'checkbox');

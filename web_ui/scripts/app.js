@@ -20,6 +20,7 @@ const app = {
 
         _selEarfcns = null;         // Selected EARFCNs (with drop down menu).
         _selPcis = null;            // Selected PCIs (with drop down menu).
+        _selBeams = null;
 
         _checkEarfcns = [];         // Selected EARFCNs (with sites checkboxes).
         _checkPcis = [];            // Select PCIs (with sites checkboxes).
@@ -82,8 +83,10 @@ const app = {
             let beams = this._fileReader.beams;         // beams
             let selEarfcns = this._selEarfcns;          // EARFCNs selected with drop down menu.
             let selPcis = this._selPcis;                // PCIs selected with drop down menu.
+            let selBeams = this._selBeams;
             let checkEarfcns = this._checkEarfcns;      // EARFCNs selected with checkboxes.
             let checkPcis = this._checkPcis;            // PCIs selected with sites checkboxes.
+            let checkBeams = this._checkBeams;
 
             // Extremums
             const RSRP_MIN = -120;
@@ -104,7 +107,7 @@ const app = {
             let filtEarpcis = utils.subEarpci(earfcns, pcis, beams, selEarfcns, selPcis, null);
 
             // Filtering EARFCNs and PCIs using sites checkboxes.
-            let onlySitesEarpcis = utils.subEarpci(filtEarpcis.earfcns, filtEarpcis.pcis,filtEarpcis.beams, checkEarfcns, checkPcis, null);
+            let onlySitesEarpcis = utils.subEarpci(filtEarpcis.earfcns, filtEarpcis.pcis, filtEarpcis.Beams, checkEarfcns, checkPcis, checkBeams);
             
             // Final EARFCNs and PCIs list.
             let finalEarfcns = (this._allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
@@ -172,8 +175,9 @@ const app = {
          */
         updateAssocs() {
             // Getting selected EARFCNS / PCIS.
+
             let earpcis = this._allSites ? {earfcns: [], pcis: [], beams: [], indices: []} : utils.subEarpci(this._fileReader.earfcns,
-                this._fileReader.pcis, this._fileReader._beams, this._selEarfcns, this._selPcis, null);
+                this._fileReader.pcis, this._fileReader._beams, this._selEarfcns, this._selPcis, this._selBeams);
 
             // Redrawing associated stations pins.
             this._drawingMap.drawAssocs(
@@ -198,6 +202,7 @@ const app = {
 
             this._selEarfcns = null;
             this._selPcis = null;
+            this._selBeams = null;
 
             this._checkEarfcns = [];
             this._checkPcis = [];

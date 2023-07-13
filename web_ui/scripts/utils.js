@@ -89,7 +89,6 @@ const utils = {
      * @function 
      */
     subEarpci: function (earfcns, pcis, beams=null, reqEarfcns=null, reqPcis=null, reqBeams=null) {
-
         // Result object.
         let result = {earfcns: [], pcis: [], beams: [], indices: []};
 
@@ -118,7 +117,6 @@ const utils = {
             );
         }
 
-
         subEarfcnsIdx.filter((i) => {    // Filtering over indexes.
 
             let e = earfcns[i];     // EARFCN associated to the current index.
@@ -128,11 +126,11 @@ const utils = {
             if(beams){
                 b = beams[i];
             }
-
+///////////////
             // Searching (e, p) pair in reqEarfcn and reqPcis if possible, evaluating in null otherwise.
-            let inter = (reqEarfcns && reqPcis && reqBeams) ?
+            let inter = (reqEarfcns && reqPcis) ?
                 utils.indexesOf(reqEarfcns, e).filter(
-                    (ear) => utils.indexesOf(reqPcis, p).includes(ear)).filter((pci) => utils.indexesOf(reqBeams, b).includes(pci))
+                    (ear) => utils.indexesOf(reqPcis, p).includes(ear))//.filter((pci) => utils.indexesOf(reqBeams, b).includes(pci))
                 : null;
 
             // Pair found or not possible to find the pair.
@@ -140,7 +138,7 @@ const utils = {
 
             // If pair found (if possible), and PCi found.
             return subPcisIdx.includes(i) && sameIndex;
-
+/////////////////
         }).forEach( // Filling result.
             (i) => {
                 result.earfcns.push(earfcns[i]);
@@ -151,11 +149,21 @@ const utils = {
                 }
             }
         );
-
         return result;
 
     },
 
+    findBeams: function (XS, YS, ZS, x, y) {
+        const resultat = [];
+        for (let i = 0; i < XS.length; i++) {
+            if (XS[i] === x && YS[i] === y) {
+              resultat.push(ZS[i]);
+            }
+        }
+        resultat.sort();
+        return resultat;
+  }
+    ,
     /**
      * Pushes elements of arrayB in arrayA if not already in arrayA.
      * 
