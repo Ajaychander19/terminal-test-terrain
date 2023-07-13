@@ -280,7 +280,6 @@ const drawing = {
          * @function
          */
         drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams=null, updateMethod, earfcns=null, pcis=null, beams=null) {
-            //let beamSelector = document.querySelector('#beam_select');
             // Content element of the popup.
             let popDiv = document.createElement('div');
 
@@ -303,9 +302,10 @@ const drawing = {
                 let pci = earpcis.pcis[i];
                 let bs;
                 let beam;
+                let select_beams;
 
                 if (pcis != null && earfcns != null){
-                    let current_beams = utils.findBeams(earfcns, pcis, beams, earfcn, pci);
+                    /*let current_beams = utils.findBeams(earfcns, pcis, beams, earfcn, pci);
                     for ( var j = 0; j < current_beams.length; j++){
                         bs += '<option value=' + current_beams[j] + '>'+ current_beams[j] + '</option>';
                     }
@@ -313,8 +313,23 @@ const drawing = {
                     beam = '<select class="form-control selectpicker" id="beam_select">'
                     + '<option value="all-beams">All BEAMs</option>'
                     + bs;
-                    '</select>';
+                    '</select>';*/
+                    let current_beams = utils.findBeams(earfcns, pcis, beams, earfcn, pci)
+                    select_beams = document.createElement('select');
+                    select_beams.text = 'Select Beams';
 
+                    //all beams default
+                    let option = document.createElement('option');
+                    option.text = "All beams";
+                    option.value = 0; //todo()
+                    select_beams.add(option);
+
+                    for ( var j = 0; j < current_beams.length; j++){
+                        let option = document.createElement('option');
+                        option.text = current_beams[j];
+                        option.value = current_beams[j];
+                        select_beams.add(option);
+                    }
                 }
 
                 // Checkbox element.
@@ -336,10 +351,10 @@ const drawing = {
                 // Label of the checkbox.
                 let label = document.createElement('label');
                 label.setAttribute('for', checkId);
-                label.innerHTML = earfcn + ' - ' + pci + beam;
+                label.innerHTML = earfcn + ' - ' + pci /*+ beam*/;
                 // Adding it to the checkboxes container div...
                 checkDiv.append(...[
-                    checkBox, label, document.createElement('br')
+                    checkBox, label, select_beams, document.createElement('br')
                 ]);
             }
             popDiv.append(checkDiv);
