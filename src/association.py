@@ -79,7 +79,8 @@ class CellAssociator:
                     pathlib.Path(self._in_meas).stem.replace("cev",""),
                     pathlib.Path(self._in_sites).stem.replace("cev","")))
         header = self._HEADER
-        if self.version == "2.0":
+        self.version = 2.0
+        if self.version == 2.0:
             header = self._HEADER_V2
         with csvt.CSVWriter(file_name, header) as out_wr:
 
@@ -148,7 +149,7 @@ class CellAssociator:
                         {'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'TAC': [int(line[6])], 'CID': [int(line[7])]},
                         1
                     )
-                elif line[0] == 'VERSION' and line[1] == "2.0":
+                elif line[0] == 'VERSION' and line[1] == 2.0:
                     self.version = 2.0
                 # Registering measurements...
                 elif line[0] == 'MEASURE_SERVING':
@@ -185,7 +186,7 @@ class CellAssociator:
                         raise RuntimeError('error: MEAS_EARFCNS and MEAS_PCIS line should have the same length.')
 
                     earpcis = None
-                    if self.version == "2.0":
+                    if self.version == 2.0:
                         linec = meas.read_line()
                         earpcis = [(int(i), int(j), int(k)) for (i, j, k) in zip(line[5:], lineb[5:], linec[5:])]
                         out_wr.write_row(line)
