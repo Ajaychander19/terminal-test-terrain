@@ -44,6 +44,8 @@ class CellAssociator:
 
     # Association file header V2
     _HEADER_V2 = {
+        'VERSION' :['Version'],
+        'TECHNO' :['Techno'],
         'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
         'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
         'MEAS_BEAMS': ['NA', 'NA', 'NA', 'NA', 'BEAM1', 'BEAM2', 'BEAM3', 'etc'],
@@ -79,9 +81,12 @@ class CellAssociator:
                     pathlib.Path(self._in_meas).stem.replace("cev",""),
                     pathlib.Path(self._in_sites).stem.replace("cev","")))
         header = self._HEADER
-        self.version = 2.0
-        if self.version == 2.0:
-            header = self._HEADER_V2
+        with csvt.CSVReader(self._in_meas) as meas:
+            line = meas.read_line()
+            if line[0] == 'VERSION' and float(line[1]) == 2.0:
+                self.version = 2.0
+                header = self._HEADER_V2
+
         with csvt.CSVWriter(file_name, header) as out_wr:
 
             print('Reading measurements...')
@@ -149,8 +154,11 @@ class CellAssociator:
                         {'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'TAC': [int(line[6])], 'CID': [int(line[7])]},
                         1
                     )
-                elif line[0] == 'VERSION' and line[1] == 2.0:
+                elif line[0] == 'VERSION': #and line[1] == 2.0:
                     self.version = 2.0
+                    out_wr.write_row(line)
+                elif line[0] == 'TECHNO':
+                    out_wr.write_row(line)
                 # Registering measurements...
                 elif line[0] == 'MEASURE_SERVING':
 
