@@ -73,7 +73,7 @@ class GUI(tkinter.Frame):
 
         #todo("Faire un bouton pour le viavi")
         self.pcap_conversion = tkinter.Button(self, command=lambda: self.button_click(2),
-                                              text="Field-test *.aof to *.pcap \n and AOF-like *.csv conversion",
+                                              text="Aof file processing (Xcal)",
                                               font=boldFont, background='light green')
 
         self.pcap_conversion.configure(height=3, width=25)
