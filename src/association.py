@@ -54,7 +54,7 @@ class CellAssociator:
         'DELIMITER': ['Cartoradio_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng'],
         'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
         'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI'],
-        'POINT': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'RSRP', 'RSRQ', 'RSSI', 'CINR']
+        'POINT': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'BEAM', 'RSRP', 'RSRQ', 'RSSI', 'CINR']
     }
 
     def __init__(self, in_meas: str, in_sites: str, outdir: str):
@@ -121,7 +121,7 @@ class CellAssociator:
 
         # Serving cell infos.
         serving_dict = {
-            'Timestamp': [], 'Lat': [], 'Lng': [], 'EARFCN': [], 'PCI': [],
+            'Timestamp': [], 'Lat': [], 'Lng': [], 'EARFCN': [], 'PCI': [], 'BEAM': [],
             'RSRP': [], 'RSRQ': [], 'RSSI': [], 'CINR': []
         }
 
@@ -167,9 +167,9 @@ class CellAssociator:
                     insert_data(
                         serving_dict,
                         {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
-                         'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])],
-                         'RSRP': [float(line[6])], 'RSRQ': [float(line[7])], 'RSSI': [float(line[8])],
-                         'CINR': [float(line[9])]},
+                         'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'BEAM': [int(line[6])],
+                         'RSRP': [float(line[7])], 'RSRQ': [float(line[8])], 'RSSI': [float(line[9])],
+                         'CINR': [float(line[10])]},
                         1
                     )
 
@@ -626,7 +626,7 @@ class CellAssociator:
         for i in range(len(point_assoc['Lat'])):
             out_wr.write_row([
                 'POINT', point_assoc['Lat'][i], point_assoc['Lng'][i], point_assoc['TAC'][i],
-                point_assoc['CID'][i], point_assoc['EARFCN'][i], point_assoc['PCI'][i],
+                point_assoc['CID'][i], point_assoc['EARFCN'][i], point_assoc['PCI'][i], point_assoc['BEAM'][i],
                 point_assoc['RSRP'][i], point_assoc['RSRQ'][i], point_assoc['RSSI'][i],
                 point_assoc['CINR'][i]
             ])
