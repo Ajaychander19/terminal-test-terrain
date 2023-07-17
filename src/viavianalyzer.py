@@ -249,7 +249,7 @@ class Viavilyzer:
             'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas_for_1', 'nb_meas_for_2', 'nb_meas_for_3', 'etc'],
             'CELLINFO': ['Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'],
             'MEASURE_SERVING': [
-                'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI',
+                'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI', 'Serving_BEAM',
                 'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR'
             ],
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
@@ -296,7 +296,7 @@ class Viavilyzer:
                         csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + [
                             'RSSI'] + measurements_RSSI)
                 csv_out.write_row(['MEASURE_SERVING'] + [x['Timestamp']] + [x['Latitude']] + [x['Longitude']]
-                                  + [earfcn] + [x['PCI']] + [x['S-SS RSRP / RSRP (dBm)']]
+                                  + [earfcn] + [x['PCI']] + [x['SSB Index']] + [x['S-SS RSRP / RSRP (dBm)']]
                                   + [x['S-SS RSRQ / RSRQ (dB)']] + [x['S-SS RSSI / S-SS RSSI (dBm)']]
                                   + [x['S-SS SINR / RS SINR (dB)']])
                 min += interval
