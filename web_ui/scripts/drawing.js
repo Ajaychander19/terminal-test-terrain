@@ -123,35 +123,39 @@ const drawing = {
 
                 // For each PCI associated to the EARFCN...
                 for (let pci in earfcnGr) {
-
                     // Adding PCI entry if not exists.
                     pointDict[earfcn][pci] || (pointDict[earfcn][pci] = {})
+                    let pciGr = earfcnGr[pci];
 
-                    // Values dictionary.
-                    let points = {}
+                    for (let beam in pciGr){
+                        // Adding PCI entry if not exists.
+                        pointDict[earfcn][pci][beam] || (pointDict[earfcn][pci][beam] = {})
 
-                    // For each point associated to these EARFCN and PCI...
-                    earfcnGr[pci].forEach((point) => {
+                        // Values dictionary.
+                        let points = {}
 
-                        let latLng = [point.lat, point.lng];                // Latitude and longitude of the point.
-                        let val = valChooser(earfcn, pci, point);           // Value to associate to the group of the current point.
+                        // For each point associated to these EARFCN and PCI...
+                        pciGr[beam].forEach((point) => {
 
-                        // Creating the group if it does not exists.
-                        points[val] || (points[val] = []);
+                            let latLng = [point.lat, point.lng];                // Latitude and longitude of the point.
+                            let val = valChooser(earfcn, pci, point);           // Value to associate to the group of the current point.
 
-                        // Adding point to the group...
-                        points[val].push(latLng);
-                        
-                    });
+                            // Creating the group if it does not exists.
+                            points[val] || (points[val] = []);
 
-                    // Creating layers from group of points.
-                    for (let val in points) {
+                            // Adding point to the group...
+                            points[val].push(latLng);
 
-                        let layer = new L.GridLayer.MaskCanvas(styles.pointStyle(colorChooser(val)));
-                        layer.setData(points[val]);
+                        });
 
-                        pointDict[earfcn][pci] = layer;
+                        // Creating layers from group of points.
+                        for (let val in points) {
 
+                            let layer = new L.GridLayer.MaskCanvas(styles.pointStyle(colorChooser(val)));
+                            layer.setData(points[val]);
+
+                            pointDict[earfcn][pci][beam] = layer;
+                        }
                     }
 
                 }
@@ -371,7 +375,7 @@ const drawing = {
          * 
          * @function
          */
-        setPointLayer(layer, pointLayers, earfcns=null, pcis=null) {
+        setPointLayer(layer, pointLayers, earfcns=null, pcis=null, beams=null) {
 
             // Check if tables have the same length.
             if (earfcns && pcis && earfcns.length !== pcis.length)
@@ -400,9 +404,14 @@ const drawing = {
                     for (let p in pciLayers) {
 
                         let pci = parseInt(p);          // Current PCI.
-                        let pciLayer = pciLayers[p];    // Layer associated to the PCI.
+                        let beamsLayers = pciLayers[p];    // Layer associated to the PCI.
+
+                        for(let b in beamsLayers){
+                            let beamLayer = beamsLayers[b];
+                            layers.push(beamLayer);
+                        }
                         
-                        if (pcis) {     // Chose PCIs of pcis param is not null.
+                        /*if (pcis) {     // Chose PCIs of pcis param is not null.
 
                             // PCI indexes in pcis, used to get the associated EARFCN in earfcns param.
                             let pciIndexes = utils.indexesOf(pcis, pci);
@@ -418,7 +427,7 @@ const drawing = {
                             }
 
                         } else layers.push(pciLayer);   // Choose all PCIs otherwise...
-
+*/
                     }
                     
             }

@@ -271,11 +271,13 @@ var csvread = {
 
                                 let earfcn = csvread.parseNum(line[5], lineNum);
                                 let pci = csvread.parseNum(line[6], lineNum);
+                                let beam = csvread.parseNum(line[7], lineNum);
                                 let cinr = csvread.parseNum(line[10], lineNum);
 
                                 // Filling serving EARFCN / PCI measurements dictionnary...
                                 if (this._points[earfcn] === undefined) this._points[earfcn] = {}
-                                if (this._points[earfcn][pci] === undefined) this._points[earfcn][pci] = []
+                                if (this._points[earfcn][pci] === undefined) this._points[earfcn][pci] = {}
+                                if (this._points[earfcn][pci][beam] === undefined) this._points[earfcn][pci][beam] = []
 
                                 // Point to add.
                                 let point = {
@@ -296,7 +298,7 @@ var csvread = {
                                 if (this._minCINR > cinr) this._minCINR = cinr;
                                 if (this._maxCINR < cinr) this._maxCINR = cinr;
 
-                                this._points[earfcn][pci].push(point);
+                                this._points[earfcn][pci][beam].push(point);
 
                                 break;
 
