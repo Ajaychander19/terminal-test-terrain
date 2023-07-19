@@ -76,7 +76,6 @@ const app = {
          * @function
          */
         update() {
-
             let points = this._fileReader.points;       // Serving points.
             let earfcns = this._fileReader.earfcns;     // EARFCNs
             let pcis = this._fileReader.pcis;           // PCIs
@@ -104,7 +103,7 @@ const app = {
             const CINR_MAX = 20;
 
             // Filtering EARFCNs and PCIs following drop down menus selection.
-            let filtEarpcis = utils.subEarpci(earfcns, pcis, beams, selEarfcns, selPcis, null);
+            let filtEarpcis = utils.subEarpci(earfcns, pcis, beams, selEarfcns, selPcis, selBeams);
 
             // Filtering EARFCNs and PCIs using sites checkboxes.
             let onlySitesEarpcis = utils.subEarpci(filtEarpcis.earfcns, filtEarpcis.pcis, filtEarpcis.Beams, checkEarfcns, checkPcis, checkBeams);
@@ -112,13 +111,15 @@ const app = {
             // Final EARFCNs and PCIs list.
             let finalEarfcns = (this._allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
             let finalPcis = (this._allSites) ? selPcis : onlySitesEarpcis.pcis;
+            //let finalBeams = (this._allSites) ? selBeams: onlySitesEarpcis.beams;
 
+            let finalBeams = checkBeams;
             // Updating TAC / PCI layers.
-            this._drawingMap.updatePCILayer(points, finalEarfcns, finalPcis, this._altCol);
-            this._drawingMap.updateTACLayer(points, finalEarfcns, finalPcis);
+            this._drawingMap.updatePCILayer(points, finalEarfcns, finalPcis, finalBeams, this._altCol);
+            //this._drawingMap.updateTACLayer(points, finalEarfcns, finalPcis);
 
             // Updating serving measurement layers.
-            this._drawingMap.drawServingRSRP(points, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
+            /*this._drawingMap.drawServingRSRP(points, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
             this._drawingMap.drawServingRSRQ(points, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis);
             this._drawingMap.drawServingRSSI(points, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);
             this._drawingMap.drawServingCINR(points, CINR_MIN, CINR_MAX, finalEarfcns, finalPcis);
@@ -126,7 +127,7 @@ const app = {
             // Updating global measurement layers.
             this._drawingMap.drawRSRP(this._fileReader.rsrps, earfcns, pcis, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
             this._drawingMap.drawRSRQ(this._fileReader.rsrqs, earfcns, pcis, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis);
-            this._drawingMap.drawRSSI(this._fileReader.rssis, earfcns, pcis, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);
+            this._drawingMap.drawRSSI(this._fileReader.rssis, earfcns, pcis, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);*/
         
         }
 
@@ -178,6 +179,7 @@ const app = {
 
             let earpcis = this._allSites ? {earfcns: [], pcis: [], beams: [], indices: []} : utils.subEarpci(this._fileReader.earfcns,
                 this._fileReader.pcis, this._fileReader._beams, this._selEarfcns, this._selPcis, this._selBeams);
+
 
             // Redrawing associated stations pins.
             this._drawingMap.drawAssocs(

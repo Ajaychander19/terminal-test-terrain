@@ -263,7 +263,6 @@ const drawing = {
                     {closeOnClick: false, autoClose: false}
                 );
                 marker.addTo(this._assocLayer);
-
             }
 
 
@@ -297,7 +296,6 @@ const drawing = {
             // Inserting checkboxes for each associated EARFCN / PCI...
             let ascEarfcns = assoc.map((asc) => asc.earfcn);
             let ascPcis = assoc.map((asc) => asc.pci);
-            let ascBeams = null;
 
             //let earpcis = utils.subEarpci(ascEarfcns, ascPcis, null, earfcns, pcis, beams);
             let earpcis = utils.subEarpci(ascEarfcns, ascPcis, beams, earfcns, pcis, null);
@@ -309,15 +307,6 @@ const drawing = {
                 let select_beams;
 
                 if (pcis != null && earfcns != null){
-                    /*let current_beams = utils.findBeams(earfcns, pcis, beams, earfcn, pci);
-                    for ( var j = 0; j < current_beams.length; j++){
-                        bs += '<option value=' + current_beams[j] + '>'+ current_beams[j] + '</option>';
-                    }
-
-                    beam = '<select class="form-control selectpicker" id="beam_select">'
-                    + '<option value="all-beams">All BEAMs</option>'
-                    + bs;
-                    '</select>';*/
                     let current_beams = utils.findBeams(earfcns, pcis, beams, earfcn, pci)
                     select_beams = document.createElement('select');
                     select_beams.text = 'Select Beams';
@@ -325,7 +314,7 @@ const drawing = {
                     //all beams default
                     let option = document.createElement('option');
                     option.text = "All beams";
-                    option.value = 0; //todo()
+                    option.value = 10; //todo()
                     select_beams.add(option);
 
                     for ( var j = 0; j < current_beams.length; j++){
@@ -334,6 +323,14 @@ const drawing = {
                         option.value = current_beams[j];
                         select_beams.add(option);
                     }
+
+                    select_beams.addEventListener('change', function() {
+                        checkBeams.pop();
+                        let selectedValue = select_beams.value;
+                        checkBeams.push(selectedValue);
+                        updateMethod();
+                    });
+
                 }
 
                 // Checkbox element.
@@ -363,7 +360,6 @@ const drawing = {
             }
             popDiv.append(checkDiv);
             return popDiv;
-
         }
 
         /**
@@ -376,7 +372,6 @@ const drawing = {
          * @function
          */
         setPointLayer(layer, pointLayers, earfcns=null, pcis=null, beams=null) {
-
             // Check if tables have the same length.
             if (earfcns && pcis && earfcns.length !== pcis.length)
                 throw new Error('earfncs and pcis should have the same length');
@@ -405,29 +400,41 @@ const drawing = {
 
                         let pci = parseInt(p);          // Current PCI.
                         let beamsLayers = pciLayers[p];    // Layer associated to the PCI.
-
-                        for(let b in beamsLayers){
-                            let beamLayer = beamsLayers[b];
-                            layers.push(beamLayer);
-                        }
-                        
-                        /*if (pcis) {     // Chose PCIs of pcis param is not null.
+                        if (pcis) {
 
                             // PCI indexes in pcis, used to get the associated EARFCN in earfcns param.
                             let pciIndexes = utils.indexesOf(pcis, pci);
 
                             // For each PCI index...
                             for (let pi in pciIndexes) {
-
                                 let pciIndex = pciIndexes[pi];
-
                                 // If current PCI corresponds to the current EARFCN, add to layers to show.
-                                if (pciIndex !== -1 && ((earfcns && earfcn === earfcns[pciIndex]) || !earfcns)) 
-                                    layers.push(pciLayer);
+                                if (pciIndex !== -1 && ((earfcns && earfcn === earfcns[pciIndex]) || !earfcns)){
+                                    for(let b in beamsLayers){
+                                        let beamLayer = beamsLayers[b]
+                                        let beam = b;
+                                        if (beams){
+                                            let beamIndexes = utils.indexesOf(beams, beam);
+                                            for(let bi in beamIndexes){
+                                                let beamIndex = beamIndexes[bi];
+                                                if(beamIndex !== -1){
+                                                    layers.push(beamLayer);
+                                                }
+                                            }
+                                        }
+                                        else {
+                                            layers.push(beamLayer);
+                                        }
+                                    }
+                                }
                             }
-
-                        } else layers.push(pciLayer);   // Choose all PCIs otherwise...
-*/
+                        }
+                        else {
+                            for(let b in beamsLayers){
+                                let beamLayer = beamsLayers[b];
+                                layers.push(beamLayer);
+                            }
+                        }
                     }
                     
             }
@@ -639,9 +646,9 @@ const drawing = {
          * 
          * @function
          */
-        updatePCILayer(points, earfcn=null, pci=null, col=1) {
+        updatePCILayer(points, earfcn=null, pci=null, beam=null,col=1) {
             this._nonFilteredPCI = this.drawPCI(points, col);
-            this.setPointLayer(this._pciLayer, this._nonFilteredPCI, earfcn, pci); 
+            this.setPointLayer(this._pciLayer, this._nonFilteredPCI, earfcn, pci, beam);
         }
 
 
