@@ -23,8 +23,8 @@ const app = {
         _selBeams = null;
 
         _checkEarfcns = [];         // Selected EARFCNs (with sites checkboxes).
-        _checkPcis = [];            // Select PCIs (with sites checkboxes).
-        _checkBeams = [];
+        _checkPcis = [];            // Selected PCIs (with sites checkboxes).
+        _checkBeams = {};           // Selected Beams for each PCI
 
         _allSites = true;           // true if "All Sites" is selected in Sites.
 
@@ -177,7 +177,7 @@ const app = {
         updateAssocs() {
             // Getting selected EARFCNS / PCIS.
 
-            let earpcis = this._allSites ? {earfcns: [], pcis: [], beams: [], indices: []} : utils.subEarpci(this._fileReader.earfcns,
+            let earpcis = this._allSites ? {earfcns: [], pcis: [], beams: {}, indices: []} : utils.subEarpci(this._fileReader.earfcns,
                 this._fileReader.pcis, this._fileReader._beams, this._selEarfcns, this._selPcis, this._selBeams);
 
 
@@ -208,7 +208,7 @@ const app = {
 
             this._checkEarfcns = [];
             this._checkPcis = [];
-            this._checkBeams = [];
+            this._checkBeams = {};
 
             this._rsrpChecked = false;
             this._rsrqChecked = false;

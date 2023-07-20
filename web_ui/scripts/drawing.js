@@ -282,9 +282,11 @@ const drawing = {
          * 
          * @function
          */
-        drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams=null, updateMethod, earfcns=null, pcis=null, beams=null) {
+        drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns=null, pcis=null, beams=null) {
             // Content element of the popup.
             let popDiv = document.createElement('div');
+
+            console.log(beams);
 
             // Popup title.
             popDiv.innerHTML = '<span class="tooltip-title">' + cartoNum + '</span><br>';
@@ -298,16 +300,19 @@ const drawing = {
             let ascPcis = assoc.map((asc) => asc.pci);
 
             //let earpcis = utils.subEarpci(ascEarfcns, ascPcis, null, earfcns, pcis, beams);
-            let earpcis = utils.subEarpci(ascEarfcns, ascPcis, beams, earfcns, pcis, null);
+            let earpcis = utils.subEarpci(ascEarfcns, ascPcis, beams, earfcns, pcis, beams);
             for (let i in earpcis.earfcns) {
                 let earfcn = earpcis.earfcns[i];
                 let pci = earpcis.pcis[i];
+                checkBeams[pci] = [];
                 let bs;
                 let beam;
                 let select_beams;
 
                 if (pcis != null && earfcns != null){
-                    let current_beams = utils.findBeams(earfcns, pcis, beams, earfcn, pci)
+                    let current_beams = beams[pci];
+                    //console.log(earpcis.beams);
+                    //console.log(beams);
                     select_beams = document.createElement('select');
                     select_beams.text = 'Select Beams';
 
@@ -325,9 +330,9 @@ const drawing = {
                     }
 
                     select_beams.addEventListener('change', function() {
-                        checkBeams.pop();
+                        checkBeams[pci].pop();
                         let selectedValue = select_beams.value;
-                        checkBeams.push(selectedValue);
+                        checkBeams[pci].push(selectedValue);
                         updateMethod();
                     });
 
@@ -411,10 +416,10 @@ const drawing = {
                                 // If current PCI corresponds to the current EARFCN, add to layers to show.
                                 if (pciIndex !== -1 && ((earfcns && earfcn === earfcns[pciIndex]) || !earfcns)){
                                     for(let b in beamsLayers){
-                                        let beamLayer = beamsLayers[b]
+                                        let beamLayer = beamsLayers[b];
                                         let beam = b;
-                                        if (beams){
-                                            let beamIndexes = utils.indexesOf(beams, beam);
+                                        if (beams[pci]){
+                                            let beamIndexes = utils.indexesOf(beams[pci], beam);
                                             for(let bi in beamIndexes){
                                                 let beamIndex = beamIndexes[bi];
                                                 if(beamIndex !== -1){
