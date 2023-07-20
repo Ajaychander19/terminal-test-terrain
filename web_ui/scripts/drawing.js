@@ -304,13 +304,13 @@ const drawing = {
             for (let i in earpcis.earfcns) {
                 let earfcn = earpcis.earfcns[i];
                 let pci = earpcis.pcis[i];
-                checkBeams[pci] = [];
+                checkBeams[pci] = ["all"];
                 let bs;
                 let beam;
                 let select_beams;
 
                 if (pcis != null && earfcns != null){
-                    let current_beams = beams[pci];
+                    let current_beams = beams[pci].sort();
                     //console.log(earpcis.beams);
                     //console.log(beams);
                     select_beams = document.createElement('select');
@@ -319,7 +319,7 @@ const drawing = {
                     //all beams default
                     let option = document.createElement('option');
                     option.text = "All beams";
-                    option.value = 10; //todo()
+                    option.value = "all";
                     select_beams.add(option);
 
                     for ( var j = 0; j < current_beams.length; j++){
@@ -419,11 +419,16 @@ const drawing = {
                                         let beamLayer = beamsLayers[b];
                                         let beam = b;
                                         if (beams[pci]){
-                                            let beamIndexes = utils.indexesOf(beams[pci], beam);
-                                            for(let bi in beamIndexes){
-                                                let beamIndex = beamIndexes[bi];
-                                                if(beamIndex !== -1){
-                                                    layers.push(beamLayer);
+                                            if(beams[pci].includes("all")){
+                                                layers.push(beamLayer);
+                                            }
+                                            else{
+                                                let beamIndexes = utils.indexesOf(beams[pci], beam);
+                                                for(let bi in beamIndexes){
+                                                    let beamIndex = beamIndexes[bi];
+                                                    if(beamIndex !== -1){
+                                                        layers.push(beamLayer);
+                                                    }
                                                 }
                                             }
                                         }
