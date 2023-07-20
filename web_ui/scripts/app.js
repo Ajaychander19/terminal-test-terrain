@@ -116,7 +116,7 @@ const app = {
             let finalBeams = checkBeams;
             // Updating TAC / PCI layers.
             this._drawingMap.updatePCILayer(points, finalEarfcns, finalPcis, finalBeams, this._altCol);
-            //this._drawingMap.updateTACLayer(points, finalEarfcns, finalPcis);
+            this._drawingMap.updateTACLayer(points, finalEarfcns, finalPcis, finalBeams);
 
             // Updating serving measurement layers.
             /*this._drawingMap.drawServingRSRP(points, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);

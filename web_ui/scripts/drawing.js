@@ -642,9 +642,9 @@ const drawing = {
          * 
          * @function
          */
-        updateTACLayer(points, earfcn=null, pci=null) {
+        updateTACLayer(points, earfcn=null, pci=null, beam=null) {
             this._nonFilteredTAC = this.drawTAC(points);
-            this.setPointLayer(this._tacLayer, this._nonFilteredTAC, earfcn, pci); 
+            this.setPointLayer(this._tacLayer, this._nonFilteredTAC, earfcn, pci, beam);
         }
 
         /**
