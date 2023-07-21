@@ -283,9 +283,9 @@ var csvread = {
                                     lng: csvread.parseNum(line[2], lineNum),
                                     tac: csvread.parseNum(line[3], lineNum),
                                     cid: csvread.parseNum(line[4], lineNum),
-                                    rsrp: csvread.parseNum(line[7], lineNum),
-                                    rsrq: csvread.parseNum(line[8], lineNum),
-                                    rssi: csvread.parseNum(line[9], lineNum),
+                                    rsrp: csvread.parseNum(line[8], lineNum),
+                                    rsrq: csvread.parseNum(line[9], lineNum),
+                                    rssi: csvread.parseNum(line[10], lineNum),
                                     cinr: cinr,
                                 };
 

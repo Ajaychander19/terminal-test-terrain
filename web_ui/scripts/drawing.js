@@ -180,7 +180,7 @@ const drawing = {
          * 
          * @function
          */
-        drawServingHex(layer, points, valChooser, min, max, earfcns=null, pcis=null) {
+        drawServingHex(layer, points, valChooser, min, max, earfcns=null, pcis=null, beams=null) {
 
             // Layer data points;
             let hexData = [];
@@ -188,6 +188,7 @@ const drawing = {
             // EARFCNs and PCIs amongs input points.
             let baseEarfncs = [];
             let basePcis = [];
+            let baseBeams = [];
 
             // Iterating over points EARFCNs...
             for (let earfcn in points) {
@@ -196,30 +197,40 @@ const drawing = {
 
                 // Over PCIs...
                 for (let pci in pciGroup) {
-                    baseEarfncs.push(parseInt(earfcn));
-                    basePcis.push(parseInt(pci));
+                    let beamGroup = points[earfcn][pci];
+
+                    for (let beam in beamGroup){
+                        baseEarfncs.push(parseInt(earfcn));
+                        basePcis.push(parseInt(pci));
+                        baseBeams.push(parseInt(beam));
+                    }
                 }
 
             }
 
             // Filtering EARFCNs and PCIs...
-            let earpcis = utils.subEarpci(baseEarfncs, basePcis, null, earfcns, pcis, null);
+            let earpcis = utils.subEarpci(baseEarfncs, basePcis, baseBeams, earfcns, pcis, beams);
             let filtEarfcns = earpcis.earfcns;
             let filtPcis = earpcis.pcis;
+            let filtBeams = earpcis.beams;
 
             // For each reamining EARFCNs and PCIs...
             for (let i in filtEarfcns) {
 
                 let earfcn = filtEarfcns[i];
                 let pci = filtPcis[i];
+                let beamList = filtBeams[pci];
 
                 // Pushing asscoiated measurements in hexData...
-                points[earfcn][pci].forEach(
-                    (pt) => {
-                        let val = valChooser(earfcn, pci, pt);
-                        hexData.push([pt.lng, pt.lat, val]);
-                    }
-                );
+                for (let b in beamList){
+                    points[earfcn][pci][b].forEach(
+                        (pt) => {
+                            console.log(pt);
+                            let val = valChooser(earfcn, pci, pt);
+                            hexData.push([pt.lng, pt.lat, val]);
+                        }
+                    );
+                }
 
             }
 
@@ -286,8 +297,6 @@ const drawing = {
             // Content element of the popup.
             let popDiv = document.createElement('div');
 
-            console.log(beams);
-
             // Popup title.
             popDiv.innerHTML = '<span class="tooltip-title">' + cartoNum + '</span><br>';
 
@@ -311,8 +320,6 @@ const drawing = {
 
                 if (pcis != null && earfcns != null){
                     let current_beams = beams[pci].sort();
-                    //console.log(earpcis.beams);
-                    //console.log(beams);
                     select_beams = document.createElement('select');
                     select_beams.text = 'Select Beams';
 
@@ -523,10 +530,10 @@ const drawing = {
          * 
          * @function
          */
-        drawServingRSRP(points, min, max, earfcns=null, pcis=null) {
+        drawServingRSRP(points, min, max, earfcns=null, pcis=null, beams=null) {
             this.drawServingHex(
                 this._servingRSRP, points, (_e, _p, pt) => pt.rsrp,
-                min, max, earfcns, pcis,
+                min, max, earfcns, pcis, beams,
             );
         }
 
