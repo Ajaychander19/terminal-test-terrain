@@ -120,12 +120,12 @@ const app = {
 
             // Updating serving measurement layers.
             this._drawingMap.drawServingRSRP(points, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis, finalBeams);
-            /*this._drawingMap.drawServingRSRQ(points, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis);
-            this._drawingMap.drawServingRSSI(points, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);
-            this._drawingMap.drawServingCINR(points, CINR_MIN, CINR_MAX, finalEarfcns, finalPcis);
+            this._drawingMap.drawServingRSRQ(points, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis, finalBeams);
+            this._drawingMap.drawServingRSSI(points, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis, finalBeams);
+            this._drawingMap.drawServingCINR(points, CINR_MIN, CINR_MAX, finalEarfcns, finalPcis, finalBeams);
         
             // Updating global measurement layers.
-            this._drawingMap.drawRSRP(this._fileReader.rsrps, earfcns, pcis, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
+            /*this._drawingMap.drawRSRP(this._fileReader.rsrps, earfcns, pcis, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
             this._drawingMap.drawRSRQ(this._fileReader.rsrqs, earfcns, pcis, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis);
             this._drawingMap.drawRSSI(this._fileReader.rssis, earfcns, pcis, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);*/
         

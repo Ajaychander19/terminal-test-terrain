@@ -570,10 +570,10 @@ const drawing = {
          * 
          * @function
          */
-        drawServingRSRQ(points, min, max, earfcns=null, pcis=null) {
+        drawServingRSRQ(points, min, max, earfcns=null, pcis=null, beams=null) {
             this.drawServingHex(
                 this._servingRSRQ, points, (_e, _p, pt) => pt.rsrq,
-                min, max, earfcns, pcis
+                min, max, earfcns, pcis, beams
             );
         }
 
@@ -588,10 +588,10 @@ const drawing = {
          * 
          * @function
          */
-        drawServingRSSI(points, min, max, earfcns=null, pcis=null) {
+        drawServingRSSI(points, min, max, earfcns=null, pcis=null, beams=null) {
             this.drawServingHex(
                 this._servingRSSI, points, (_e, _p, pt) => pt.rssi,
-                min, max, earfcns, pcis
+                min, max, earfcns, pcis, beams
             );
         }
 
@@ -605,10 +605,10 @@ const drawing = {
          * 
          * @function
          */
-        drawServingCINR(points, min, max, earfcns=null, pcis=null) {
+        drawServingCINR(points, min, max, earfcns=null, pcis=null, beams=null) {
             this.drawServingHex(
                 this._servingCINR, points, (_e, _p, pt) => pt.cinr,
-                min, max, earfcns, pcis
+                min, max, earfcns, pcis, beams
             );
         }
 
