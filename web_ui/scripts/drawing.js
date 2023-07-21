@@ -221,18 +221,41 @@ const drawing = {
                 let pci = filtPcis[i];
                 let beamList = filtBeams[pci];
 
-                // Pushing asscoiated measurements in hexData...
-                for (let b in beamList){
-                    points[earfcn][pci][b].forEach(
-                        (pt) => {
-                            console.log(pt);
-                            let val = valChooser(earfcn, pci, pt);
-                            hexData.push([pt.lng, pt.lat, val]);
+                if (beams[pci]){
+                    // Pushing asscoiated measurements in hexData...
+                    for (let b in beamList){
+                        if(beams[pci].includes("all")){
+                            points[earfcn][pci][b].forEach(
+                                (pt) => {
+                                    let val = valChooser(earfcn, pci, pt);
+                                    hexData.push([pt.lng, pt.lat, val]);
+                                }
+                            );
                         }
-                    );
-                }
+                        else if (beams[pci].includes(b)){
+                            points[earfcn][pci][b].forEach(
+                                (pt) => {
+                                    let val = valChooser(earfcn, pci, pt);
+                                    hexData.push([pt.lng, pt.lat, val]);
+                                }
+                            );
+                        }
 
-            }
+                    }
+                }
+                else{
+                        for (let b in beamList){
+                            if(points[earfcn][pci][b]){
+                                points[earfcn][pci][b].forEach(
+                                    (pt) => {
+                                        let val = valChooser(earfcn, pci, pt);
+                                        hexData.push([pt.lng, pt.lat, val]);
+                                    }
+                                );
+                            }
+                        }
+                    }
+                }
 
             // Drawing the layer.
             layer.options.colorScaleExtent = [min, max];
