@@ -46,10 +46,10 @@ class CellAssociator:
     _HEADER_V2 = {
         'VERSION' :['Version'],
         'TECHNO' :['Techno'],
-        'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
-        'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
-        'MEAS_BEAMS': ['NA', 'NA', 'NA', 'NA', 'BEAM1', 'BEAM2', 'BEAM3', 'etc'],
-        'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas_for_1', 'nb_meas_for_2', 'nb_meas_for_3', 'etc'],
+        'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN'],
+        'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI'],
+        'MEAS_BEAMS': ['NA', 'NA', 'NA', 'NA', 'BEAM'],
+        'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas'],
         'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values'],
         'DELIMITER': ['Cartoradio_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng'],
         'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
@@ -86,6 +86,15 @@ class CellAssociator:
             if line[0] == 'VERSION' and float(line[1]) == 2.0:
                 self.version = 2.0
                 header = self._HEADER_V2
+            meas.read_line()
+            meas.read_line()
+            line = meas.read_line()
+            if line[0] == 'MEAS_EARFCNS':
+                n = len(line) - 5
+                header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN'] * n
+                header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI'] * n
+                header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM'] * n
+                header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas'] * n
 
         with csvt.CSVWriter(file_name, header) as out_wr:
 
@@ -224,7 +233,7 @@ class CellAssociator:
 
                     #if last_earfcn is None or last_pci is None:
                     #    raise RuntimeError('error: MEASUREMENT encountered before MEASURE_SERVING.')
-                    #out_wr.write_row(line)
+                    out_wr.write_row(line)
 
                 elif line[0] == 'MEAS_PCIS':
                     raise RuntimeError('error: MEAS_PCIS line must be directly preceded by a MEAS_EARFCNS line.')
