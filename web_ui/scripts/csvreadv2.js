@@ -112,63 +112,17 @@ var csvreadv2 = {
 
             const parsedResult = this.parseCSVDataByHeaders(parsedData.data);
 
-            parsedResult.MEAS_EARFCNS.forEach((line) => {
-                for (const key in line) {
-                    if(key !== "MEAS_EARFCNS" && key !== "NA"){
-                        if (Object.prototype.hasOwnProperty.call(line, key)) {
-                            const value = line[key];
-                            if(Array.isArray(value)){
-                                for (const element of value) {
-                                    this._earfcns.push(+element);
-                                }
-                            }
-                            else{
-                                this._earfcns.push(+value);
-                            }
-                        }
-                    }
-                }
-            });
+            let e = parsedResult.MEAS_EARFCNS[1];
+            for (let j = 5; j < e.length; j++) this._earfcns.push(parseInt(e[j]));
 
-            parsedResult.MEAS_PCIS.forEach((line) => {
-                  for (const key in line) {
-                  if(key !== "MEAS_PCIS" && key !== "NA"){
-                        if (Object.prototype.hasOwnProperty.call(line, key)) {
-                            const value = line[key];
-                            if(Array.isArray(value)){
-                                for (const element of value) {
-                                    this._pcis.push(+element);
-                                }
-                            }
-                            else{
-                                this._pcis.push(+value);
-                            }
-                        }
-                  }
-                }
-            });
+            let p = parsedResult.MEAS_PCIS[1];
+            for (let j = 5; j < p.length; j++) this._pcis.push(parseInt(p[j]));
 
-            parsedResult.MEAS_BEAMS.forEach((line) => {
-                for (const key in line) {
-                    if(key !== "MEAS_BEAMS" && key !== "NA"){
-                        if (Object.prototype.hasOwnProperty.call(line, key)) {
-                            const value = line[key];
-                            if(Array.isArray(value)){
-                                for (const element of value) {
-                                    this._beams.push(+element);
-                                }
-                            }
-                            else{
-                                this._beams.push(+value);
-                            }
-                        }
-                    }
-                }
-            });
+            let b = parsedResult.MEAS_BEAMS[1];
+            for (let j = 5; j < b.length; j++) this._beams.push(parseInt(b[j]));
 
-            parsedResult.MEAS_NB.forEach((line) => {
-                for (let j = 5; j < line.length; j++) this._nbSamples.push(parseInt(line[j]));
-            });
+            let m = parsedResult.MEAS_NB[1];
+            for (let j = 5; j < m.length; j++) this._nbSamples.push(parseInt(m[j]));
 
             parsedResult.MEASUREMENT.forEach((line) => {
                 // Choosing in which table measurement will be added...
@@ -462,15 +416,17 @@ var csvreadv2 = {
             });
 
             // Use papaparse to parse each type of lines separately with the appropriate headers
-            const parsedMeasEarfcn = Papa.parse(parsedData.measEarfcn.join('\n'), { header: true });
-            const parsedMeasPci = Papa.parse(parsedData.measPci.join('\n'), { header: true });
-            const parsedMeasBeams = Papa.parse(parsedData.measBeams.join('\n'), { header: true });
-            const parsedMeasNb = Papa.parse(parsedData.measNb.join('\n'), { header: true });
+            const parsedMeasEarfcn = Papa.parse(parsedData.measEarfcn.join('\n'), { header: false });
+            const parsedMeasPci = Papa.parse(parsedData.measPci.join('\n'), { header: false});
+            const parsedMeasBeams = Papa.parse(parsedData.measBeams.join('\n'), { header: false});
+            const parsedMeasNb = Papa.parse(parsedData.measNb.join('\n'), { header: false });
             const parsedBsAntDir = Papa.parse(parsedData.bsAntDir.join('\n'), { header: true });
             const parsedPoint = Papa.parse(parsedData.point.join('\n'), { header: true });
             const parsedMeasurement = Papa.parse(parsedData.measurement.join('\n'), { header: true });
             const parsedDelimiter = Papa.parse(parsedData.delimiter.join('\n'), { header: true });
             const parsedAssoc = Papa.parse(parsedData.assoc.join('\n'), { header: true });
+
+            parsedMeasBeams.data
 
             return {
                 MEAS_EARFCNS: parsedMeasEarfcn.data,
