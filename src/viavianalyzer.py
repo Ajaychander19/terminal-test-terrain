@@ -221,7 +221,7 @@ class Viavilyzer:
                     measurements_RSRQ += [row['S-SS RSRQ / RSRQ (dB)']]
                     measurements_RSSI += [row['S-SS RSSI / S-SS RSSI (dBm)']]
                     measurements_RSRP += [row['S-SS RSRP / RSRP (dBm)']]
-                    break
+                    #break
             measurements_RSRQ += ['']
             measurements_RSSI += ['']
             measurements_RSRP += ['']
@@ -239,14 +239,16 @@ class Viavilyzer:
             threshold of RSRP PBCH
         """
         l, occs, techno, date, data = Viavilyzer.read_measures(filename, threshold)
+        n = len(l)
+
         csv_header = {
             'VERSION': ['Version'],
             'DATE': ['Date'],
             'TECHNO': ['Techno'],
-            'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
-            'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
-            'MEAS_BEAMS': ['NA', 'NA', 'NA', 'NA', 'BEAM1', 'BEAM2', 'BEAM3', 'etc'],
-            'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas_for_1', 'nb_meas_for_2', 'nb_meas_for_3', 'etc'],
+            'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA'],
+            'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA'],
+            'MEAS_BEAMS': ['NA', 'NA', 'NA', 'NA'],
+            'MEAS_NB': ['NA', 'NA', 'NA', 'NA'],
             'CELLINFO': ['Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'],
             'MEASURE_SERVING': [
                 'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI', 'Serving_BEAM',
@@ -254,6 +256,11 @@ class Viavilyzer:
             ],
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
         }
+
+        csv_header['MEAS_EARFCNS'] = csv_header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
+        csv_header['MEAS_PCIS'] = csv_header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
+        csv_header['MEAS_BEAMS'] = csv_header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
+        csv_header['MEAS_NB'] = csv_header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
 
         min = 0
         max = interval
