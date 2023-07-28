@@ -46,10 +46,10 @@ class CellAssociator:
     _HEADER_V2 = {
         'VERSION' :['Version'],
         'TECHNO' :['Techno'],
-        'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN'],
-        'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI'],
-        'MEAS_BEAMS': ['NA', 'NA', 'NA', 'NA', 'BEAM'],
-        'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas'],
+        'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA'],
+        'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA'],
+        'MEAS_BEAMS': ['NA', 'NA', 'NA', 'NA'],
+        'MEAS_NB': ['NA', 'NA', 'NA', 'NA'],
         'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values'],
         'DELIMITER': ['Cartoradio_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng'],
         'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
@@ -90,11 +90,11 @@ class CellAssociator:
             meas.read_line()
             line = meas.read_line()
             if line[0] == 'MEAS_EARFCNS':
-                n = len(line) - 5
-                header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN'] * n
-                header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI'] * n
-                header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM'] * n
-                header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas'] * n
+                n = len(line) - (line.count('NA') + 1)
+                header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
+                header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
+                header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
+                header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
 
         with csvt.CSVWriter(file_name, header) as out_wr:
 
