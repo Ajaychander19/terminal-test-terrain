@@ -130,7 +130,7 @@ var csvreadv2 = {
             let b = Object.keys(parsedResult.MEAS_BEAMS[0]).filter(key => key.includes("BEAM_"));
 
             for (let j = 0; j < b.length; j++){
-                this._pcis.push(parseInt(values_b[b[j]]));
+                this._beams.push(parseInt(values_b[b[j]]));
             }
 
             let values_nb = parsedResult.MEAS_NB[0];
