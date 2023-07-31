@@ -10,7 +10,7 @@ from tkinter import messagebox, Canvas
 import xcalyzer
 import cartoradio
 import association
-from src.viavianalyzer import Viavilyzer
+import Viavilyzer
 
 
 class CreateToolTip(object):
@@ -71,7 +71,6 @@ class GUI(tkinter.Frame):
         self.viavi_conversion.configure(height=3, width=25)
         self.viavi_conversion.pack(padx=5, pady=5)
 
-        #todo("Faire un bouton pour le viavi")
         self.pcap_conversion = tkinter.Button(self, command=lambda: self.button_click(2),
                                               text="Aof file processing (Xcal)",
                                               font=boldFont, background='light green')
