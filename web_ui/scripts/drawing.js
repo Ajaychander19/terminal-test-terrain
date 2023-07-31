@@ -108,62 +108,37 @@ const drawing = {
          * @function
          */
         drawPoints(points, valChooser, colorChooser) {
-
-            // Dictionary which contains point layers associated to EARFCNs/PCIs.
             let pointDict = {};
 
-            // For each EARFCNs found in points.
             for (let earfcn in points) {
-
-                // Group of points with the same EARFCN.
+                pointDict[earfcn] = {};
                 let earfcnGr = points[earfcn];
 
-                // Adding EARFCN entry in dictionary if not already present.
-                pointDict[earfcn] || (pointDict[earfcn] = {});
-
-                // For each PCI associated to the EARFCN...
                 for (let pci in earfcnGr) {
-                    // Adding PCI entry if not exists.
-                    pointDict[earfcn][pci] || (pointDict[earfcn][pci] = {})
+                    pointDict[earfcn][pci] = {};
                     let pciGr = earfcnGr[pci];
 
-                    for (let beam in pciGr){
-                        // Adding PCI entry if not exists.
-                        pointDict[earfcn][pci][beam] || (pointDict[earfcn][pci][beam] = {})
+                    for (let beam in pciGr) {
+                        let pointsDict = {};
+                        let pointsArr = pciGr[beam];
 
-                        // Values dictionary.
-                        let points = {}
-
-                        // For each point associated to these EARFCN and PCI...
-                        pciGr[beam].forEach((point) => {
-
-                            let latLng = [point.lat, point.lng];                // Latitude and longitude of the point.
-                            let val = valChooser(earfcn, pci, point);           // Value to associate to the group of the current point.
-
-                            // Creating the group if it does not exists.
-                            points[val] || (points[val] = []);
-
-                            // Adding point to the group...
-                            points[val].push(latLng);
-
+                        pointsArr.forEach((point) => {
+                            let latLng = [point.lat, point.lng];
+                            let val = valChooser(earfcn, pci, point);
+                            pointsDict[val] = pointsDict[val] || [];
+                            pointsDict[val].push(latLng);
                         });
 
-                        // Creating layers from group of points.
-                        for (let val in points) {
-
+                        for (let val in pointsDict) {
                             let layer = new L.GridLayer.MaskCanvas(styles.pointStyle(colorChooser(val)));
-                            layer.setData(points[val]);
-
+                            layer.setData(pointsDict[val]);
                             pointDict[earfcn][pci][beam] = layer;
                         }
                     }
-
                 }
-
             }
 
             return pointDict;
-
         }
 
         /**
@@ -320,9 +295,13 @@ const drawing = {
             // Content element of the popup.
             let popDiv = document.createElement('div');
 
-            // Popup title.
-            popDiv.innerHTML = '<span class="tooltip-title">' + cartoNum + '</span><br>';
+            //let tooltip = '<div class="btninfo">'
+                          //+ '<img src ="img/info.png">' //<a href="https://www.cartoradio.fr">
+                          //+ '<div class="tooltip">Numéro cartoradio</div>'
+            //              + '</div>'
 
+            // Popup title.
+            popDiv.innerHTML = '<span class="tooltip-title">' + cartoNum + " "+ /*+ tooltip + */'</span><br>';
             // Checkboxes container element.
             let checkDiv = document.createElement('div');
             checkDiv.classList.add('check-div');
@@ -406,82 +385,67 @@ const drawing = {
          * 
          * @function
          */
-        setPointLayer(layer, pointLayers, earfcns=null, pcis=null, beams=null) {
-            // Check if tables have the same length.
-            if (earfcns && pcis && earfcns.length !== pcis.length)
-                throw new Error('earfncs and pcis should have the same length');
-            
-            // Clearing point layer.
-            layer.clearLayers();
+        setPointLayer(layer, pointLayers, earfcns = null, pcis = null, beams = null) {
+          if (earfcns && pcis && earfcns.length !== pcis.length)
+            throw new Error('earfncs and pcis should have the same length');
 
-            // Getting layers which correspond to chosen EARFCNs.
+          layer.clearLayers();
 
-            let earfcnLayers = {};
-            if (earfcns) earfcns.forEach((earfcn) => earfcnLayers[earfcn] = pointLayers[earfcn]);
-            else earfcnLayers = pointLayers;  // All EARFCNs otherwise.
+          const earfcnLayers = earfcns ? earfcns.reduce((obj, earfcn) => {
+            obj[earfcn] = pointLayers[earfcn];
+            return obj;
+          }, {}) : { ...pointLayers };
 
-            let layers = [];
+          const layers = [];
 
-            // For each groups of layers with the same EARFCN...
-            for (let e in earfcnLayers) {
+          for (const earfcn in earfcnLayers) {
+            const earfcnInt = parseInt(earfcn);
+            const pciLayers = earfcnLayers[earfcn];
 
-                    let earfcn = parseInt(e);
+            for (const pci in pciLayers) {
+              const pciInt = parseInt(pci);
+              const beamsLayers = pciLayers[pci];
 
-                    // Current group of layers with the same EARFCN / PCI.
-                    let pciLayers = earfcnLayers[e];
+              if (pcis) {
+                const pciIndexes = utils.indexesOf(pcis, pciInt);
 
-                    // For each group of layer with the same EARFCN / PCI...
-                    for (let p in pciLayers) {
-
-                        let pci = parseInt(p);          // Current PCI.
-                        let beamsLayers = pciLayers[p];    // Layer associated to the PCI.
-                        if (pcis) {
-
-                            // PCI indexes in pcis, used to get the associated EARFCN in earfcns param.
-                            let pciIndexes = utils.indexesOf(pcis, pci);
-
-                            // For each PCI index...
-                            for (let pi in pciIndexes) {
-                                let pciIndex = pciIndexes[pi];
-                                // If current PCI corresponds to the current EARFCN, add to layers to show.
-                                if (pciIndex !== -1 && ((earfcns && earfcn === earfcns[pciIndex]) || !earfcns)){
-                                    for(let b in beamsLayers){
-                                        let beamLayer = beamsLayers[b];
-                                        let beam = b;
-                                        if (beams[pci]){
-                                            if(beams[pci].includes("all")){
-                                                layers.push(beamLayer);
-                                            }
-                                            else{
-                                                let beamIndexes = utils.indexesOf(beams[pci], beam);
-                                                for(let bi in beamIndexes){
-                                                    let beamIndex = beamIndexes[bi];
-                                                    if(beamIndex !== -1){
-                                                        layers.push(beamLayer);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        else {
-                                            layers.push(beamLayer);
-                                        }
-                                    }
-                                }
+                pciIndexes.forEach((pciIndex) => {
+                  if (
+                    pciIndex !== -1 &&
+                    ((earfcns && earfcnInt === earfcns[pciIndex]) || !earfcns)
+                  ) {
+                    for (const beam in beamsLayers) {
+                      const beamLayer = beamsLayers[beam];
+                      if (beams[pciInt]) {
+                        if (beams[pciInt].includes("all")) {
+                          layers.push(beamLayer);
+                        } else {
+                          const beamIndexes = utils.indexesOf(beams[pciInt], beam);
+                          beamIndexes.forEach((beamIndex) => {
+                            if (beamIndex !== -1) {
+                              layers.push(beamLayer);
                             }
+                          });
                         }
-                        else {
-                            for(let b in beamsLayers){
-                                let beamLayer = beamsLayers[b];
-                                layers.push(beamLayer);
-                            }
-                        }
+                      } else {
+                        layers.push(beamLayer);
+                      }
                     }
-                    
+                  }
+                });
+              } else {
+                for (const beam in beamsLayers) {
+                  const beamLayer = beamsLayers[beam];
+                  layers.push(beamLayer);
+                }
+              }
             }
+          }
 
-            layers.forEach((l) => l.addTo(layer));
-
+          layers.forEach((l) => l.addTo(layer));
         }
+
+
 
         /**
          * Draws a global measurements heatmap layer.
@@ -496,19 +460,17 @@ const drawing = {
          * 
          * @function
          */
-        drawHex(layer, measurements, earfcns, pcis, min, max, reqEarfcns=null, reqPcis=null) {
+        drawHex(layer, measurements, earfcns, pcis, beams, min, max, reqEarfcns=null, reqPcis=null, reqBeams=null) {
 
             let hexData = [];
 
-            let earpcis = utils.subEarpci(earfcns, pcis, null, reqEarfcns, reqPcis, null);
+            let earpcis = utils.subEarpci(earfcns, pcis, beams, reqEarfcns, reqPcis, reqBeams);
 
             // For each measurement taken...
             measurements.forEach(
-                
+
                 (measObj) => {
-
                     let meas = measObj.meas;
-
                     earpcis.indices.forEach(
                         (i) => {
                             let m = meas[i];
@@ -625,8 +587,8 @@ const drawing = {
          * 
          * @function
          */
-        drawRSRP(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
-            this.drawHex(this._rsrpLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
+        drawRSRP(measurements, earfcns, pcis, beams, min, max, subEarfcns=null, subPcis=null, subBeams=null) {
+            this.drawHex(this._rsrpLayer, measurements, earfcns, pcis, beams, min, max, subEarfcns, subPcis, subBeams);
         }
 
         /**
@@ -642,8 +604,8 @@ const drawing = {
          * 
          * @function
          */
-        drawRSRQ(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
-            this.drawHex(this._rsrqLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
+        drawRSRQ(measurements, earfcns, pcis, beams, min, max, subEarfcns=null, subPcis=null, subBeams=null) {
+            this.drawHex(this._rsrqLayer, measurements, earfcns, pcis, beams, min, max, subEarfcns, subPcis, subBeams);
         }
 
         /**
@@ -659,8 +621,8 @@ const drawing = {
          * 
          * @function
          */
-        drawRSSI(measurements, earfcns, pcis, min, max, subEarfcns=null, subPcis=null) {
-            this.drawHex(this._rssiLayer, measurements, earfcns, pcis, min, max, subEarfcns, subPcis);
+        drawRSSI(measurements, earfcns, pcis, beams, min, max, subEarfcns=null, subPcis=null, subBeams=null) {
+            this.drawHex(this._rssiLayer, measurements, earfcns, pcis, beams, min, max, subEarfcns, subPcis, subBeams);
         }
         
         /**

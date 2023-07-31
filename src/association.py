@@ -35,7 +35,7 @@ class CellAssociator:
         'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
         'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
         'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas_for_1', 'nb_meas_for_2', 'nb_meas_for_3', 'etc'],
-        'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values'],
+        'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name'],
         'DELIMITER': ['Cartoradio_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng'],
         'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
         'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI'],
@@ -50,7 +50,7 @@ class CellAssociator:
         'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA'],
         'MEAS_BEAMS': ['NA', 'NA', 'NA', 'NA'],
         'MEAS_NB': ['NA', 'NA', 'NA', 'NA'],
-        'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values'],
+        'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name'],
         'DELIMITER': ['Cartoradio_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng'],
         'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
         'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI'],
@@ -95,6 +95,7 @@ class CellAssociator:
                 header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
                 header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
                 header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
+                header['MEASUREMENT'] = header['MEASUREMENT'] + ['Meas_{}'.format(i) for i in range(n)]
 
         with csvt.CSVWriter(file_name, header) as out_wr:
 

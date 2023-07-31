@@ -112,17 +112,33 @@ var csvreadv2 = {
 
             const parsedResult = this.parseCSVDataByHeaders(parsedData.data);
 
-            let e = parsedResult.MEAS_EARFCNS[1];
-            for (let j = 5; j < e.length; j++) this._earfcns.push(parseInt(e[j]));
+            let values_e = parsedResult.MEAS_EARFCNS[0];
+            let e = Object.keys(parsedResult.MEAS_EARFCNS[0]).filter(key => key.includes("EARFCN_"));
 
-            let p = parsedResult.MEAS_PCIS[1];
-            for (let j = 5; j < p.length; j++) this._pcis.push(parseInt(p[j]));
+            for (let j = 0; j < e.length; j++){
+                this._earfcns.push(parseInt(values_e[e[j]]));
+            }
 
-            let b = parsedResult.MEAS_BEAMS[1];
-            for (let j = 5; j < b.length; j++) this._beams.push(parseInt(b[j]));
+            let values_p = parsedResult.MEAS_PCIS[0];
+            let p = Object.keys(parsedResult.MEAS_PCIS[0]).filter(key => key.includes("PCI_"));
 
-            let m = parsedResult.MEAS_NB[1];
-            for (let j = 5; j < m.length; j++) this._nbSamples.push(parseInt(m[j]));
+            for (let j = 0; j < p.length; j++){
+                this._pcis.push(parseInt(values_p[p[j]]));
+            }
+
+            let values_b = parsedResult.MEAS_BEAMS[0];
+            let b = Object.keys(parsedResult.MEAS_BEAMS[0]).filter(key => key.includes("BEAM_"));
+
+            for (let j = 0; j < b.length; j++){
+                this._pcis.push(parseInt(values_b[b[j]]));
+            }
+
+            let values_nb = parsedResult.MEAS_NB[0];
+            let nb = Object.keys(parsedResult.MEAS_NB[0]).filter(key => key.includes("nb_meas"));
+
+            for (let j = 0; j < nb.length; j++){
+                this._nbSamples.push(parseInt(values_nb[nb[j]]));
+            }
 
             parsedResult.MEASUREMENT.forEach((line) => {
                 // Choosing in which table measurement will be added...
@@ -137,9 +153,13 @@ var csvreadv2 = {
                 };
 
 
+                let measurements = line;
+                let m = Object.keys(line).filter(key => key.includes("Meas_"));
+
                 // Adding measurements to series...
-                for (let j = 5; j < line.length; j++)
-                    series.meas.push(+line[j]);
+                for (let j = 0; j < e.length; j++){
+                    series.meas.push(+measurements[m[j]]);
+                }
 
                 // Minimum and maximum of the series.
                 let localMin = Math.min(...(series.meas.filter((e) => e !== null)));
@@ -416,10 +436,10 @@ var csvreadv2 = {
             });
 
             // Use papaparse to parse each type of lines separately with the appropriate headers
-            const parsedMeasEarfcn = Papa.parse(parsedData.measEarfcn.join('\n'), { header: false });
-            const parsedMeasPci = Papa.parse(parsedData.measPci.join('\n'), { header: false});
-            const parsedMeasBeams = Papa.parse(parsedData.measBeams.join('\n'), { header: false});
-            const parsedMeasNb = Papa.parse(parsedData.measNb.join('\n'), { header: false });
+            const parsedMeasEarfcn = Papa.parse(parsedData.measEarfcn.join('\n'), { header: true });
+            const parsedMeasPci = Papa.parse(parsedData.measPci.join('\n'), { header: true});
+            const parsedMeasBeams = Papa.parse(parsedData.measBeams.join('\n'), { header: true});
+            const parsedMeasNb = Papa.parse(parsedData.measNb.join('\n'), { header: true });
             const parsedBsAntDir = Papa.parse(parsedData.bsAntDir.join('\n'), { header: true });
             const parsedPoint = Papa.parse(parsedData.point.join('\n'), { header: true });
             const parsedMeasurement = Papa.parse(parsedData.measurement.join('\n'), { header: true });

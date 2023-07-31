@@ -114,6 +114,7 @@ const app = {
             //let finalBeams = (this._allSites) ? selBeams: onlySitesEarpcis.beams;
 
             let finalBeams = checkBeams;
+
             // Updating TAC / PCI layers.
             this._drawingMap.updatePCILayer(points, finalEarfcns, finalPcis, finalBeams, this._altCol);
             this._drawingMap.updateTACLayer(points, finalEarfcns, finalPcis, finalBeams);
@@ -125,9 +126,9 @@ const app = {
             this._drawingMap.drawServingCINR(points, CINR_MIN, CINR_MAX, finalEarfcns, finalPcis, finalBeams);
         
             // Updating global measurement layers.
-            /*this._drawingMap.drawRSRP(this._fileReader.rsrps, earfcns, pcis, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis);
-            this._drawingMap.drawRSRQ(this._fileReader.rsrqs, earfcns, pcis, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis);
-            this._drawingMap.drawRSSI(this._fileReader.rssis, earfcns, pcis, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis);*/
+            this._drawingMap.drawRSRP(this._fileReader.rsrps, earfcns, pcis, beams, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis, finalBeams);
+            this._drawingMap.drawRSRQ(this._fileReader.rsrqs, earfcns, pcis, beams, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis, finalBeams);
+            this._drawingMap.drawRSSI(this._fileReader.rssis, earfcns, pcis, beams, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis, finalBeams);
         
         }
 
@@ -179,7 +180,6 @@ const app = {
 
             let earpcis = this._allSites ? {earfcns: [], pcis: [], beams: {}, indices: []} : utils.subEarpci(this._fileReader.earfcns,
                 this._fileReader.pcis, this._fileReader._beams, this._selEarfcns, this._selPcis, this._selBeams);
-
 
             // Redrawing associated stations pins.
             this._drawingMap.drawAssocs(
@@ -277,7 +277,7 @@ const app = {
 
                 // Reading file.
                 let file = evt.target.files[0];
-                this._fileReader = new csvread.CSVReader(file);
+                this._fileReader = new csvreadv2.CSVReader(file);//new csvread.CSVReader(file);//new csvreadv2.CSVReader(file);
                 await this._fileReader.readFile();  // Wait for file to be read.
 
                 // Reading antennas data.
