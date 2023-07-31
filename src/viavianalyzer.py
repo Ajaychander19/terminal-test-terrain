@@ -3,9 +3,7 @@ import time
 import pandas as pd
 import glob
 import viaviparser
-from src import csvtools, freq_conversion
-from src.freq_conversion import conv
-
+import csvtools, freq_conversion
 
 class Viavilyzer:
 
@@ -313,22 +311,3 @@ class Viavilyzer:
         files = Viavilyzer.seperate_op(filename)
         for f in files:
             Viavilyzer.produce_csv_file(f, 1, -150.0)
-
-    # Tests
-
-
-fields = ['Date', 'Time', 'Latitude', 'Longitude', 'Center Frequency', 'Technology', 'PCI', 'SSB Index',
-          'S-SS RSRP',
-          'S-SS RSSI', 'S-SS RSRQ', 'S-SS SINR', 'Time Error']
-# Viavilyzer.merge("test_files/")
-
-# tuples = Viavilyzer.earfcn_pci_beam("test_files/merge.csv")
-# print(tuples)
-
-# Read the columns names of a file
-# colsnames = viaviparser.columns_names("test_files/merge.csv")
-# dic = viaviparser.dic_viavi(fields, colsnames)
-
-# Viavilyzer.produces_csv_op_files("test_files/FichierTestSFR.csv")
-#Viavilyzer.produces_csv_op_files("test_files/6juin.csv")
-# Viavilyzer.produce_csv_file("test_files/save1000.csv", 5, -150.0)
