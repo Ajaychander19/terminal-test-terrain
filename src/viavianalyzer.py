@@ -2,8 +2,8 @@ import datetime
 import time
 import pandas as pd
 import glob
-import viaviparser
-import csvtools, freq_conversion
+from freq_conversion import conv
+import csvtools
 
 class Viavilyzer:
 

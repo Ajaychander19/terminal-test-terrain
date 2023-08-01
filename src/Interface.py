@@ -10,7 +10,7 @@ from tkinter import messagebox, Canvas
 import xcalyzer
 import cartoradio
 import association
-import viavianalyzer
+from viavianalyzer import Viavilyzer
 
 
 class CreateToolTip(object):
