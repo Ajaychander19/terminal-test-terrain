@@ -322,6 +322,7 @@ const drawing = {
 
                 if (pcis != null && earfcns != null){
                     let current_beams = beams[pci].sort();
+                    current_beams = current_beams.filter((item, index) => current_beams.indexOf(item) === index);
                     select_beams = document.createElement('select');
                     select_beams.text = 'Select Beams';
 
