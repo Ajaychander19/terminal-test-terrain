@@ -65,10 +65,10 @@ class CellAssociator:
     # Association file header V2
 
     _HEADER_V2 = {
-date
-        'VERSION' :['Version'],
 
-        'TECHNO' :['Techno'],
+        'VERSION': ['Version'],
+
+        'TECHNO': ['Techno'],
 
         'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA'],
 
