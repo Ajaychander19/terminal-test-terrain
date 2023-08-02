@@ -695,11 +695,15 @@ class XcalConverter:
 
     def produce_csv_file(self):
         """Produces the CSV output file following the previous data processing."""
-
+        n = len(self._earfcns)
         csv_header = {
-            'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA', 'EARFCN1', 'EARFCN2', 'EARFCN3', 'etc'],
-            'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA', 'PCI1', 'PCI2', 'PCI3', 'etc'],
-            'MEAS_NB': ['NA', 'NA', 'NA', 'NA', 'nb_meas_for_1', 'nb_meas_for_2', 'nb_meas_for_3', 'etc'],
+            'VERSION': ['Version'],
+            'DATE': ['Date'],
+            'TECHNO': ['Techno'],
+            'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA'] + ['EARFCN_{}'.format(i) for i in range(n)],
+            'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA'] + ['PCI_{}'.format(i) for i in range(n)],
+            'MEAS_BEAMS': ['NA', 'NA', 'NA', 'NA'] + ['BEAM_{}'.format(i) for i in range(n)],
+            'MEAS_NB': ['NA', 'NA', 'NA', 'NA'] + ['nb_meas_{}'.format(i) for i in range(n)],
             'CELLINFO': ['Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'],
             'MEASURE_SERVING': [
                 'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI',
@@ -713,6 +717,10 @@ class XcalConverter:
 
         with csvtools.CSVWriter(getPathText('csv_tmp.csv'), csv_header) as csv_out:
 
+            csv_out.write_row(['VERSION'] + ['2.0'])
+            csv_out.write_row(['DATE'] + ['NULL'])
+            csv_out.write_row(['TECHNO'] + ['4G'])
+
             # List of EARFCN/PCI/NB of samples just for writing the file (not used later)
             ep_list_saving = list(zip(self._earfcns, self._pcis,self._nbsamples))
             ep_list_saving.sort()
@@ -720,6 +728,7 @@ class XcalConverter:
             # Writing couples in the file.
             csv_out.write_row(['MEAS_EARFCNS'] + [''] * 4 + [ep[0] for ep in ep_list_saving])
             csv_out.write_row(['MEAS_PCIS'] + [''] * 4 + [ep[1] for ep in ep_list_saving])
+            csv_out.write_row(['MEAS_BEAMS'] + [''] * 4 + [0 for ep in ep_list_saving])
             csv_out.write_row(['MEAS_NB'] + [''] * 4 + [ep[2] for ep in ep_list_saving])
 
             # Lists of EARFCN/PCI couples that are used later on
