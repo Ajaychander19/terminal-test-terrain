@@ -295,13 +295,8 @@ const drawing = {
             // Content element of the popup.
             let popDiv = document.createElement('div');
 
-            //let tooltip = '<div class="btninfo">'
-                          //+ '<img src ="img/info.png">' //<a href="https://www.cartoradio.fr">
-                          //+ '<div class="tooltip">Numéro cartoradio</div>'
-            //              + '</div>'
-
             // Popup title.
-            popDiv.innerHTML = '<span class="tooltip-title">' + cartoNum + " "+ /*+ tooltip + */'</span><br>';
+            popDiv.innerHTML = '<span class="tooltip-title">'+ '<a href=\"https://www.cartoradio.fr\">' + cartoNum + '</a></span><br>';
             // Checkboxes container element.
             let checkDiv = document.createElement('div');
             checkDiv.classList.add('check-div');
@@ -310,7 +305,6 @@ const drawing = {
             let ascEarfcns = assoc.map((asc) => asc.earfcn);
             let ascPcis = assoc.map((asc) => asc.pci);
 
-            //let earpcis = utils.subEarpci(ascEarfcns, ascPcis, null, earfcns, pcis, beams);
             let earpcis = utils.subEarpci(ascEarfcns, ascPcis, beams, earfcns, pcis, beams);
             for (let i in earpcis.earfcns) {
                 let earfcn = earpcis.earfcns[i];

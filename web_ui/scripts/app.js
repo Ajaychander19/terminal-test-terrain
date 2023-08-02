@@ -106,7 +106,7 @@ const app = {
             let filtEarpcis = utils.subEarpci(earfcns, pcis, beams, selEarfcns, selPcis, selBeams);
 
             // Filtering EARFCNs and PCIs using sites checkboxes.
-            let onlySitesEarpcis = utils.subEarpci(filtEarpcis.earfcns, filtEarpcis.pcis, filtEarpcis.Beams, checkEarfcns, checkPcis, checkBeams);
+            let onlySitesEarpcis = utils.subEarpci(filtEarpcis.earfcns, filtEarpcis.pcis, filtEarpcis.beams, checkEarfcns, checkPcis, null);
             
             // Final EARFCNs and PCIs list.
             let finalEarfcns = (this._allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
