@@ -191,10 +191,7 @@ class GUI(tkinter.Frame):
                 self.change_color('red')
                 files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',
                                                     filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
-                #merge
-
                 if len(files) != 0:
-                    # csvtoPcap(files,self.working_directory)
                     for f in files:
                         conv = Viavilyzer.produces_csv_op_files(f)
                 else:

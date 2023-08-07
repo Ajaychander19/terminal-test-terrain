@@ -88,7 +88,7 @@ const utils = {
      * 
      * @function 
      */
-    subEarpci: function (earfcns, pcis, beams=null, reqEarfcns=null, reqPcis=null, reqBeams=null) {
+    subEarpci: function (earfcns, pcis, beams=null, reqEarfcns=null, reqPcis=null) {
         // Result object.
         let result = {earfcns: [], pcis: [], beams: {}, indices: []};
 

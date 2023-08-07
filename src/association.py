@@ -141,7 +141,7 @@ class CellAssociator:
                 self.version = float(line[1])
                 header = self._HEADER_V2
 
-            line = meas.read_line()
+            meas.read_line()
             line = meas.read_line()
             if line[0] == 'TECHNO':
                 self.techno = str(line[1])
@@ -236,10 +236,6 @@ class CellAssociator:
 
             line = meas.read_line()     # Current line.
 
-            prev_tstamp = None          # Previous measurement timestamp.
-
-            meas_count = 0              # Measurement count.
-
             while line != ['']:
 
                 # Registering base stations.
@@ -260,8 +256,7 @@ class CellAssociator:
 
                     )
 
-                elif line[0] == 'VERSION': #and line[1] == 2.0:
-
+                elif line[0] == 'VERSION':
                     self.version = 2.0
 
                     out_wr.write_row(line)
@@ -309,11 +304,6 @@ class CellAssociator:
                             1
 
                         )
-
-
-                    last_earfcn = int(line[4])
-
-                    last_pci = int(line[5])
 
                 # Registering EARFCN / PCI / BEAM (if V2) tuples...
 

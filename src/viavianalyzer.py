@@ -8,7 +8,7 @@ import csvtools
 class Viavilyzer:
 
     def merge(path: str):
-        """Take the path of CSV files, merge all the CSV files and create a single CSV fileg:
+        """Take the path of CSV files, merge all the CSV files and create a single CSV file:
 
         Parameters
         ----------
@@ -29,15 +29,13 @@ class Viavilyzer:
         merge.to_csv(path + 'measurements_merge.csv', index=False)
 
     def seperate_op(filename):
-        """Separate measures in different files
+        """Separate measurements in different files for each operator
 
         Parameters
         ----------
         filename: str
         """
         df = pd.read_csv(filename)
-        # conv.freq_to_arfcn(row['Center Frequency (MHz)'])
-        #df_sort = df.sort_values('Center Frequency (MHz)')
         earfcn_list = df['Center Frequency (MHz)'].unique()
 
         files = []
@@ -156,8 +154,6 @@ class Viavilyzer:
             for index, row in df.iterrows():
                 total += conv.linearScale(row[unit])
             mean = total / len(df)
-            #if 'S-SS RSRP / RSRP (dBm)' == unit:
-            #    print("linear: " + str(mean) + "|| dBm: " + str(conv.dBscale(mean)))
             return conv.dBscale(mean)
         return -500.0
 
@@ -183,7 +179,6 @@ class Viavilyzer:
             pci = t[1]
             ssb_index = t[2]
             filtered_rows = copy[(copy['PCI'] == pci) & (copy['SSB Index'] == ssb_index)]
-            #print(filtered_rows[['PCI', 'SSB Index', 'S-SS RSRP / RSRP (dBm)']])
             mean_rsrp = Viavilyzer.mean(filtered_rows, 'S-SS RSRP / RSRP (dBm)')
             if max_rsrp < mean_rsrp and len(filtered_rows) > 0:
                 max_rsrp = mean_rsrp
@@ -193,7 +188,6 @@ class Viavilyzer:
                 max_row['S-SS RSRQ / RSRQ (dB)'] = Viavilyzer.mean(filtered_rows, 'S-SS RSRQ / RSRQ (dB)')
                 max_row['S-SS RSSI / S-SS RSSI (dBm)'] = Viavilyzer.mean(filtered_rows, 'S-SS RSSI / S-SS RSSI (dBm)')
                 max_row['S-SS SINR / RS SINR (dB)'] = Viavilyzer.mean(filtered_rows, 'S-SS SINR / RS SINR (dB)')
-        #print("MAX " + str(conv.linearScale(max_rsrp)) + " " + str(max_rsrp) +"\n" )
         return max_row, sub_df
 
     def get_measurements(tuples, df):
@@ -287,7 +281,6 @@ class Viavilyzer:
                             '00'] + ['00'] + ['00'] + ['00'])
                     serving_pci = x['PCI']
 
-                # for m in sub_df
                 for j in range(min, max):
                     data_timestamp = sub_df[(sub_df['Timestamp'] == j)].reset_index(drop=True)
                     if len(data_timestamp) > 0:

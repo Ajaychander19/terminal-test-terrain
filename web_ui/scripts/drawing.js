@@ -184,7 +184,7 @@ const drawing = {
             }
 
             // Filtering EARFCNs and PCIs...
-            let earpcis = utils.subEarpci(baseEarfncs, basePcis, baseBeams, earfcns, pcis, beams);
+            let earpcis = utils.subEarpci(baseEarfncs, basePcis, baseBeams, earfcns, pcis);
             let filtEarfcns = earpcis.earfcns;
             let filtPcis = earpcis.pcis;
             let filtBeams = earpcis.beams;
@@ -305,7 +305,7 @@ const drawing = {
             let ascEarfcns = assoc.map((asc) => asc.earfcn);
             let ascPcis = assoc.map((asc) => asc.pci);
 
-            let earpcis = utils.subEarpci(ascEarfcns, ascPcis, beams, earfcns, pcis, beams);
+            let earpcis = utils.subEarpci(ascEarfcns, ascPcis, beams, earfcns, pcis);
             for (let i in earpcis.earfcns) {
                 let earfcn = earpcis.earfcns[i];
                 let pci = earpcis.pcis[i];
@@ -459,7 +459,7 @@ const drawing = {
 
             let hexData = [];
 
-            let earpcis = utils.subEarpci(earfcns, pcis, beams, reqEarfcns, reqPcis, reqBeams);
+            let earpcis = utils.subEarpci(earfcns, pcis, beams, reqEarfcns, reqPcis);
 
             // For each measurement taken...
             measurements.forEach(
