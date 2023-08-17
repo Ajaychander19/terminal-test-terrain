@@ -86,7 +86,7 @@ class CellAssociator:
 
         'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI'],
 
-        'POINT': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'BEAM', 'RSRP', 'RSRQ', 'RSSI', 'CINR']
+        'MEASURE_SERVING': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'BEAM', 'RSRP', 'RSRQ', 'RSSI', 'CINR']
 
     }
 
@@ -1001,7 +1001,7 @@ class CellAssociator:
 
             out_wr.write_row([
 
-                'POINT', point_assoc['Lat'][i], point_assoc['Lng'][i], point_assoc['TAC'][i],
+                'MEASURE_SERVING', point_assoc['Lat'][i], point_assoc['Lng'][i], point_assoc['TAC'][i],
 
                 point_assoc['CID'][i], point_assoc['EARFCN'][i], point_assoc['PCI'][i], point_assoc['BEAM'][i],
 

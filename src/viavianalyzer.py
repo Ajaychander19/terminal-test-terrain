@@ -303,4 +303,4 @@ class Viavilyzer:
     def produces_csv_op_files(filename):
         files = Viavilyzer.seperate_op(filename)
         for f in files:
-            Viavilyzer.produce_csv_file(f, 1, -120.0)
+            Viavilyzer.produce_csv_file(f, 5, -150.0)
