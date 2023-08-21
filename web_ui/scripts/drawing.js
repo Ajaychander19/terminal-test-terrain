@@ -219,14 +219,17 @@ const drawing = {
                     }
                 }
                 else{
-                        for (let b in beamList){
-                            if(points[earfcn][pci][b]){
-                                points[earfcn][pci][b].forEach(
-                                    (pt) => {
-                                        let val = valChooser(earfcn, pci, pt);
-                                        hexData.push([pt.lng, pt.lat, val]);
-                                    }
-                                );
+                        for (var e = 0; e < beamList.length; e++){
+                            var be = beamList[e];
+                            if (!isNaN(be)) {
+                                if (points[earfcn][pci][be]) {
+                                    points[earfcn][pci][be].forEach(
+                                        (pt) => {
+                                            let val = valChooser(earfcn, pci, pt);
+                                            hexData.push([pt.lng, pt.lat, val]);
+                                        }
+                                    );
+                                }
                             }
                         }
                     }
