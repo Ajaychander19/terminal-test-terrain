@@ -84,8 +84,8 @@ class Viavilyzer:
         data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--') & (data['PBCH DM-RS RSRP (dBm) /'] != '--') & (
                     data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
         data = data[(data['PBCH DM-RS RSRP (dBm) /'].astype(float)) > threshold]
-        start = time.mktime(datetime.datetime.strptime(((data['Time'][0]).split("CEST")[0]).replace(" ", ""),
-                                                       "%H:%M:%S.%f%p").timetuple())
+        start = time.mktime(datetime.datetime.strptime("2023"+((data['Time'][0]).split("CEST")[0]).replace(" ", ""),
+                                                       "%Y%H:%M:%S.%f%p").timetuple())
 
         data.insert(0, 'Timestamp', 0.0)
         data = data.astype(dtype_mapping)
@@ -94,8 +94,8 @@ class Viavilyzer:
             time_zone = "CEST"
 
         for index, row in data.iterrows():
-            x = abs(time.mktime(datetime.datetime.strptime(((row['Time']).split(time_zone)[0]).replace(" ", ""),
-                                                                   "%H:%M:%S.%f%p").timetuple()) - start)
+            x = abs(time.mktime(datetime.datetime.strptime("2023"+((row['Time']).split(time_zone)[0]).replace(" ", ""),
+                                                                   "%Y%H:%M:%S.%f%p").timetuple()) - start)
             data.loc[index, 'Timestamp'] = x
         data = data.drop(['Date', 'Time'], axis=1)
         return data, date
