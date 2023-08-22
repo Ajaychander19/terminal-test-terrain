@@ -44,7 +44,8 @@ class Viavilyzer:
         for earfcn in earfcn_list:
             df_earfcn = df[df['Center Frequency (MHz)'] == earfcn].reset_index(drop=True)
             x = str(conv.freq_to_arfcn(earfcn))
-            nom_fichier = f"{directory}/viavi_{x}.csv"
+            name = os.path.basename(filename)
+            nom_fichier = f"{directory}/{x}_{name}"
             df_earfcn.to_csv(nom_fichier)
             files += [nom_fichier]
         return files
@@ -260,7 +261,9 @@ class Viavilyzer:
         end = int(round(data['Timestamp'][len(data) - 1]))
 
         earfcn = str(conv.freq_to_arfcn(data['Center Frequency (MHz)'][0]))
-        output_name = f'{directory}/cev_{earfcn}.csv'
+
+        name = os.path.basename(filename)
+        output_name = f'{directory}/cev_{name}'
 
         with csvtools.CSVWriter(output_name, csv_header) as csv_out:
             csv_out.write_row(['VERSION'] + ['2.0'])
