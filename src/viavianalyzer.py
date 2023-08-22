@@ -1,5 +1,6 @@
 import datetime
 import time
+import os
 import pandas as pd
 import glob
 from freq_conversion import conv
@@ -28,7 +29,7 @@ class Viavilyzer:
         merge = pd.concat(data)
         merge.to_csv(path + 'measurements_merge.csv', index=False)
 
-    def seperate_op(filename):
+    def seperate_op(filename, directory):
         """Separate measurements in different files for each operator
 
         Parameters
@@ -43,7 +44,7 @@ class Viavilyzer:
         for earfcn in earfcn_list:
             df_earfcn = df[df['Center Frequency (MHz)'] == earfcn].reset_index(drop=True)
             x = str(conv.freq_to_arfcn(earfcn))
-            nom_fichier = f"../donnees/viavi_{x}.csv"
+            nom_fichier = f"{directory}/viavi_{x}.csv"
             df_earfcn.to_csv(nom_fichier)
             files += [nom_fichier]
         return files
@@ -219,7 +220,7 @@ class Viavilyzer:
             measurements_RSRP += ['']
         return measurements_RSRQ, measurements_RSSI, measurements_RSRP
 
-    def produce_csv_file(filename, interval, threshold):
+    def produce_csv_file(filename, interval, threshold, directory):
         """Produce a measurement file
         Parameters
         ----------
@@ -259,7 +260,7 @@ class Viavilyzer:
         end = int(round(data['Timestamp'][len(data) - 1]))
 
         earfcn = str(conv.freq_to_arfcn(data['Center Frequency (MHz)'][0]))
-        output_name = f'../donnees/cev_{earfcn}.csv'
+        output_name = f'{directory}/cev_{earfcn}.csv'
 
         with csvtools.CSVWriter(output_name, csv_header) as csv_out:
             csv_out.write_row(['VERSION'] + ['2.0'])
@@ -300,7 +301,12 @@ class Viavilyzer:
                 min += interval
                 max += interval
 
-    def produces_csv_op_files(filename):
-        files = Viavilyzer.seperate_op(filename)
+    def produces_csv_op_files(filename, directory):
+        files = Viavilyzer.seperate_op(filename, "../tmp")
         for f in files:
-            Viavilyzer.produce_csv_file(f, 5, -150.0)
+            Viavilyzer.produce_csv_file(f, 5, -150.0, directory)
+
+        for f in os.listdir("../tmp"):
+            path = os.path.join("../tmp", f)
+            if os.path.isfile(path):
+                os.remove(path)

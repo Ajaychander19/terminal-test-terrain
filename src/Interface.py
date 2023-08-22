@@ -193,7 +193,7 @@ class GUI(tkinter.Frame):
                                                     filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
                 if len(files) != 0:
                     for f in files:
-                        conv = Viavilyzer.produces_csv_op_files(f)
+                        conv = Viavilyzer.produces_csv_op_files(f, self.working_directory)
                 else:
                     messagebox.showinfo("Warning", "Select at least one file")
 
