@@ -401,10 +401,11 @@ var csvreadv2 = {
                 measBeams: [],
                 measNb: [],
                 delimiter: [],
-                point: [],
+                measureServing: [],
                 measurement: [],
                 bsAntDir: [],
                 assoc:[],
+                others:[],
             };
 
             let currentHeaderType = null;
@@ -426,8 +427,11 @@ var csvreadv2 = {
                     currentHeaderType = 'measurement';
                 } else if (line[0] === 'ASSOC') {
                     currentHeaderType = 'assoc';
-                } else if (line[0] === 'POINT') {
-                    currentHeaderType = 'point';
+                } else if (line[0] === 'MEASURE_SERVING') {
+                    currentHeaderType = 'measureServing';
+                }
+                else if (line[0] === 'DEFINE' || line[0] === 'CONTENT'){
+                    currentHeaderType = 'others';
                 }
                 // Push the line data into the appropriate array based on the current header type
                 if (currentHeaderType !== null) {
@@ -441,12 +445,11 @@ var csvreadv2 = {
             const parsedMeasBeams = Papa.parse(parsedData.measBeams.join('\n'), { header: true});
             const parsedMeasNb = Papa.parse(parsedData.measNb.join('\n'), { header: true });
             const parsedBsAntDir = Papa.parse(parsedData.bsAntDir.join('\n'), { header: true });
-            const parsedPoint = Papa.parse(parsedData.point.join('\n'), { header: true });
+            const parsedPoint = Papa.parse(parsedData.measureServing.join('\n'), { header: true });
             const parsedMeasurement = Papa.parse(parsedData.measurement.join('\n'), { header: true });
             const parsedDelimiter = Papa.parse(parsedData.delimiter.join('\n'), { header: true });
             const parsedAssoc = Papa.parse(parsedData.assoc.join('\n'), { header: true });
-
-            parsedMeasBeams.data
+            const parsedOthers = Papa.parse(parsedData.others.join('\n'), { header: true });
 
             return {
                 MEAS_EARFCNS: parsedMeasEarfcn.data,
@@ -457,7 +460,8 @@ var csvreadv2 = {
                 POINT: parsedPoint.data,
                 ASSOC: parsedAssoc.data,
                 DELIMITER : parsedDelimiter.data,
-                BS_ANT_DIR : parsedBsAntDir.data
+                BS_ANT_DIR : parsedBsAntDir.data,
+                OTHERS: parsedOthers.data
             };
         }
 
