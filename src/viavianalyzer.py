@@ -148,7 +148,8 @@ class Viavilyzer:
             arfcns.append(conv.freq_to_arfcn(row['Center Frequency (MHz)']))
             pcis.append(row['PCI'])
             beam_indexes.append(row['SSB Index'])
-        return set(zip(arfcns, pcis, beam_indexes))
+        triple = set(zip(arfcns, pcis, beam_indexes))
+        return sorted(triple, key=lambda x: (x[0], x[1], x[2]))
 
     def mean(df, unit):
         if len(df) > 0:
@@ -196,10 +197,10 @@ class Viavilyzer:
         """ Return the measurements of a dataframe separated by categories (RSRQ, RSSI, RSRP)
         Parameters
         ----------
-        start:
-            First timestamp
-        end:
-            Second timestamp
+        tuples:
+            list of tuples
+        df:
+            data to process
         Returns
         -------
         tuple
@@ -208,17 +209,20 @@ class Viavilyzer:
         measurements_RSRQ = []
         measurements_RSSI = []
         measurements_RSRP = []
+
         for t in tuples:
+            find = False
             for index, row in df.iterrows():
                 if row['PCI'] == t[1] and conv.freq_to_arfcn(row['Center Frequency (MHz)']) == t[0] and row[
                     'SSB Index'] == t[2]:
-                    measurements_RSRQ += [row['S-SS RSRQ / RSRQ (dB)']]
-                    measurements_RSSI += [row['S-SS RSSI / S-SS RSSI (dBm)']]
-                    measurements_RSRP += [row['S-SS RSRP / RSRP (dBm)']]
-                    #break
-            measurements_RSRQ += ['']
-            measurements_RSSI += ['']
-            measurements_RSRP += ['']
+                        measurements_RSRQ += [row['S-SS RSRQ / RSRQ (dB)']]
+                        measurements_RSSI += [row['S-SS RSSI / S-SS RSSI (dBm)']]
+                        measurements_RSRP += [row['S-SS RSRP / RSRP (dBm)']]
+                        find = True
+            if find == False:
+                measurements_RSRQ += ['']
+                measurements_RSSI += ['']
+                measurements_RSRP += ['']
         return measurements_RSRQ, measurements_RSSI, measurements_RSRP
 
     def produce_csv_file(filename, interval, threshold, directory):
