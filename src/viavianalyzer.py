@@ -214,7 +214,7 @@ class Viavilyzer:
             find = False
             for index, row in df.iterrows():
                 if row['PCI'] == t[1] and conv.freq_to_arfcn(row['Center Frequency (MHz)']) == t[0] and row[
-                    'SSB Index'] == t[2]:
+                    'SSB Index'] == t[2] and find == False:
                         measurements_RSRQ += [row['S-SS RSRQ / RSRQ (dB)']]
                         measurements_RSSI += [row['S-SS RSSI / S-SS RSSI (dBm)']]
                         measurements_RSRP += [row['S-SS RSRP / RSRP (dBm)']]

@@ -130,7 +130,7 @@ class CellAssociator:
 
                     pathlib.Path(self._in_sites).stem.replace("cev","")))
 
-        header = header = self._HEADER_V2
+        header = self._HEADER_V2
 
         with csvt.CSVReader(self._in_meas) as meas:
 
@@ -150,7 +150,7 @@ class CellAssociator:
 
             if line[0] == 'MEAS_EARFCNS':
 
-                n = len(line) - (line.count('NA') + 1)
+                n = len(line) - 5
 
                 header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
 
