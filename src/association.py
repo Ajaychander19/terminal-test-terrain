@@ -180,6 +180,17 @@ class CellAssociator:
 
             self._write_output(out_wr)
 
+            header['MEAS_EARFCNS'] = ['NA', 'NA', 'NA', 'NA']
+
+            header['MEAS_PCIS'] = ['NA', 'NA', 'NA', 'NA']
+
+            header['MEAS_BEAMS'] = ['NA', 'NA', 'NA', 'NA']
+
+            header['MEAS_NB'] = ['NA', 'NA', 'NA', 'NA']
+
+            header['MEASUREMENT'] = ['Timestamp', 'Lat', 'Lng', 'Measurement_Name']
+
+
     def _read_measurements(self, out_wr: csvt.CSVWriter):
 
         """PRIVATE METHOD which reads measurement file.
