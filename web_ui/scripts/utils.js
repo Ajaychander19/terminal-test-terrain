@@ -88,7 +88,7 @@ const utils = {
      * 
      * @function 
      */
-    subEarpci: function (earfcns, pcis, beams=null, reqEarfcns=null, reqPcis=null) {
+    subEarpci: function (earfcns, pcis, beams=null, reqEarfcns=null, reqPcis=null, reqBeams=null) {
         // Result object.
         let result = {earfcns: [], pcis: [], beams: {}, indices: []};
 
@@ -125,19 +125,33 @@ const utils = {
             // If pair found (if possible), and PCi found.
             return subPcisIdx.includes(i) && sameIndex;
         }).forEach( // Filling result.
-            (i) => {
+           (i) => {
                 result.earfcns.push(earfcns[i]);
                 result.pcis.push(pcis[i]);
-                result.indices.push(i);
+                let p = pcis[i];
                 if(beams){
-                    let p = pcis[i];
+                    if(reqBeams) {
+                        if (Array.isArray(reqBeams[p]) && reqBeams[p]) {
+                            if(reqBeams[p].includes("all")){
+                                result.indices.push(i);
+                            }
+                            else if (reqBeams[p].includes(beams[i].toString())) {
+                                result.indices.push(i);
+                            }
+                        }
+                        else {
+                            result.indices.push(i);
+                        }
+                    }
                     if (result.beams[p] === undefined) result.beams[p] = [];
                     result.beams[p].push(beams[i]);
                 }
-            }
+                else{
+                    result.indices.push(i);
+                }
+           }
         );
         return result;
-
     },
 
     /**

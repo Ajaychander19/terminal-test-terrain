@@ -24,7 +24,7 @@ const app = {
 
         _checkEarfcns = [];         // Selected EARFCNs (with sites checkboxes).
         _checkPcis = [];            // Selected PCIs (with sites checkboxes).
-        _checkBeams = {};           // Selected Beams for each PCI
+        _checkBeams = [];           // Selected Beams for each PCI
 
         _allSites = true;           // true if "All Sites" is selected in Sites.
 
@@ -208,7 +208,7 @@ const app = {
 
             this._checkEarfcns = [];
             this._checkPcis = [];
-            this._checkBeams = {};
+            this._checkBeams = [];
 
             this._rsrpChecked = false;
             this._rsrqChecked = false;
