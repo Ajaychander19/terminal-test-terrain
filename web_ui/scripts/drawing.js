@@ -31,11 +31,9 @@ const drawing = {
         _assocLayer     // Association pin layer.
 
 
-
         _tacLayer       // TAC points layer.
 
         _pciLayer       // PCI Points layer.
-
 
 
         _servingRSRP    // Serving RSRP layer
@@ -45,7 +43,6 @@ const drawing = {
         _servingRSSI    // Serving RSSI layer
 
         _servingCINR    // Serving RSRP layer
-
 
 
         _rsrpLayer      // Global RSRP layer
@@ -135,7 +132,6 @@ const drawing = {
             let vorFeats = voronoi.features;
 
 
-
             // Creating layers for Voronoi cells and delimiters.
 
             let vorLayer = L.geoJson(turf.featureCollection(vorFeats), styles.polyStyle(0.1, '000000'));
@@ -143,7 +139,6 @@ const drawing = {
             let delLayer = L.geoJson(turf.featureCollection(delFeats), styles.styleDelimiter());
 
             delLayer.bringToBack();
-
 
 
             // Grouping these layers
@@ -155,7 +150,6 @@ const drawing = {
             // Antennas layer (always displayed by default).
 
             this._antLayer = L.geoJson(turf.featureCollection(antFeats), styles.styleAntenna());
-
 
 
         }
@@ -264,7 +258,7 @@ const drawing = {
 
          */
 
-        drawServingHex(layer, points, valChooser, min, max, earfcns=null, pcis=null, beams=null) {
+        drawServingHex(layer, points, valChooser, min, max, earfcns = null, pcis = null, beams = null) {
 
             // Layer data points;
 
@@ -290,7 +284,7 @@ const drawing = {
 
                     let beamGroup = points[earfcn][pci];
 
-                    for (let beam in beamGroup){
+                    for (let beam in beamGroup) {
 
                         baseEarfncs.push(parseInt(earfcn));
 
@@ -324,16 +318,15 @@ const drawing = {
 
                 let beamList = filtBeams[pci];
 
-                if (beams[pci]){
+                if (beams[pci]) {
 
                     // Pushing asscoiated measurements in hexData...
 
-                    for (let b in beamList){
+                    for (let b in beamList) {
 
-                        if(beams[pci].includes("all")){
+                        if (beams[pci].includes("all")) {
 
                             points[earfcn][pci][b].forEach(
-
                                 (pt) => {
 
                                     let val = valChooser(earfcn, pci, pt);
@@ -341,15 +334,11 @@ const drawing = {
                                     hexData.push([pt.lng, pt.lat, val]);
 
                                 }
-
                             );
 
-                        }
-
-                        else if (beams[pci].includes(b)){
+                        } else if (beams[pci].includes(b)) {
 
                             points[earfcn][pci][b].forEach(
-
                                 (pt) => {
 
                                     let val = valChooser(earfcn, pci, pt);
@@ -357,38 +346,31 @@ const drawing = {
                                     hexData.push([pt.lng, pt.lat, val]);
 
                                 }
-
                             );
 
                         }
 
                     }
 
-                }
+                } else {
 
-                else{
+                    for (var e = 0; e < beamList.length; e++) {
 
-                        for (var e = 0; e < beamList.length; e++){
+                        var be = beamList[e];
 
-                            var be = beamList[e];
+                        if (!isNaN(be)) {
 
-                            if (!isNaN(be)) {
+                            if (points[earfcn][pci][be]) {
 
-                                if (points[earfcn][pci][be]) {
+                                points[earfcn][pci][be].forEach(
+                                    (pt) => {
 
-                                    points[earfcn][pci][be].forEach(
+                                        let val = valChooser(earfcn, pci, pt);
 
-                                        (pt) => {
+                                        hexData.push([pt.lng, pt.lat, val]);
 
-                                            let val = valChooser(earfcn, pci, pt);
-
-                                            hexData.push([pt.lng, pt.lat, val]);
-
-                                        }
-
-                                    );
-
-                                }
+                                    }
+                                );
 
                             }
 
@@ -397,6 +379,8 @@ const drawing = {
                     }
 
                 }
+
+            }
 
             // Drawing the layer.
 
@@ -436,7 +420,7 @@ const drawing = {
 
          */
 
-        drawAssocs(assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns=null, pcis=null, beams=null) {
+        drawAssocs(assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns = null, pcis = null, beams = null) {
 
             this._assocLayer.clearLayers();
 
@@ -453,11 +437,9 @@ const drawing = {
                 // Creating popup.
 
                 marker.bindPopup(
-
                     this.drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams),
 
                     {closeOnClick: false, autoClose: false}
-
                 );
 
                 marker.addTo(this._assocLayer);
@@ -494,7 +476,7 @@ const drawing = {
 
          */
 
-        drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns=null, pcis=null, beams=null) {
+        drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns = null, pcis = null, beams = null) {
 
             // Content element of the popup.
 
@@ -502,7 +484,7 @@ const drawing = {
 
             // Popup title.
 
-            popDiv.innerHTML = '<span class="tooltip-title">'+ '<a href=\"https://www.cartoradio.fr\">' + cartoNum + '</a></span><br>';
+            popDiv.innerHTML = '<span class="tooltip-title">' + '<a href=\"https://www.cartoradio.fr\">' + cartoNum + '</a></span><br>';
 
             // Checkboxes container element.
 
@@ -532,7 +514,7 @@ const drawing = {
 
                 let select_beams;
 
-                if (pcis != null && earfcns != null){
+                if (pcis != null && earfcns != null) {
 
                     let current_beams = beams[pci].sort();
 
@@ -552,7 +534,7 @@ const drawing = {
 
                     select_beams.add(option);
 
-                    for ( var j = 0; j < current_beams.length; j++){
+                    for (var j = 0; j < current_beams.length; j++) {
 
                         let option = document.createElement('option');
 
@@ -564,7 +546,7 @@ const drawing = {
 
                     }
 
-                    select_beams.addEventListener('change', function() {
+                    select_beams.addEventListener('change', function () {
 
                         checkBeams[pci].pop();
 
@@ -654,103 +636,103 @@ const drawing = {
 
         setPointLayer(layer, pointLayers, earfcns = null, pcis = null, beams = null) {
 
-          if (earfcns && pcis && earfcns.length !== pcis.length)
+            if (earfcns && pcis && earfcns.length !== pcis.length)
 
-            throw new Error('earfncs and pcis should have the same length');
+                throw new Error('earfncs and pcis should have the same length');
 
-          layer.clearLayers();
+            layer.clearLayers();
 
-          const earfcnLayers = earfcns ? earfcns.reduce((obj, earfcn) => {
+            const earfcnLayers = earfcns ? earfcns.reduce((obj, earfcn) => {
 
-            obj[earfcn] = pointLayers[earfcn];
+                obj[earfcn] = pointLayers[earfcn];
 
-            return obj;
+                return obj;
 
-          }, {}) : { ...pointLayers };
+            }, {}) : {...pointLayers};
 
-          const layers = [];
+            const layers = [];
 
-          for (const earfcn in earfcnLayers) {
+            for (const earfcn in earfcnLayers) {
 
-            const earfcnInt = parseInt(earfcn);
+                const earfcnInt = parseInt(earfcn);
 
-            const pciLayers = earfcnLayers[earfcn];
+                const pciLayers = earfcnLayers[earfcn];
 
-            for (const pci in pciLayers) {
+                for (const pci in pciLayers) {
 
-              const pciInt = parseInt(pci);
+                    const pciInt = parseInt(pci);
 
-              const beamsLayers = pciLayers[pci];
+                    const beamsLayers = pciLayers[pci];
 
-              if (pcis) {
+                    if (pcis) {
 
-                const pciIndexes = utils.indexesOf(pcis, pciInt);
+                        const pciIndexes = utils.indexesOf(pcis, pciInt);
 
-                pciIndexes.forEach((pciIndex) => {
+                        pciIndexes.forEach((pciIndex) => {
 
-                  if (
+                            if (
 
-                    pciIndex !== -1 &&
+                                pciIndex !== -1 &&
 
-                    ((earfcns && earfcnInt === earfcns[pciIndex]) || !earfcns)
+                                ((earfcns && earfcnInt === earfcns[pciIndex]) || !earfcns)
 
-                  ) {
+                            ) {
 
-                    for (const beam in beamsLayers) {
+                                for (const beam in beamsLayers) {
 
-                      const beamLayer = beamsLayers[beam];
+                                    const beamLayer = beamsLayers[beam];
 
-                      if (beams[pciInt]) {
+                                    if (beams[pciInt]) {
 
-                        if (beams[pciInt].includes("all")) {
+                                        if (beams[pciInt].includes("all")) {
 
-                          layers.push(beamLayer);
+                                            layers.push(beamLayer);
 
-                        } else {
+                                        } else {
 
-                          const beamIndexes = utils.indexesOf(beams[pciInt], beam);
+                                            const beamIndexes = utils.indexesOf(beams[pciInt], beam);
 
-                          beamIndexes.forEach((beamIndex) => {
+                                            beamIndexes.forEach((beamIndex) => {
 
-                            if (beamIndex !== -1) {
+                                                if (beamIndex !== -1) {
 
-                              layers.push(beamLayer);
+                                                    layers.push(beamLayer);
+
+                                                }
+
+                                            });
+
+                                        }
+
+                                    } else {
+
+                                        layers.push(beamLayer);
+
+                                    }
+
+                                }
 
                             }
 
-                          });
+                        });
+
+                    } else {
+
+                        for (const beam in beamsLayers) {
+
+                            const beamLayer = beamsLayers[beam];
+
+                            layers.push(beamLayer);
 
                         }
 
-                      } else {
-
-                        layers.push(beamLayer);
-
-                      }
-
                     }
-
-                  }
-
-                });
-
-              } else {
-
-                for (const beam in beamsLayers) {
-
-                  const beamLayer = beamsLayers[beam];
-
-                  layers.push(beamLayer);
 
                 }
 
-              }
-
             }
 
-          }
-
-          layers.forEach((l) => l.addTo(layer));
+            layers.forEach((l) => l.addTo(layer));
 
         }
 
@@ -780,7 +762,7 @@ const drawing = {
 
          */
 
-        drawHex(layer, measurements, earfcns, pcis, beams, min, max, reqEarfcns=null, reqPcis=null, reqBeams=null) {
+        drawHex(layer, measurements, earfcns, pcis, beams, min, max, reqEarfcns = null, reqPcis = null, reqBeams = null) {
 
             let hexData = [];
 
@@ -788,26 +770,22 @@ const drawing = {
 
             // For each measurement taken...
             measurements.forEach(
-
                 (measObj) => {
 
                     let meas = measObj.meas;
 
                     earpcis.indices.forEach(
-
                         (i) => {
 
                             let m = meas[i];
-                            if (m){
+                            if (m) {
                                 hexData.push([measObj.lng, measObj.lat, m]);
                             }
 
                         }
-
                     );
 
                 }
-
             );
 
             layer.options.colorScaleExtent = [min, max];
@@ -832,7 +810,9 @@ const drawing = {
 
          */
 
-        drawTAC(points) { return this.drawPoints(points, (_e, _pc, p) => p.tac, styles.tacColor); }
+        drawTAC(points) {
+            return this.drawPoints(points, (_e, _pc, p) => p.tac, styles.tacColor);
+        }
 
         /**
 
@@ -848,7 +828,9 @@ const drawing = {
 
          */
 
-        drawPCI(points, col=1) { return this.drawPoints(points, (_e, pc, _p) => pc, (p) => styles.pciColor(p, col)); }
+        drawPCI(points, col = 1) {
+            return this.drawPoints(points, (_e, pc, _p) => pc, (p) => styles.pciColor(p, col));
+        }
 
         /**
 
@@ -870,14 +852,12 @@ const drawing = {
 
          */
 
-        drawServingRSRP(points, min, max, earfcns=null, pcis=null, beams=null) {
+        drawServingRSRP(points, min, max, earfcns = null, pcis = null, beams = null) {
 
             this.drawServingHex(
-
                 this._servingRSRP, points, (_e, _p, pt) => pt.rsrp,
 
                 min, max, earfcns, pcis, beams,
-
             );
 
         }
@@ -902,14 +882,12 @@ const drawing = {
 
          */
 
-        drawServingRSRQ(points, min, max, earfcns=null, pcis=null, beams=null) {
+        drawServingRSRQ(points, min, max, earfcns = null, pcis = null, beams = null) {
 
             this.drawServingHex(
-
                 this._servingRSRQ, points, (_e, _p, pt) => pt.rsrq,
 
                 min, max, earfcns, pcis, beams
-
             );
 
         }
@@ -934,14 +912,12 @@ const drawing = {
 
          */
 
-        drawServingRSSI(points, min, max, earfcns=null, pcis=null, beams=null) {
+        drawServingRSSI(points, min, max, earfcns = null, pcis = null, beams = null) {
 
             this.drawServingHex(
-
                 this._servingRSSI, points, (_e, _p, pt) => pt.rssi,
 
                 min, max, earfcns, pcis, beams
-
             );
 
         }
@@ -966,14 +942,12 @@ const drawing = {
 
          */
 
-        drawServingCINR(points, min, max, earfcns=null, pcis=null, beams=null) {
+        drawServingCINR(points, min, max, earfcns = null, pcis = null, beams = null) {
 
             this.drawServingHex(
-
                 this._servingCINR, points, (_e, _p, pt) => pt.cinr,
 
                 min, max, earfcns, pcis, beams
-
             );
 
         }
@@ -1004,7 +978,7 @@ const drawing = {
 
          */
 
-        drawRSRP(measurements, earfcns, pcis, beams, min, max, subEarfcns=null, subPcis=null, subBeams=null) {
+        drawRSRP(measurements, earfcns, pcis, beams, min, max, subEarfcns = null, subPcis = null, subBeams = null) {
 
             this.drawHex(this._rsrpLayer, measurements, earfcns, pcis, beams, min, max, subEarfcns, subPcis, subBeams);
 
@@ -1036,7 +1010,7 @@ const drawing = {
 
          */
 
-        drawRSRQ(measurements, earfcns, pcis, beams, min, max, subEarfcns=null, subPcis=null, subBeams=null) {
+        drawRSRQ(measurements, earfcns, pcis, beams, min, max, subEarfcns = null, subPcis = null, subBeams = null) {
 
             this.drawHex(this._rsrqLayer, measurements, earfcns, pcis, beams, min, max, subEarfcns, subPcis, subBeams);
 
@@ -1068,12 +1042,11 @@ const drawing = {
 
          */
 
-        drawRSSI(measurements, earfcns, pcis, beams, min, max, subEarfcns=null, subPcis=null, subBeams=null) {
+        drawRSSI(measurements, earfcns, pcis, beams, min, max, subEarfcns = null, subPcis = null, subBeams = null) {
 
             this.drawHex(this._rssiLayer, measurements, earfcns, pcis, beams, min, max, subEarfcns, subPcis, subBeams);
 
         }
-
 
 
         /**
@@ -1094,7 +1067,7 @@ const drawing = {
 
          */
 
-        updateTACLayer(points, earfcn=null, pci=null, beam=null) {
+        updateTACLayer(points, earfcn = null, pci = null, beam = null) {
 
             this._nonFilteredTAC = this.drawTAC(points);
 
@@ -1120,7 +1093,7 @@ const drawing = {
 
          */
 
-        updatePCILayer(points, earfcn=null, pci=null, beam=null,col=1) {
+        updatePCILayer(points, earfcn = null, pci = null, beam = null, col = 1) {
 
             this._nonFilteredPCI = this.drawPCI(points, col);
 
@@ -1140,7 +1113,9 @@ const drawing = {
 
          */
 
-        setCellLayer(b) { this._setLayerVisibility(this._cellLayer, b); }
+        setCellLayer(b) {
+            this._setLayerVisibility(this._cellLayer, b);
+        }
 
         /**
 
@@ -1154,7 +1129,9 @@ const drawing = {
 
          */
 
-        setAntLayer(b) { this._setLayerVisibility(this._antLayer, b); }
+        setAntLayer(b) {
+            this._setLayerVisibility(this._antLayer, b);
+        }
 
         /**
 
@@ -1168,7 +1145,9 @@ const drawing = {
 
          */
 
-        setTACLayer(b) { this._setLayerVisibility(this._tacLayer, b); }
+        setTACLayer(b) {
+            this._setLayerVisibility(this._tacLayer, b);
+        }
 
         /**
 
@@ -1182,7 +1161,9 @@ const drawing = {
 
          */
 
-        setPCILayer(b) { this._setLayerVisibility(this._pciLayer, b); }
+        setPCILayer(b) {
+            this._setLayerVisibility(this._pciLayer, b);
+        }
 
         /**
 
@@ -1196,7 +1177,9 @@ const drawing = {
 
          */
 
-        setAssocLayer(b) { this._setLayerVisibility(this._assocLayer, b); }
+        setAssocLayer(b) {
+            this._setLayerVisibility(this._assocLayer, b);
+        }
 
         /**
 
@@ -1210,7 +1193,9 @@ const drawing = {
 
          */
 
-        setServingRSRP(b) { this._setLayerVisibility(this._servingRSRP, b); }
+        setServingRSRP(b) {
+            this._setLayerVisibility(this._servingRSRP, b);
+        }
 
         /**
 
@@ -1224,7 +1209,9 @@ const drawing = {
 
          */
 
-        setServingRSRQ(b) { this._setLayerVisibility(this._servingRSRQ, b); }
+        setServingRSRQ(b) {
+            this._setLayerVisibility(this._servingRSRQ, b);
+        }
 
         /**
 
@@ -1238,7 +1225,9 @@ const drawing = {
 
          */
 
-        setServingRSSI(b) { this._setLayerVisibility(this._servingRSSI, b); }
+        setServingRSSI(b) {
+            this._setLayerVisibility(this._servingRSSI, b);
+        }
 
         /**
 
@@ -1252,7 +1241,9 @@ const drawing = {
 
          */
 
-        setServingCINR(b) { this._setLayerVisibility(this._servingCINR, b); }
+        setServingCINR(b) {
+            this._setLayerVisibility(this._servingCINR, b);
+        }
 
         /**
 
@@ -1266,7 +1257,9 @@ const drawing = {
 
          */
 
-        setRSRP(b) { this._setLayerVisibility(this._rsrpLayer, b); }
+        setRSRP(b) {
+            this._setLayerVisibility(this._rsrpLayer, b);
+        }
 
         /**
 
@@ -1280,7 +1273,9 @@ const drawing = {
 
          */
 
-        setRSRQ(b) { this._setLayerVisibility(this._rsrqLayer, b); }
+        setRSRQ(b) {
+            this._setLayerVisibility(this._rsrqLayer, b);
+        }
 
         /**
 
@@ -1294,7 +1289,9 @@ const drawing = {
 
          */
 
-        setRSSI(b) { this._setLayerVisibility(this._rssiLayer, b); }
+        setRSSI(b) {
+            this._setLayerVisibility(this._rssiLayer, b);
+        }
 
         // setCINR(b) { this._setLayerVisibility(this._cinrLayer, b); }
 
@@ -1359,7 +1356,6 @@ const drawing = {
             let order = (a, b) => {
 
 
-
                 let numA = parseInt(a);
 
                 let numB = parseInt(b);
@@ -1375,13 +1371,11 @@ const drawing = {
             // Adding EARFCNs options.
 
             earfcns.sort(order).forEach(
-
                 (earfcn) => {
 
                     // Selector used to ensure we add only once time the same option.
 
                     if (!document.querySelector('#EARFCN_select option[value="' + earfcn + '"]')) {
-
 
 
                         // Creating option element.
@@ -1399,17 +1393,14 @@ const drawing = {
                     }
 
                 }
-
             );
 
             // Adding PCIs options.
 
             pcis.sort(order).forEach(
-
                 (pci) => {
 
                     if (!document.querySelector('#pci-select option[value="' + pci + '"]')) {
-
 
 
                         let option = document.createElement('option');
@@ -1423,7 +1414,6 @@ const drawing = {
                     }
 
                 }
-
             );
 
         }
@@ -1473,13 +1463,11 @@ const drawing = {
         // Handler used to show the tooltip.
 
         hex.hoverHandler(
-
             L.HexbinHoverHandler.tooltip({
 
                 tooltipContent: (d) => tooltip + ': ' + minFunct(d)
 
             })
-
         );
 
         return hex;

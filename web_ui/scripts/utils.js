@@ -81,8 +81,10 @@ const utils = {
      * 
      * @param {Array} earfcns Superset of EARFCNs 
      * @param {Array} pcis Superset of PCIs
+     * @param {Array} beams Superset of Beams
      * @param {Array} reqEarfcns Subset of EARFCNs (if null, represents all EARFCNs from the superset).
      * @param {Array} reqPcis Subset of PCIs (if null, represents all PCIs from the superset).
+     * @param {Array} reqBeams Subset of Beams
      * @returns Object which contains lists of filtered EARFCNs / PCIs, and list of indexes of EARFCNs / PCIs
      * pairs in the superset.
      * 
@@ -125,31 +127,22 @@ const utils = {
             // If pair found (if possible), and PCi found.
             return subPcisIdx.includes(i) && sameIndex;
         }).forEach( // Filling result.
-           (i) => {
+           (i) =>
+           {
                 result.earfcns.push(earfcns[i]);
                 result.pcis.push(pcis[i]);
                 let p = pcis[i];
-                if(beams){
-                    if(reqBeams) {
-                        if (Array.isArray(reqBeams[p]) && reqBeams[p]) {
-                            if(reqBeams[p].includes("all")){
-                                result.indices.push(i);
-                            }
-                            else if (reqBeams[p].includes(beams[i].toString())) {
-                                result.indices.push(i);
-                            }
-                        }
-                        else {
-                            result.indices.push(i);
-                        }
-                    }
+
+                if (!beams || reqBeams && (!Array.isArray(reqBeams[p]) || !reqBeams[p] || reqBeams[p].includes("all") || reqBeams[p].includes(beams[i].toString()))) {
+                    result.indices.push(i);
+                }
+
+                if (beams) {
                     if (result.beams[p] === undefined) result.beams[p] = [];
                     result.beams[p].push(beams[i]);
                 }
-                else{
-                    result.indices.push(i);
-                }
-           }
+            }
+
         );
         return result;
     },

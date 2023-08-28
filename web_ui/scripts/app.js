@@ -82,7 +82,6 @@ const app = {
             let beams = this._fileReader.beams;         // beams
             let selEarfcns = this._selEarfcns;          // EARFCNs selected with drop down menu.
             let selPcis = this._selPcis;                // PCIs selected with drop down menu.
-            let selBeams = this._selBeams;
             let checkEarfcns = this._checkEarfcns;      // EARFCNs selected with checkboxes.
             let checkPcis = this._checkPcis;            // PCIs selected with sites checkboxes.
             let checkBeams = this._checkBeams;
@@ -111,8 +110,6 @@ const app = {
             // Final EARFCNs and PCIs list.
             let finalEarfcns = (this._allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
             let finalPcis = (this._allSites) ? selPcis : onlySitesEarpcis.pcis;
-            //let finalBeams = (this._allSites) ? selBeams: onlySitesEarpcis.beams;
-
             let finalBeams = checkBeams;
 
             // Updating TAC / PCI layers.
@@ -277,7 +274,7 @@ const app = {
 
                 // Reading file.
                 let file = evt.target.files[0];
-                this._fileReader = new csvreadv2.CSVReader(file);//new csvread.CSVReader(file);//new csvreadv2.CSVReader(file);
+                this._fileReader = new csvreadv2.CSVReader(file);
                 await this._fileReader.readFile();  // Wait for file to be read.
 
                 // Reading antennas data.
