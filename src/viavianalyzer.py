@@ -97,7 +97,7 @@ class Viavilyzer:
         data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--') & (data['PBCH DM-RS RSRP (dBm) /'] != '--') & (
                     data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
 
-        #filer rows where the PBCH DM-RS RSRP value is less than the threshold
+        #filter rows where the PBCH DM-RS RSRP value is less than the threshold
         data = data[(data['PBCH DM-RS RSRP (dBm) /'].astype(float)) > threshold]
 
         #start of the measurement campaign
@@ -211,8 +211,12 @@ class Viavilyzer:
             mean_rsrp = Viavilyzer.mean(filtered_rows, 'S-SS RSRP / RSRP (dBm)')
             if max_rsrp < mean_rsrp and len(filtered_rows) > 0:
                 max_rsrp = mean_rsrp
+
+                #copy of the first row of the tuple 'max', so Lat and Lng in max_row correspond to the emplacement of the first measurement
                 max_row = filtered_rows.iloc[0].copy()
                 max_row['Timestamp'] = second - 1
+
+                #Measurement Serving values are all averages of measurements of the max tuple in the interval
                 max_row['S-SS RSRP / RSRP (dBm)'] = max_rsrp
                 max_row['S-SS RSRQ / RSRQ (dB)'] = Viavilyzer.mean(filtered_rows, 'S-SS RSRQ / RSRQ (dB)')
                 max_row['S-SS RSSI / S-SS RSSI (dBm)'] = Viavilyzer.mean(filtered_rows, 'S-SS RSSI / S-SS RSSI (dBm)')
