@@ -37,13 +37,19 @@ class Viavilyzer:
         filename: str
         """
         df = pd.read_csv(filename)
+
+        #make the list of all different frequency in the file
         earfcn_list = df['Center Frequency (MHz)'].unique()
 
         files = []
 
         for earfcn in earfcn_list:
+            #isolate all data of a same frequency
             df_earfcn = df[df['Center Frequency (MHz)'] == earfcn].reset_index(drop=True)
+
+            #convert frequency into earfcn
             x = str(conv.freq_to_arfcn(earfcn))
+
             name = os.path.basename(filename)
             nom_fichier = f"{directory}/{x}_{name}"
             df_earfcn.to_csv(nom_fichier)
@@ -81,24 +87,38 @@ class Viavilyzer:
             'Time Error (us)': float,
             'Timestamp': float
         }
+        #open the file as a dataframe
         data = pd.read_csv(filename)
+
+        #get the date of the measurement campaign
         date = data['Date'][0]
+
+        #filter the lines where the PCI, SSB Index, 'PBCH DM-RS RSRP and Center Frequency (MHz) are missing
         data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--') & (data['PBCH DM-RS RSRP (dBm) /'] != '--') & (
                     data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
         data = data[(data['PBCH DM-RS RSRP (dBm) /'].astype(float)) > threshold]
+
+        #start of the measurement campaign
         start = time.mktime(datetime.datetime.strptime("2023"+((data['Time'][0]).split("CEST")[0]).replace(" ", ""),
                                                        "%Y%H:%M:%S.%f%p").timetuple())
 
+        #insert the'Timestamp' column in the dataframe
         data.insert(0, 'Timestamp', 0.0)
+
+        # cast the dataframe with the specified types
         data = data.astype(dtype_mapping)
+
+        #in order to ignore the timezone for each row
         time_zone = "CET"
         if "CEST" in data.iloc[0]['Time']:
             time_zone = "CEST"
 
+        #compute the timestamp of each row
         for index, row in data.iterrows():
             x = abs(time.mktime(datetime.datetime.strptime("2023"+((row['Time']).split(time_zone)[0]).replace(" ", ""),
                                                                    "%Y%H:%M:%S.%f%p").timetuple()) - start)
             data.loc[index, 'Timestamp'] = x
+        #delete the 'Date' and 'Time' columns
         data = data.drop(['Date', 'Time'], axis=1)
         return data, date
 
@@ -138,8 +158,7 @@ class Viavilyzer:
 
         Returns
         -------
-        set
-            set of different earfcn-pci-beam tuples
+        set of different earfcn-pci-beam tuples in ascending order
         """
         arfcns = []
         pcis = []
@@ -173,9 +192,14 @@ class Viavilyzer:
         tuple
             (The row of the serving PCI, a subdataframe)
         """
+        # subdataframe between two timestamps
         sub_df = df[(df['Timestamp'] >= first) & (df['Timestamp'] <= second)]
+
         copy = sub_df.copy()
+
+        #list all tuples of the subdataframe
         tuples = Viavilyzer.earfcn_pci_beam(sub_df)
+
         max_rsrp = -200.0
         max_row = None
         for t in tuples:
@@ -255,6 +279,7 @@ class Viavilyzer:
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
         }
 
+        # add column names for each tuples (EARFCN, PCI, BEAM)
         csv_header['MEAS_EARFCNS'] = csv_header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
         csv_header['MEAS_PCIS'] = csv_header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
         csv_header['MEAS_BEAMS'] = csv_header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
@@ -269,6 +294,7 @@ class Viavilyzer:
         name = os.path.basename(filename)
         output_name = f'{directory}/cev_{name}'
 
+        #write the output file
         with csvtools.CSVWriter(output_name, csv_header) as csv_out:
             csv_out.write_row(['VERSION'] + ['2.0'])
             csv_out.write_row(['DATE'] + [date])
@@ -280,6 +306,7 @@ class Viavilyzer:
 
             serving_pci = -1
             for i in range(0, end, interval):
+                # get the best tuple (EARFCN,PCI, BEAM) for the interval
                 x, sub_df = Viavilyzer.get_best_pci(min, max, data)
                 if x is None:
                     continue
@@ -293,6 +320,8 @@ class Viavilyzer:
                     data_timestamp = sub_df[(sub_df['Timestamp'] == j)].reset_index(drop=True)
                     if len(data_timestamp) > 0:
                         t = data_timestamp.iloc[0]
+
+                        #get all the measurements in the interval
                         measurements_RSRQ, measurements_RSSI, measurements_RSRP = Viavilyzer.get_measurements(l,
                                                                                                               data_timestamp)
                         csv_out.write_row(['MEASUREMENT'] + [t['Timestamp']] + [t['Latitude']] + [t['Longitude']] + [
@@ -309,10 +338,22 @@ class Viavilyzer:
                 max += interval
 
     def produces_csv_op_files(filename, directory):
+        """Produce a measurement file for each frequency detected in the viavi file
+                Parameters
+                ----------
+                filename : str
+                    the path of the Viavi CSV file
+                directory: str
+                    directory where the files are saved
+        """
+        #divide the viavi file into temporary files for each frequency
         files = Viavilyzer.seperate_op(filename, "../tmp")
-        for f in files:
-            Viavilyzer.produce_csv_file(f, 5, -150.0, directory)
 
+        #produce a file for each frequency
+        for f in files:
+            Viavilyzer.produce_csv_file(f, 5, -120.0, directory)
+
+        #delete all temporary files
         for f in os.listdir("../tmp"):
             path = os.path.join("../tmp", f)
             if os.path.isfile(path):
