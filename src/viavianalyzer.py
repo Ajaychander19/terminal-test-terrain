@@ -96,6 +96,8 @@ class Viavilyzer:
         #filter the lines where the PCI, SSB Index, 'PBCH DM-RS RSRP and Center Frequency (MHz) are missing
         data = data[(data['PCI'] != '--') & (data['SSB Index'] != '--') & (data['PBCH DM-RS RSRP (dBm) /'] != '--') & (
                     data['Center Frequency (MHz)'] != '--')].reset_index(drop=True)
+
+        #filer rows where the PBCH DM-RS RSRP value is less than the threshold
         data = data[(data['PBCH DM-RS RSRP (dBm) /'].astype(float)) > threshold]
 
         #start of the measurement campaign
