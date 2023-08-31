@@ -154,22 +154,28 @@ const drawing = {
             for (let i in filtEarfcns) {
                 let earfcn = filtEarfcns[i];
                 let pci = filtPcis[i];
+
+                // beams list of the pci
                 let beamList = filtBeams[pci];
+
+                //if beam selected in drop-down menu
                 if (beams[pci]) {
                     // Pushing asscoiated measurements in hexData...
                     for (let b in beamList) {
+                        let currentBeam = beamList[b];
+
                         // if all beams are selected then add all points for each beam in the list
                         if (beams[pci].includes("all")) {
-                            points[earfcn][pci][b].forEach(
+                            points[earfcn][pci][currentBeam].forEach(
                                 (pt) => {
                                     let val = valChooser(earfcn, pci, pt);
                                     hexData.push([pt.lng, pt.lat, val]);
                                 }
                             );
                         }
-                        // if the beam 'b' is selected then add all points of beam 'b'
-                        else if (beams[pci].includes(b)) {
-                            points[earfcn][pci][b].forEach(
+                        // if 'currentBeam' is selected then add all points of this beam
+                        else if (beams[pci].includes(currentBeam.toString())) {
+                            points[earfcn][pci][currentBeam].forEach(
                                 (pt) => {
                                     let val = valChooser(earfcn, pci, pt);
                                     hexData.push([pt.lng, pt.lat, val]);
