@@ -158,6 +158,7 @@ const drawing = {
                 if (beams[pci]) {
                     // Pushing asscoiated measurements in hexData...
                     for (let b in beamList) {
+                        // if all beams are selected then add all points for each beam in the list
                         if (beams[pci].includes("all")) {
                             points[earfcn][pci][b].forEach(
                                 (pt) => {
@@ -165,7 +166,9 @@ const drawing = {
                                     hexData.push([pt.lng, pt.lat, val]);
                                 }
                             );
-                        } else if (beams[pci].includes(b)) {
+                        }
+                        // if the beam 'b' is selected then add all points of beam 'b'
+                        else if (beams[pci].includes(b)) {
                             points[earfcn][pci][b].forEach(
                                 (pt) => {
                                     let val = valChooser(earfcn, pci, pt);
@@ -175,6 +178,7 @@ const drawing = {
                         }
                     }
                 } else {
+                    // if no beams are selected then add all the existing measurements for an EARFCN/PCI couple
                     for (var e = 0; e < beamList.length; e++) {
                         var be = beamList[e];
                         if (!isNaN(be)) {
@@ -383,11 +387,15 @@ const drawing = {
          */
         drawHex(layer, measurements, earfcns, pcis, beams, min, max, reqEarfcns = null, reqPcis = null, reqBeams = null) {
             let hexData = [];
+
+            // all measurements requested by EARFCNs/PCIs/BEAMs
             let earpcis = utils.subEarpci(earfcns, pcis, beams, reqEarfcns, reqPcis, reqBeams);
-            // For each measurement taken...
+
+            // For each measurement object in the list (corresponds to a line 'MEASUREMENT')
             measurements.forEach(
                 (measObj) => {
                     let meas = measObj.meas;
+                    // indexes of selected measurements at the same timestamp
                     earpcis.indices.forEach(
                         (i) => {
                             let m = meas[i];
