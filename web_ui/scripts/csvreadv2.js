@@ -54,6 +54,8 @@ var csvreadv2 = {
         _maxRSSI
         _maxCINR
 
+        // Number of occurence of a PCI
+        _pciNb
 
         /**
          * Class constructor.
@@ -89,6 +91,8 @@ var csvreadv2 = {
             this._maxCINR = null;
 
             this._freader = new FileReader();
+
+            this._pciNb = {};
 
         }
 
@@ -138,6 +142,14 @@ var csvreadv2 = {
 
             for (let j = 0; j < nb.length; j++){
                 this._nbSamples.push(parseInt(values_nb[nb[j]]));
+            }
+
+            // compute number of samples per PCI (all beams)
+            for (let j = 0; j <this._pcis.length; j++){
+               if (!this._pciNb[this._pcis[j]]) {
+                  this._pciNb[this._pcis[j]] = 0
+               }
+               this._pciNb[this._pcis[j]] += this._nbSamples[j]
             }
 
             parsedResult.MEASUREMENT.forEach((line) => {
@@ -314,6 +326,13 @@ var csvreadv2 = {
         get pcis() { return utils.deepCopy(this._pcis); }
 
         get beams() {return utils.deepCopy(this._beams); }
+
+        /**
+         * @returns Dictionnary of PCIs Numbers (all beams).
+         *
+         * @function
+         */
+        get pciNb() { return utils.deepCopy(this._pciNb); }
 
         /**
          * @returns List of global RSRPs.

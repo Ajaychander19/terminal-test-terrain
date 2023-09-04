@@ -702,7 +702,7 @@ const drawing = {
          *
          * @function
          */
-        drawSelectors(earfcns, pcis) {
+        drawSelectors(earfcns, pcis, pciNb) {
             // Getting selector elements.
             let pciSelector = document.querySelector('#pci-select');
             let earSelector = document.querySelector('#EARFCN_select');
@@ -739,7 +739,7 @@ const drawing = {
                     if (!document.querySelector('#pci-select option[value="' + pci + '"]')) {
                         let option = document.createElement('option');
                         option.setAttribute('value', pci);
-                        option.innerHTML = pci;
+                        option.innerHTML = pci + " (" + pciNb[pci] +")";
                         pciSelector.append(option);
                     }
                 }

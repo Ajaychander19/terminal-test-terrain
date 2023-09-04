@@ -288,6 +288,7 @@ const app = {
                 // Reading EARFCNs and PCIs.
                 let earfcns = this._fileReader.earfcns;
                 let pcis = this._fileReader.pcis;
+                let pciNb = this._fileReader.pciNb;
 
                 // Drawing Voronoi cells.
                 this._drawingMap.drawCells(vor, ants, dels);
@@ -296,7 +297,7 @@ const app = {
                 // Displaying base layers.
                 this._drawingMap.setAntLayer(true);
                 this._drawingMap.setAssocLayer(true);
-                this._drawingMap.drawSelectors(earfcns, pcis);
+                this._drawingMap.drawSelectors(earfcns, pcis, pciNb);
 
                 // Enabling inputs.
                 this.enableInputs(true);
