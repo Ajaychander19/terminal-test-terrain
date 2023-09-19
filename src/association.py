@@ -118,7 +118,7 @@ class CellAssociator:
         self.version = None
         self.techno = "4G"
 
-    def calculate_association(self):
+    def calculate_association(self, mode: int, assoc_file: str):
 
         """Calculates the association between EARFCNs / PCIs and base stations."""
 
@@ -172,9 +172,12 @@ class CellAssociator:
 
             self._read_antennas(out_wr)
 
-            print('Associating...')
-
-            self._associate_data()
+            if mode == 1:
+                print('Associating...')
+                self._associate_data()
+            else:
+                print('Using association file...')
+                self._associate_read(assoc_file)
 
             print('Writing output...')
 
@@ -489,6 +492,41 @@ class CellAssociator:
             # Creating antennas information dataframe.
 
             self._antennas = pd.DataFrame(antennas_dict)
+
+    def _associate_read(self, assoc_file: str):
+
+        """PRIVATE METHOD which calculate the association between group of measurement points with
+
+        sames EARFCNS/PCIS and base stations."""
+
+        # XLXLXLXL
+        # Associations between antennas and EARFCNs / PCIs, CAREFUL: should be the same as for _associate_data
+        self._assocs = {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': [],
+                        'Score': []}
+
+        print(self._assocs)
+        self._assocDataFrame = pd.read_csv(assoc_file, sep='|')
+
+        self._EarfcnPciPair = self._point_assoc[
+            ['EARFCN', 'PCI']]  # on prend ne garde que les paires EARFCN PCI trouvees
+        df1 = self._EarfcnPciPair.drop_duplicates(subset=['EARFCN', 'PCI'])
+
+        for index1, row1 in df1.iterrows():
+            for index2, row2 in self._assocDataFrame.iterrows():
+                if ((row1["EARFCN"] == row2["EARFCN"]) and (row1["PCI"] == row2["PCI"])):
+                    insert_data(self._assocs, {
+                        'Cartoradio_Number': [self._assocDataFrame['Cartoradio_Number'][index2]],
+                        'Ant_Number': [self._assocDataFrame['Ant_Number'][index2]],
+                        'TAC': [self._assocDataFrame['TAC'][index2]],
+                        'CID': [self._assocDataFrame['CID'][index2]],
+                        'EARFCN': [self._assocDataFrame['EARFCN'][index2]],
+                        'PCI': [self._assocDataFrame['PCI'][index2]],
+                        'Score': [self._assocDataFrame['Score'][index2]]
+                    }, 1)
+
+                    # print("===== PAIRE TROUVEE : =====")
+                    # print(df1[df1.index == index1])
+                    # print(self._assocDataFrame[self._assocDataFrame.index == index2])
 
     def _associate_data(self, MIN_NUMBER_OF_MEASURES_FOR_ASSOCIATION=50):
 

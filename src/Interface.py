@@ -191,7 +191,7 @@ class GUI(tkinter.Frame):
                         meas_file,
                         site_file,
                         self.working_directory
-                    ).calculate_association()
+                    ).calculate_association(1,"")
 
                 self.change_color('green')
 
@@ -245,12 +245,12 @@ class GUI(tkinter.Frame):
                         messagebox.showerror("Error", "No file converted from Cartoradio.")
 
                     print("coucou")
-                    # shutil.copyfileobj()
-                    # association.CellAssociator(
-                        #    meas_file,
-                        #    site_file,
-                    #    self.working_directory
-                    #).calculate_association(0,assoc_file)
+
+                    association.CellAssociator(
+                        meas_file,
+                        site_file,
+                        self.working_directory
+                    ).calculate_association(0,assoc_file)
                     self.change_color('green')
 
 
