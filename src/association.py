@@ -111,7 +111,7 @@ class CellAssociator:
 
         self._outdir = outdir       # Output file directory.
 
-        self._point_assoc = None    # Association between points and measurements.
+        self._measure_point = None    # Association between points and measurements.
 
         self._antennas = None       # Antennas
 
@@ -399,7 +399,7 @@ class CellAssociator:
 
             # Associating measurement points to corresponding base stations...
 
-            self._point_assoc = pd.merge(
+            self._measure_point = pd.merge(
 
                 pd.DataFrame(cellinfo_dict), pd.DataFrame(serving_dict),
 
@@ -409,9 +409,9 @@ class CellAssociator:
 
             # # Associating points to corresponding measurements...
 
-            # self._point_assoc = pd.merge(
+            # self._measure_point = pd.merge(
 
-            #     self._point_assoc, pd.DataFrame(measurements),
+            #     self._measure_point, pd.DataFrame(measurements),
 
             #     on=['Timestamp']
 
@@ -506,7 +506,7 @@ class CellAssociator:
         self._assocDataFrame = pd.read_csv(assoc_file, sep='|')  # read the csv file (cevcafxxx.csv)
                                                                 # and put it in a data frame
 
-        self._EarfcnPciPair = self._point_assoc[['EARFCN', 'PCI']]  # on ne garde que colonnes EARFCN et PCI
+        self._EarfcnPciPair = self._measure_point[['EARFCN', 'PCI']]  # on ne garde que colonnes EARFCN et PCI
         df1 = self._EarfcnPciPair.drop_duplicates(subset=['EARFCN', 'PCI'])   # on retire les duplicatas
                                            # on a une dataframe avec tous les couples (EARFCN, PCI) differents
 
@@ -589,7 +589,7 @@ class CellAssociator:
 
         # Calculating convex hulls.
 
-        point_groups = self._point_assoc.groupby(
+        point_groups = self._measure_point.groupby(
 
             ['TAC', 'CID', 'EARFCN', 'PCI'])
 
@@ -1047,7 +1047,7 @@ class CellAssociator:
 
         # Writing points.
 
-        point_assoc = self._point_assoc.to_dict('list')
+        point_assoc = self._measure_point.to_dict('list')
 
         for i in range(len(point_assoc['Lat'])):
 

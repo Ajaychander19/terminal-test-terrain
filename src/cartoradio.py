@@ -10,7 +10,7 @@ import csvtools
 import math
 
 
-def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
+def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str, targetSystem: str):
     """Processes Cartoradio files.
 
     Cartoradio files processing takes two input files, typically named "Sites_Cartoradio" and
@@ -19,6 +19,8 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
 
     The function uses only directive LTE antennas, and produce in the output file information about the antennas and the
     delimitation of their sectors. Data are produced in a CSV-like format based on the Accuver Open Format.
+
+    The targetSystem should be "LTE" or '5G'
 
     Parameters:
         sitefile_path: path of the "Sites" file.
@@ -50,7 +52,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
     print('done.')
 
     # Removing useless entries, keeping only directive LTE antennas.
-    siteant = siteant[is_system_valid(siteant['Système']) & (siteant['Directivité'] == 'Directif')]
+    siteant = siteant[is_system_valid(siteant['Système'],targetSystem) & (siteant['Directivité'] == 'Directif')]
 
     # Grouping by operators.
     op_groups = siteant.groupby('Exploitant')
@@ -70,8 +72,10 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
         print('Operator {}.'.format(op))
 
         # Opening sites and rejected file.
-        with csvtools.CSVWriter('{0}/cev{1}_sites.csv'.format(output_dir, op), header) as out_file, \
-                csvtools.CSVWriter('{0}/r{1}_rejected.csv'.format(output_dir, op), header) as rej_file:
+        filenameOK = '{0}/cev{1}_'+targetSystem+'_sites.csv'
+        filenameRej = '{0}/r{1}_'+targetSystem+'_sites.csv'
+        with csvtools.CSVWriter(filenameOK.format(output_dir, op), header) as out_file, \
+                csvtools.CSVWriter(filenameRej.format(output_dir, op), header) as rej_file:
 
             # Dataset of the current operator
             op_group = op_groups.get_group(op)
@@ -227,10 +231,11 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str):
     print('Cartoradio processing done.')
 
 
-def is_system_valid(ser: pd.Series) -> pd.Series:
+def is_system_valid(ser: pd.Series, targetSystem: str) -> pd.Series:
     res = []
     for s in ser:
-        res.append('LTE' in s)  # or '5G' in s
+        res.append(targetSystem in s)  # check is the system is 5G or LTE
+        # (the one we want to select should be in targetSystem variable)
     return pd.Series(res)
 
 

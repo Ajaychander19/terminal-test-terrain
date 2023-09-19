@@ -170,7 +170,8 @@ class GUI(tkinter.Frame):
                     site_file = files[0] if 'Sites' in files[0] else files[1]
                     ant_file = files[0] if 'Antennes' in files[0] else files[1]
 
-                    cartoradio.process_cartoradio(site_file, ant_file, self.working_directory)
+                    cartoradio.process_cartoradio(site_file, ant_file, self.working_directory,'LTE')
+                    cartoradio.process_cartoradio(site_file, ant_file, self.working_directory,'5G')
 
                 self.change_color('green')
 
