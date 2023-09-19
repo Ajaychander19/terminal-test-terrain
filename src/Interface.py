@@ -62,20 +62,20 @@ class GUI(tkinter.Frame):
 
         self.defaultPath = tkinter.Button(self, command=lambda: self.button_click(1), text="Select data directory",
                                           font=boldFont, background='light green')
-        self.defaultPath.configure(height=3, width=25)
+        self.defaultPath.configure(height=2, width=25)
         self.defaultPath.pack(padx=5, pady=5)
 
         self.viavi_conversion = tkinter.Button(self, command=lambda: self.button_click(5),
                                               text="viavi *.csv conversion",
                                               font=boldFont, background='light green')
-        self.viavi_conversion.configure(height=3, width=25)
+        self.viavi_conversion.configure(height=2, width=25)
         self.viavi_conversion.pack(padx=5, pady=5)
 
         self.pcap_conversion = tkinter.Button(self, command=lambda: self.button_click(2),
                                               text="Aof file processing (Xcal)",
                                               font=boldFont, background='light green')
 
-        self.pcap_conversion.configure(height=3, width=25)
+        self.pcap_conversion.configure(height=2, width=25)
         self.pcap_conversion.pack(padx=5, pady=5)
         self.pcap_conversion_ttp = CreateToolTip(self.pcap_conversion,
                                                  "Choose the Field-test Accuver Xcal files "
@@ -85,7 +85,7 @@ class GUI(tkinter.Frame):
         self.cartoradio_files = tkinter.Button(self, command=lambda: self.button_click(3),
                                                text="Cartoradio conversion", font=boldFont,
                                                background='light green')
-        self.cartoradio_files.configure(height=3, width=25)
+        self.cartoradio_files.configure(height=2, width=25)
         self.cartoradio_files.pack(padx=5, pady=5)
         self.cartoradio_files_ttp = CreateToolTip(
             self.cartoradio_files,
@@ -94,15 +94,23 @@ class GUI(tkinter.Frame):
 
         self.association = tkinter.Button(self, command=lambda: self.button_click(4),
                                           text="Cell Association Processing", font=boldFont, background='light green')
-        self.association.configure(height=3, width=25)
+        self.association.configure(height=2, width=25)
         self.association.pack(padx=5, pady=5)
         self.association_ttp = CreateToolTip(
             self.association,
             "Choose the .csv site file created from the 'Cartoradio File Conversion' and the .csv measurement file")
 
-        self.visualizaion = tkinter.Button(self, command=lambda: self.button_click(6),
+        self.useassoc = tkinter.Button(self, command=lambda: self.button_click(6),
+                                       text="Use an Association File", font=boldFont, background='light green')
+        self.useassoc.configure(height=2, width=25)
+        self.useassoc.pack(padx=5, pady=5)
+        self.useassoc_ttp = CreateToolTip(
+            self.useassoc,
+            "Choose the caf*.csv association file and the .csv measurement file")
+
+        self.visualizaion = tkinter.Button(self, command=lambda: self.button_click(7),
                                            text="Visualisation", font=boldFont, background='light green')
-        self.visualizaion.configure(height=3, width=25)
+        self.visualizaion.configure(height=2, width=25)
         self.visualizaion.pack(padx=5, pady=5)
 
         self.canvas = Canvas(self, height=20)
@@ -198,6 +206,53 @@ class GUI(tkinter.Frame):
                     messagebox.showinfo("Warning", "Select at least one file")
 
                 self.change_color('green')
+
+            elif number == 6:  # use an existing association
+                self.change_color('red')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory,
+                                                    title='Choose measurement file, operator sites file and association file',
+                                                    filetypes=(("cev CSV file", "cev*.csv"), ("all files", "caf*.*")))
+
+                # Associate_cell(files, self.working_directory)
+                if len(files) != 3:
+                    messagebox.showerror("Error", "3 files expected.")
+                else:
+                    if 'sites' in files[0]:
+                        site_file = files[0]
+                        if 'caf' in files[1]:
+                            assoc_file = files[1]
+                            meas_file = files[2]
+                        else:
+                            assoc_file = files[2]
+                            meas_file = files[1]
+                    elif 'sites' in files[1]:
+                        site_file = files[1]
+                        if 'caf' in files[0]:
+                            assoc_file = files[0]
+                            meas_file = files[2]
+                        else:
+                            assoc_file = files[2]
+                            meas_file = files[0]
+                    elif 'sites' in files[2]:
+                        site_file = files[2]
+                        if 'caf' in files[0]:
+                            assoc_file = files[0]
+                            meas_file = files[1]
+                        else:
+                            assoc_file = files[1]
+                            meas_file = files[0]
+                    else:
+                        messagebox.showerror("Error", "No file converted from Cartoradio.")
+
+                    print("coucou")
+                    # shutil.copyfileobj()
+                    # association.CellAssociator(
+                        #    meas_file,
+                        #    site_file,
+                    #    self.working_directory
+                    #).calculate_association(0,assoc_file)
+                    self.change_color('green')
+
 
             else:
                 self.change_color('red')
