@@ -122,7 +122,7 @@ class CellAssociator:
 
         """Calculates the association between EARFCNs / PCIs and base stations."""
 
-        print('Calculating association...')
+        print('Starting association...')
 
         file_name = os.path.join(self._outdir, 'assoc_{0}_{1}.csv'.format(
 
@@ -173,7 +173,7 @@ class CellAssociator:
             self._read_antennas(out_wr)
 
             if mode == 1:
-                print('Associating...')
+                print('Identifying possible Associations...')
                 self._associate_data()
             else:
                 print('Using association file...')
@@ -503,14 +503,14 @@ class CellAssociator:
         # Associations between antennas and EARFCNs / PCIs, CAREFUL: should be the same as for _associate_data
         self._assocs = {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': [],
                         'Score': []}
+        self._assocDataFrame = pd.read_csv(assoc_file, sep='|')  # read the csv file (cevcafxxx.csv)
+                                                                # and put it in a data frame
 
-        print(self._assocs)
-        self._assocDataFrame = pd.read_csv(assoc_file, sep='|')
+        self._EarfcnPciPair = self._point_assoc[['EARFCN', 'PCI']]  # on ne garde que colonnes EARFCN et PCI
+        df1 = self._EarfcnPciPair.drop_duplicates(subset=['EARFCN', 'PCI'])   # on retire les duplicatas
+                                           # on a une dataframe avec tous les couples (EARFCN, PCI) differents
 
-        self._EarfcnPciPair = self._point_assoc[
-            ['EARFCN', 'PCI']]  # on prend ne garde que les paires EARFCN PCI trouvees
-        df1 = self._EarfcnPciPair.drop_duplicates(subset=['EARFCN', 'PCI'])
-
+        # Pour chaque couple (EARFCN, PCI)
         for index1, row1 in df1.iterrows():
             for index2, row2 in self._assocDataFrame.iterrows():
                 if ((row1["EARFCN"] == row2["EARFCN"]) and (row1["PCI"] == row2["PCI"])):
@@ -523,6 +523,9 @@ class CellAssociator:
                         'PCI': [self._assocDataFrame['PCI'][index2]],
                         'Score': [self._assocDataFrame['Score'][index2]]
                     }, 1)
+                    #print('Found : Ant_number=', self._assocDataFrame['Ant_Number'][index2], '   (EARFCN,PCI)=(', self._assocDataFrame['EARFCN'][index2], ',',
+                    #      self._assocDataFrame['PCI'][index2], ')  score=', self._assocDataFrame['Score'][index2])
+                    print("+",end = '')
 
                     # print("===== PAIRE TROUVEE : =====")
                     # print(df1[df1.index == index1])
