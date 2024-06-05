@@ -48,14 +48,14 @@ if __name__ == '__main__':
                 sys.exit("Couldn't get a signal, aborting (waited for 120 seconds)")
         print("Service OK")
 
-        # ATCS.restart_gps()
+        ATCS.restart_gps()
 
-        # gps_signal_acquired = False
-        # if not gps_signal_acquired:
-        #     print("Trying to acquire GPS signal...")
-        #     gps_signal_acquired = ATCS.get_gps_signal(10)
-        #     if not gps_signal_acquired:
-        #         print("Couldn't acquire GPS signal, aborting measurements")
+        gps_signal_acquired = False
+        if not gps_signal_acquired:
+            print("Trying to acquire GPS signal...")
+            gps_signal_acquired = ATCS.get_gps_signal(10)
+            if not gps_signal_acquired:
+                print("Couldn't acquire GPS signal, aborting measurements")
 
         print("Starting measurements")
         with MeasurementsWriter(is_tmp=True, operator_info=ATCS.get_operator()) as writer:
@@ -98,3 +98,6 @@ if __name__ == '__main__':
                 starting_time = datetime.now()
                 starting_time = starting_time + timedelta(microseconds=(1000000 - starting_time.microsecond))
                 pause.until(starting_time)
+
+        # Power down the module
+        ATCS.send_command("AT+CPOF")

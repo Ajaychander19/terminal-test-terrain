@@ -414,6 +414,22 @@ class QENGNeighbour:
         return None
 
 
+def prefix_with_zeros(left_digits: int, nb: str, sep: str = ".") -> str:
+    """Prefixes nb with 0 until it has `left_digits` amount of digits in the left part
+    :param left_digits: Amount of digits nb is supposed to have on the left part
+    :param nb: floating number as string where left and right parts are separated by `sep`
+    :param sep: separator of the number
+    :return: given number prefixed with 0 to have `left_digits` digits in the left part
+    """
+    parts = nb.split(sep)
+    left = parts[0]
+    right = parts[1]
+    if len(left) < left_digits:
+        for i in range(left_digits - len(left)):
+            left = "0" + left
+    return left + sep + right
+
+
 class CGPSINFO:
     """
     +CGPSINFO:[<lat>],[<N/S>],[<log>],[<E/W>],[<date>],[<UTCtime>],[<alt>],[<speed>],[<course>]
@@ -472,16 +488,26 @@ class CGPSINFO:
         else:
             return 0
 
+        # +CGPSINFO: 4807.186165,N,137.772582,W,060624,141328.0,85.1,0.0,0.0
+
     def __convert_long_to_decimal(self) -> float:
         """Converts the longitude in the format given by the AT command (dddmm.mmmmmm) to the decimal coordinate
         format. Hemisphere indicator decides if output is negative or positive.
         :return: Longitude in decimal format
         """
+        # The big problem here is the fact that not all ddd are present.
+        # For example 1°37' would be represented as 137. instead of 00137.
+        parts = self.log.split('.')
+        left = parts[0]
+        if len(parts) < 5:
+            for i in range(5-len(parts)):
+                left = "0"+left
+
         degrees: int = int(self.log[0] + self.log[1] + self.log[2])
         minutes: float = float(self.log[3:])
-        if self.ns == "E":
+        if self.ew == "E":
             return round(degrees + minutes / 60, 7)
-        elif self.ns == "W":
+        elif self.ew == "W":
             return round(-(degrees + minutes / 60), 7)
         else:
             return 0
@@ -509,7 +535,8 @@ class CGPSINFO:
             return cls(timestamp=timestamp)
 
         return cls(timestamp=timestamp,
-                   lat=values[0], ns=values[1], log=values[2], ew=values[3],
+                   lat=prefix_with_zeros(nb=values[0], left_digits=4), ns=values[1],
+                   log=prefix_with_zeros(nb=values[2], left_digits=5), ew=values[3],
                    date=values[4], utc_time=values[5],
                    alt=int(values[6]), speed=int(values[7]), course=int(values[8])
                    )

@@ -19,11 +19,12 @@ class ATCommandSender:
 
     def __init__(self, connection: SerialConnection):
         """
-        Initialize and open the serial connection.
+        Provides methods for sending specific AT commands and receiving responses in specialized format.\n
+        NOTE: send_command() method works for any module but other methods are made specifically for SIM8262E 5 module
 
-        :param SerialConnection connection: The serial connection to the modem. Most likely uses ttyUSB2 as port path.
+        :param SerialConnection connection: The serial connection to the module. Most likely uses ttyUSB2 as port path.
         """
-        self.modem = connection
+        self.module = connection
         ""
 
     def send_command(self, cmd: str) -> str:
@@ -35,10 +36,10 @@ class ATCommandSender:
         if not cmd.lower().startswith("at"):
             print(cmd + " isn't an AT command")
             return ""
-        self.modem.send_command(cmd)
+        self.module.send_command(cmd)
         # print("Sent: " + cmd)
         result = ""
-        lines = self.modem.read_response()
+        lines = self.module.read_response()
         for line in lines:
             result += line
         return result
@@ -51,10 +52,10 @@ class ATCommandSender:
             print("A PIN code must be 4 numbers long (got" + str(len(pin.strip())) + ")")
             return ""
 
-        self.modem.send_command("AT+CPIN=" + pin.strip())
+        self.module.send_command("AT+CPIN=" + pin.strip())
         print("Sent: AT+CPIN=" + pin.strip())
         result = ""
-        lines = self.modem.read_pin_response()
+        lines = self.module.read_pin_response()
         for line in lines:
             result += line
             if line.endswith("ERROR"):
@@ -62,8 +63,8 @@ class ATCommandSender:
         return result
 
     def restart_gps(self):
-        self.modem.send_command("AT+CGPS?")
-        lines = self.modem.read_response()
+        self.module.send_command("AT+CGPS?")
+        lines = self.module.read_response()
         current_gps = ""
         for line in lines:
             current_gps += line
@@ -71,11 +72,11 @@ class ATCommandSender:
             print("GPS already ON in standalone mode")
         else:
             print("Restarting GPS")
-            self.modem.send_command("AT+CGPS=0")
-            self.modem.read_response()
+            self.module.send_command("AT+CGPS=0")
+            self.module.read_response()
             print("GPS OFF")
-            self.modem.send_command("AT+CGPS=1,1")
-            lines = self.modem.read_response()
+            self.module.send_command("AT+CGPS=1,1")
+            lines = self.module.read_response()
             for line in lines:
                 print(line)
             print("GPS ON in standalone mode")
@@ -130,7 +131,11 @@ class ATCommandSender:
         return signal_acquired
 
     def get_operator(self) -> COPS:
-        lines: list[str] = self.send_command('AT+COPS?').splitlines()
+        """
+
+        :return:
+        """
+        lines = self.send_command('AT+COPS?').splitlines()
         for line in lines:
             if line.startswith("+COPS:"):
                 return COPS.from_string(line)

@@ -10,6 +10,13 @@ class SerialConnection:
             encoding="ISO-8859-1"
             # encoding='utf-8',
     ):
+        """
+        Opens a serial connection to a device and provides methods to send AT commands to it and receive responses
+        :param port_path: Path to the serial port on computer (ex: /dev/ttyUSB2)
+        :param baudrate:
+        :param timeout:
+        :param encoding:
+        """
         self.port: str = port_path
         self.baudrate: int = baudrate
         """115200 Default buad rate
@@ -18,12 +25,12 @@ class SerialConnection:
         3000000 High speed baud rate"""
         self.timeout: int = timeout
         self.encoding: str = encoding
-        self.modem: serial.Serial | None = None
+        self.module: serial.Serial | None = None
 
     def __enter__(self):
         # Open the serial connection
-        self.modem = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
-        if self.modem.is_open:
+        self.module = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
+        if self.module.is_open:
             print("Serial connection opened.")
             print("-------------------------------")
         else:
@@ -33,25 +40,25 @@ class SerialConnection:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Close the serial connection
-        if self.modem:
-            self.modem.close()
+        if self.module:
+            self.module.close()
 
         if exc_tb:
             print("Serial Connection closed because of an error: ", exc_tb)
 
     def send_command(self, cmd: str) -> None:
-        if self.modem:
-            self.modem.write((cmd + "\r\n").encode('utf-8'))
+        if self.module:
+            self.module.write((cmd + "\r\n").encode('utf-8'))
 
     # TODO: add a try-except for timeout
     def read_response(self) -> list:
         result = list()
-        if not self.modem:
+        if not self.module:
             return result
 
         line: str = ""
         while not (line.endswith("OK") or line.endswith("ERROR")):
-            line = self.modem.readline().decode('utf-8').strip()
+            line = self.module.readline().decode('utf-8').strip()
             if line not in ['\n', '\r\n', '']:
                 result.append(line + "\n")
         return result
@@ -63,7 +70,7 @@ class SerialConnection:
         # OK +CPIN: READY SMS DONE PB DONE
         # But I'm not sure if it's reliable.
         while not ("PB DONE" in line or line.startswith("+CME")):
-            line = self.modem.readline().decode('utf-8').strip()
+            line = self.module.readline().decode('utf-8').strip()
             if line not in ['\n', '\r\n', '']:
                 result.append(line + "\n")
         return result

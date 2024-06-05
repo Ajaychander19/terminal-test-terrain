@@ -23,7 +23,7 @@ if __name__ == '__main__':
         # but documentation says so...
 
         timeout = 0
-        first_time = input("Is this script being executed for the first time since powering up the modem? (yes/no)\n")
+        first_time = input("Is this script being executed for the first time since powering up the module? (yes/no)\n")
         if first_time.lower() == "yes" or first_time.lower() == "y":
             pin_ok = False
             print("Waiting 15 seconds on start-up just in case")
@@ -90,6 +90,9 @@ if __name__ == '__main__':
                             "* any AT command to get a response\n"
                             "): \n").strip()
             if command == "stop":
+                break
+            if command == "full-stop":
+                ATCS.send_command("AT+CPOF")
                 break
             if "measurement" in command:
                 arguments = command.split()
@@ -163,4 +166,4 @@ if __name__ == '__main__':
 
             dt_after = datetime.now()
             print(command + " done at: ", dt_after)
-            print("It took ", (dt_after - dt_before).microseconds, " microseconds")
+            print("It took ", (dt_after - dt_before).microseconds, " microseconds\n")

@@ -21,7 +21,7 @@ if [ $# -eq 1 ]
         # Activate venv
         source .venv/bin/activate
         # Execute the main Python script
-        python run.py
+        python main.py
         deactivate
       ;;
       "update") # Only update python and shell scripts
