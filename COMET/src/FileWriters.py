@@ -141,25 +141,39 @@ class MeasurementsWriter(Writer):
 
 
 class ProcessedFileWriter(Writer):
-    def __init__(self, measurements_file_path: str, data_dir: str = "./data/", filename: str = "M1.csv",
+    def __init__(self, measurements_file_path: str, output_dir: str = "./data/", filename: str = "M1",
                  is_tmp: bool = False):
+        """
+        Takes a COMET measurement file and create a CORENTIN compatible cev.csv file with processed measurements.
+        The constructor only creates the file, to process measurements print_header() and print_measurements()
+        methods must be called
+
+        :param measurements_file_path: Path to the COMET measurements file
+        :param output_dir: Path to the directory where output file will be stored
+        :param filename: an additional name to the file (will be prefixed with cev and date, can be empty)
+        :param is_tmp: if True, output file name is prefixed with tmp_
+        """
         now = datetime.now()
         dir_date = now.strftime("%d-%m-%Y")
         file_date = now.strftime("%Y%m%d_%H%M-")
 
         self.columns: dict[(int, int), int] = dict()
+        """Indexes of columns associated to each couple in following format: {(earfcn, pci): column_index}"""
         self._measurements_file_path = measurements_file_path
+        """Path to the COMET measurements file"""
         self._operator_name = get_operator_from_measurements(self._measurements_file_path)
+        """Name of the mobile network operator extracted from the measurements file"""
         if self._operator_name == "":
             raise Exception("Incorrect measurements file format: couldn't find operator name")
 
-        super().__init__(data_dir + dir_date + "/", "cev" + self._operator_name + "_" + file_date + filename, is_tmp)
+        super().__init__(output_dir + dir_date + "/", "cev" + self._operator_name + "_" +
+                         file_date + filename + ".csv", is_tmp)
 
     def print_header(self):
         """
         Writes the header of a measurements file in the CORENTIN cev format, including all the couples of (earfcn, pci).
         (stops just before the first measurement)
-        :return: Indexes of columns associated to each couple in following format: {(earfcn, pci): column_index}
+        This method also updates the columns attribute used in print_measurements() method.
         """
         self.write_line("DEFINE")
         self.write_line("VERSION|Version")
@@ -224,9 +238,13 @@ class ProcessedFileWriter(Writer):
 
     def print_measurements(self):
         """
-
-        :return:
+        Reads COMET measurements file line by line to extract measurements data and write it in the CORENTIN compatible
+        format (writes CELLINFO, MEASURE_SERVING and MEASUREMENTS entries)
         """
+        if self.columns == {}:
+            print("print_measurements() method can only be called after print_header()")
+            return None
+
         with open(self._measurements_file_path, "r") as measurements_file:
             # Since coordinates are copied directly to output file with no change they can be kept as str
             coordinates = ("0", "0")

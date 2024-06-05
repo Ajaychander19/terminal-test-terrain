@@ -6,7 +6,7 @@ import pause
 
 from FileWriters import MeasurementsWriter
 from SerialConnection import SerialConnection
-from main import ATCommandSender
+from ATCommandSender import ATCommandSender
 
 if __name__ == '__main__':
     with SerialConnection('/dev/ttyUSB2') as connection:
@@ -22,7 +22,7 @@ if __name__ == '__main__':
             if not pin_ok:
                 print("Couldn't connect to the SIM, retrying...")
             timeout += 15
-            if timeout > 60:
+            if timeout >= 60:
                 sys.exit("Couldn't connect to the SIM, aborting (waited for 60 seconds)")
         time.sleep(5)
 
@@ -33,27 +33,29 @@ if __name__ == '__main__':
             if "READY" not in ATCS.send_command("AT+CPIN?"):
                 ATCS.enter_pin("0000")
             timeout += 10
-            if timeout > 60:
+            if timeout >= 60:
                 sys.exit("Couldn't connect to the SIM, aborting (waited for 60 seconds)")
+
+        print("Defaulting to LTE only mode")
+        ATCS.send_command('AT+CNMP=38')
 
         timeout = 0
         while "NO SERVICE" in ATCS.send_command('AT+CPSI?'):
             print("No service, waiting...")
             time.sleep(10)
             timeout += 10
-            if timeout > 180:
-                sys.exit("Couldn't connect to the SIM, aborting (waited for 180 seconds)")
-
+            if timeout >= 120:
+                sys.exit("Couldn't get a signal, aborting (waited for 120 seconds)")
         print("Service OK")
 
-        ATCS.restart_gps()
+        # ATCS.restart_gps()
 
-        gps_signal_acquired = False
-        if not gps_signal_acquired:
-            print("Trying to acquire GPS signal...")
-            gps_signal_acquired = ATCS.get_gps_signal(10)
-            if not gps_signal_acquired:
-                print("Couldn't acquire GPS signal, aborting measurements")
+        # gps_signal_acquired = False
+        # if not gps_signal_acquired:
+        #     print("Trying to acquire GPS signal...")
+        #     gps_signal_acquired = ATCS.get_gps_signal(10)
+        #     if not gps_signal_acquired:
+        #         print("Couldn't acquire GPS signal, aborting measurements")
 
         print("Starting measurements")
         with MeasurementsWriter(is_tmp=True, operator_info=ATCS.get_operator()) as writer:

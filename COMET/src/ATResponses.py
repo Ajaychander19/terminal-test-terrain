@@ -465,9 +465,10 @@ class CGPSINFO:
         degrees: int = int(self.lat[0] + self.lat[1])
         minutes: float = float(self.lat[2:])
         if self.ns == "N":
-            return degrees+minutes/60
+            # 7 digits are sufficient to store coordinates with centimeter accuracy
+            return round(degrees+minutes/60, 7)
         elif self.ns == "S":
-            return -(degrees + minutes / 60)
+            return round(-(degrees + minutes / 60), 7)
         else:
             return 0
 
@@ -479,9 +480,9 @@ class CGPSINFO:
         degrees: int = int(self.log[0] + self.log[1] + self.log[2])
         minutes: float = float(self.log[3:])
         if self.ns == "E":
-            return degrees + minutes / 60
+            return round(degrees + minutes / 60, 7)
         elif self.ns == "W":
-            return -(degrees + minutes / 60)
+            return round(-(degrees + minutes / 60), 7)
         else:
             return 0
 

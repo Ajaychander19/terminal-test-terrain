@@ -10,25 +10,27 @@ if [ $# -eq 1 ]
   then
     case "$1" in
       "run") # Update python files and run
-        scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}*.py ${DEST_DIR}
+        scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}src/*.py ${DEST_DIR}
         # Activate venv
         source .venv/bin/activate
         # Execute the main Python script
         python main.py
         deactivate
       ;;
-      "auto") # Run auto script
+      "simple") # Run auto script
         # Activate venv
         source .venv/bin/activate
         # Execute the main Python script
-        python automatic.py first
+        python run.py
         deactivate
       ;;
       "update") # Only update python and shell scripts
-        scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}{*.py,*.sh,*.md,requirements.txt} ${DEST_DIR}
+        scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}src/*.py ${DEST_DIR}
+        scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}{*.sh,*.md,requirements.txt} ${DEST_DIR}
       ;;
       "update-full") # Update all including installing package requirements (requires internet connection)
-        scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}{*.py,*.sh,*.md,requirements.txt} ${DEST_DIR}
+        scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}src/*.py ${DEST_DIR}
+        scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}{*.sh,*.md,requirements.txt} ${DEST_DIR}
         source .venv/bin/activate
         pip install -r ./requirements.txt
         deactivate
@@ -52,7 +54,8 @@ if [ $# -eq 1 ]
     # Activate venv
     source .venv/bin/activate
     # Execute the main Python script
-    python main.py
+#    python main.py
+    python automatic.py
     deactivate
 fi
 

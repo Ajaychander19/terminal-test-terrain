@@ -1,140 +1,14 @@
+import sys
 from datetime import datetime
 from datetime import timedelta
 
 import pause
 
+from ATCommandSender import ATCommandSender, handle_response
 from SerialConnection import SerialConnection
 from FileWriters import MeasurementsWriter
 
-from ATResponses import QENGServing
-from ATResponses import QENGNeighbour
-from ATResponses import CGPSINFO
-from ATResponses import COPS
-
 import time
-
-
-def handle_response(response: str) -> None:
-    print("The response is:")
-    print("-------------------------------")
-    print(response)
-    print("-------------------------------\n")
-
-
-class ATCommandSender:
-    """
-    Class for sending AT commands to a device and receiving responses
-    """
-
-    def __init__(self, connection: SerialConnection):
-        """
-        Initialize and open the serial connection.
-
-        :param SerialConnection connection: The serial connection to the modem. Most likely uses ttyUSB2 as port path.
-        """
-        self.modem = connection
-        ""
-
-    def send_command(self, cmd: str) -> str:
-        """
-        Sends cmd
-        :param str cmd: the AT command to send, for example cmd="AT+CSQ"
-        :returns: string corresponding to the lines of the response
-        """
-        if not cmd.lower().startswith("at"):
-            print(cmd + " isn't an AT command")
-            return ""
-        self.modem.send_command(cmd)
-        # print("Sent: " + cmd)
-        result = ""
-        lines = self.modem.read_response()
-        for line in lines:
-            result += line
-        return result
-
-    def enter_pin(self, pin: str) -> str:
-        if not pin.isnumeric():
-            print(pin + " isn't a PIN code (must be numbers)")
-            return ""
-        if not len(pin.strip()) == 4:
-            print("A PIN code must be 4 numbers long (got" + str(len(pin.strip())) + ")")
-            return ""
-
-        self.modem.send_command("AT+CPIN=" + pin.strip())
-        print("Sent: AT+CPIN=" + pin.strip())
-        result = ""
-        lines = self.modem.read_pin_response()
-        for line in lines:
-            result += line
-            if line.endswith("ERROR"):
-                return ""
-        return result
-
-    def restart_gps(self):
-        self.modem.send_command("AT+CGPS=0")
-        self.modem.read_response()
-        print("GPS OFF")
-        self.modem.send_command("AT+CGPS=1,1")
-        lines = self.modem.read_response()
-        for line in lines:
-            print(line)
-        print("GPS ON in UE-assisted mode")
-
-    def get_serving_cell(self, timestamp: datetime = None) -> list[QENGServing]:
-        lines: list[str] = self.send_command('AT+QENG="servingcell"').splitlines()
-        # Can hold 2 instances if in EN-DC mode
-        list_serving: list[QENGServing] = list()
-        for line in lines:
-            if line.startswith("+QENG"):
-                list_serving.append(QENGServing.from_string(line, timestamp))
-        cleaned_list = [x for x in list_serving if x is not None]
-        return cleaned_list
-
-    def get_neighbour_cells(self, timestamp: datetime = None) -> list[QENGNeighbour]:
-        lines: list[str] = self.send_command('AT+QENG="neighbourcell"').splitlines()
-        list_neighbour: list[QENGNeighbour] = list()
-        for line in lines:
-            if line.startswith("+QENG"):
-                list_neighbour.append(QENGNeighbour.from_string(line, timestamp))
-        cleaned_list = [x for x in list_neighbour if x is not None]
-        return cleaned_list
-
-    def get_position(self, timestamp: datetime = None) -> list[CGPSINFO]:
-        lines: list[str] = self.send_command('AT+CGPSINFO').splitlines()
-        list_serving: list[CGPSINFO] = list()
-        for line in lines:
-            if line.startswith("+CGPSINFO:"):
-                list_serving.append(CGPSINFO.from_string(line, timestamp))
-        cleaned_list = [x for x in list_serving if x is not None]
-        return cleaned_list
-
-    def get_gps_signal(self, minutes: int) -> bool:
-        signal_acquired = False
-        minutes_elapsed = 0
-
-        if int(minutes) == 0:
-            response = self.send_command('AT+CGPSINFO')
-            return response.splitlines()[0].strip() != "+CGPSINFO: ,,,,,,,,"
-
-        while not signal_acquired and minutes_elapsed < minutes:
-            for i in range(6):
-                response = self.send_command('AT+CGPSINFO')
-                handle_response(response)
-                if response.splitlines()[0].strip() != "+CGPSINFO: ,,,,,,,,":
-                    print("Signal acquired, got: ")
-                    print(response)
-                    signal_acquired = True
-                    break
-                time.sleep(10)
-            minutes_elapsed += 1
-        return signal_acquired
-
-    def get_operator(self) -> COPS:
-        lines: list[str] = self.send_command('AT+COPS?').splitlines()
-        for line in lines:
-            if line.startswith("+COPS:"):
-                return COPS.from_string(line)
-
 
 if __name__ == '__main__':
     dt = datetime.now()
@@ -147,29 +21,60 @@ if __name__ == '__main__':
 
         # Apparently before sending any commands I must check if "RDY" is received? Not sure if it's really necessary
         # but documentation says so...
-        print("Testing if AT commands are working")
-        handle_response(ATCS.send_command("AT+CSQ"))
 
+        timeout = 0
         first_time = input("Is this script being executed for the first time since powering up the modem? (yes/no)\n")
         if first_time.lower() == "yes" or first_time.lower() == "y":
             pin_ok = False
-            print("Waiting 10 seconds on start-up just in case")
+            print("Waiting 15 seconds on start-up just in case")
             while not pin_ok:
-                time.sleep(10)
+                time.sleep(15)
                 response = ATCS.enter_pin("0000")  # response is empty if got an error
                 pin_ok = (response != "")
                 if not pin_ok:
                     print("Couldn't connect to the SIM, retrying...")
-            time.sleep(5)
-        #     while "READY" not in ATCS.send_command("AT+CPIN?"):
-        #         print("SIM not ready, retrying...")
-        #         ATCS.enter_pin("0000")
-        #         time.sleep(10)
-        #
-        # while "NO SERVICE" in ATCS.send_command('AT+CPSI?'):
-        #     print("No service, waiting...")
-        #     time.sleep(10)
-        # print("Service OK")
+                timeout += 15
+                if timeout >= 60:
+                    sys.exit("Couldn't connect to the SIM, aborting (waited for 60 seconds)")
+
+            timeout = 0
+            while "READY" not in ATCS.send_command("AT+CPIN?"):
+                print("SIM not ready, retrying...")
+                time.sleep(10)
+                if "READY" not in ATCS.send_command("AT+CPIN?"):
+                    ATCS.enter_pin("0000")
+                timeout += 10
+                if timeout >= 60:
+                    sys.exit("Couldn't connect to the SIM, aborting (waited for 60 seconds)")
+
+            mode = input("type the network mode to use "
+                         "(\n"
+                         "* 'LTE' for LTE only\n"
+                         "* 'NR5G' for NR5G only\n"
+                         "* 'BOTH' for LTE+NR5G only\n"
+                         "* Automatic by default\n"
+                         "): \n").strip().upper()
+            if 'LTE' in mode:
+                print("Setting LTE only mode")
+                ATCS.send_command('AT+CNMP=38')
+            elif 'NR5G' in mode:
+                print("Setting NR5G only mode")
+                ATCS.send_command('AT+CNMP=71')
+            elif 'BOTH' in mode:
+                print("Setting LTE+NR5G only mode")
+                ATCS.send_command('AT+CNMP=109')
+            else:
+                print("Defaulting to automatic mode")
+                ATCS.send_command('AT+CNMP=2')
+
+            timeout = 0
+            while "NO SERVICE" in ATCS.send_command('AT+CPSI?'):
+                print("No service, waiting...")
+                time.sleep(10)
+                timeout += 10
+                if timeout >= 120:
+                    sys.exit("Couldn't get a signal, aborting (waited for 120 seconds)")
+            print("Service OK")
 
         ATCS.restart_gps()
         gps_signal_acquired = False

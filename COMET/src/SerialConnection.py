@@ -5,8 +5,8 @@ class SerialConnection:
     def __init__(
             self,
             port_path,
-            baudrate=115200,  #460800
-            timeout=5,
+            baudrate=115200,  # 460800
+            timeout=5,  # Doesn't seem to be used in readline function
             encoding="ISO-8859-1"
             # encoding='utf-8',
     ):
@@ -62,7 +62,7 @@ class SerialConnection:
         # I'm not sure what are the rules for ending this. What I usually get is
         # OK +CPIN: READY SMS DONE PB DONE
         # But I'm not sure if it's reliable.
-        while not ("PB DONE" in line or line.endswith("ERROR")):
+        while not ("PB DONE" in line or line.startswith("+CME")):
             line = self.modem.readline().decode('utf-8').strip()
             if line not in ['\n', '\r\n', '']:
                 result.append(line + "\n")
