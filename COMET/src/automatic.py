@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 from datetime import datetime, timedelta
@@ -61,7 +62,7 @@ if __name__ == '__main__':
         with MeasurementsWriter(is_tmp=True, operator_info=ATCS.get_operator()) as writer:
             writer.print_header()
 
-            timeout = 30
+            timeout = 5400  # 90 minutes
             measurements_duration_elapsed = 0
 
             # Wait until the start of the second to get a nice round number
@@ -69,7 +70,14 @@ if __name__ == '__main__':
             starting_time = starting_time + timedelta(microseconds=(1000000 - starting_time.microsecond))
             pause.until(starting_time)
 
-            while measurements_duration_elapsed < timeout:
+            file_time = None
+            try:
+                file_time = os.stat("./stop").st_ctime
+            except OSError:
+                pass
+
+            end_loop = False
+            while measurements_duration_elapsed < timeout and not end_loop:
                 # Starting time is accurate to at least the second, I think.
                 position_info = ATCS.get_position(starting_time)
                 serving_cell_list = ATCS.get_serving_cell(starting_time)
@@ -87,13 +95,18 @@ if __name__ == '__main__':
                 for cell in neighbour_cell_list:
                     writer.write_line(cell.to_printable_string())
 
-                measurements_duration_elapsed += 1
-
                 dt_after_writing = datetime.now()
                 print("Measurement ", str(measurements_duration_elapsed),
                       " took ", (dt_after_commands - starting_time).microseconds / 1000, " milliseconds ",
                       "and ", (dt_after_writing - dt_after_commands).microseconds,
                       " microseconds to save to file")
+
+                measurements_duration_elapsed += 1
+                if file_time is not None:
+                    # If the stop file was modified (by touch or else), stop the execution
+                    if os.stat("./stop").st_ctime != file_time:
+                        end_loop = True
+                        print("Measurements stopped by user command")
 
                 starting_time = datetime.now()
                 starting_time = starting_time + timedelta(microseconds=(1000000 - starting_time.microsecond))
