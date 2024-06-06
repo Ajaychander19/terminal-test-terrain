@@ -103,14 +103,8 @@ class QENGServing:
         self.rssi = rssi
         """LTE Received Signal Strength Indication. Multiplied by 10 from actual value."""
         self.sinr = sinr
-        """In LTE mode:
-        It indicates LTE Signal-to-Interface plus Noise Ratio. The conversion
-        formula for actual SINR is Y = (1/5) × X × 10 - 20 (X is the <SINR> value
-        queried by AT+QENG and Y is the actual value of LTE SINR after
-        calculating with the formula). Range: -20 to 30 dB.
-        In 5G NR mode:
-        It indicates the signal of 5G NR Signal-to-Interface plus Noise Ratio.
-        Range: -20 to 30 dB."""
+        """Not documented correctly for SIM8262E. SINR value is actually given directly and also is equal to RSSNR value
+        given by AT+CPSI? command"""
         self.cqi = cqi
         """Integer type. Channel Quality Indication. Range: 1–30."""
         self.tx_power = tx_power
@@ -151,10 +145,10 @@ class QENGServing:
         else:
             result += "NONE|"
         # I'm not sure if formula applies to all SINR or only LTE
-        if self.network_type == NetworkType.LTE:
-            result += str((1 / 5) * self.sinr * 10 - 20)
-        else:
-            result += str(self.sinr)
+        # if self.network_type == NetworkType.LTE:
+        #     result += str((1 / 5) * self.sinr * 10 - 20)
+        # else:
+        result += str(self.sinr)
 
         return result
 
@@ -307,14 +301,8 @@ class QENGNeighbour:
         self.rssi = rssi
         """LTE Received Signal Strength Indication. Multiplied by 10 from actual value."""
         self.sinr = sinr
-        """In LTE mode:
-        It indicates LTE Signal-to-Interface plus Noise Ratio. The conversion
-        formula for actual SINR is Y = (1/5) × X × 10 - 20 (X is the <SINR> value
-        queried by AT+QENG and Y is the actual value of LTE SINR after
-        calculating with the formula). Range: -20 to 30 dB.
-        In 5G NR mode:
-        It indicates the signal of 5G NR Signal-to-Interface plus Noise Ratio.
-        Range: -20 to 30 dB."""
+        """Not documented correctly for SIM8262E. For neighbouring cell the sinr value is given but is always 0, it can
+        be ignored."""
         self.srxlev = srxlev
         """Select reception level value for base station in dB (see 3GPP 25.304)."""
         self.cell_resel_priority = cell_resel_priority
@@ -350,8 +338,9 @@ class QENGNeighbour:
         result += str(self.earfcn) + "|"
         result += str(self.rsrq / 10) + "|"
         result += str(self.rsrp / 10) + "|"
-        result += str(self.rssi / 10) + "|"
-        result += str((1 / 5) * self.sinr * 10 - 20)
+        result += str(self.rssi / 10)  # + "|"
+        # result += str((1 / 5) * self.sinr * 10 - 20)
+        # result += str(self.sinr)
         return result
 
     @classmethod
@@ -439,7 +428,7 @@ class CGPSINFO:
     def __init__(self, timestamp: datetime,
                  lat: str = "", ns: str = "", log: str = "", ew: str = "",
                  date: str = "", utc_time: str = "",
-                 alt: int = 0, speed: int = 0, course: int = 0
+                 alt: float = 0, speed: float = 0, course: float = 0
                  ):
         self.timestamp = timestamp
         self.lat = lat
@@ -538,7 +527,7 @@ class CGPSINFO:
                    lat=prefix_with_zeros(nb=values[0], left_digits=4), ns=values[1],
                    log=prefix_with_zeros(nb=values[2], left_digits=5), ew=values[3],
                    date=values[4], utc_time=values[5],
-                   alt=int(values[6]), speed=int(values[7]), course=int(values[8])
+                   alt=float(values[6]), speed=float(values[7]), course=float(values[8])
                    )
 
 

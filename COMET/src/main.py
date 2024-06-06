@@ -125,6 +125,7 @@ if __name__ == '__main__':
 
                         dt_after_commands = datetime.now()
 
+                        # FIXME: this should logically a method of writer class
                         for info in position_info:
                             writer.write_line(info.to_printable_string())
 

@@ -134,8 +134,8 @@ class MeasurementsWriter(Writer):
         # self.write_line("TECHNO|" + self.operator_info.act.name)
         self.write_line("GPS|TIMESTAMP|LATITUDE|LONGITUDE|ALTITUDE")
         self.write_line("MEASURE_SERVING|TIMESTAMP|NETWORK_TYPE|TAC|CELLID|MCC|MNC|PCID|EARFCN|RSRQ|RSRP|RSSI|SINR")
-        self.write_line("MEASURE_NEIGHBOUR_INTRA|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI|SINR")
-        self.write_line("MEASURE_NEIGHBOUR_INTER|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI|SINR")
+        self.write_line("MEASURE_NEIGHBOUR_INTRA|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI")
+        self.write_line("MEASURE_NEIGHBOUR_INTER|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI")
         self.write_line()
         self.write_line("MEASUREMENTS")
 
@@ -275,7 +275,7 @@ class ProcessedFileWriter(Writer):
                     self.write("CELLINFO|" + str(current_measure_index) + "|" +
                                coordinates[0] + "|" + coordinates[1] + "|" +  # lat|lng
                                values[8] + "|" + values[7] + "|" +  # earfcn|pci|
-                               values[3] + "|" + str(int(values[4], 16)) + "|" + values[5] + "|" + values[6]
+                               str(int(values[3], 16)) + "|" + values[4] + "|" + values[5] + "|" + values[6]
                                # TAC|CID|MCC|MNC
                                )
                     self.write_line()
@@ -331,8 +331,16 @@ if __name__ == '__main__':
     print("FileWriters module isn't executable")
     # Get MiB taken by this process
     # import os, psutil; print(psutil.Process().memory_info().rss / 1024 ** 2)
-
-    with ProcessedFileWriter("//measurements/03-06-2024/tmp_10"
-                             "-49_measurement.csv", is_tmp=False) as writer:
+    before = datetime.now()
+    with ProcessedFileWriter("./measurements/06-06-2024/tmp_10"
+                             "-14_measurement.csv", is_tmp=False) as writer:
         writer.print_header()
         writer.print_measurements()
+    after = datetime.now()
+
+    duration = after - before
+    print(duration)
+    duration_per_second = duration.total_seconds()/180
+    print(duration_per_second)
+    estimated_two_hour_duration = duration_per_second * (2*60*60)
+    print(estimated_two_hour_duration)
