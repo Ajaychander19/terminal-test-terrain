@@ -9,18 +9,14 @@ DEST_DIR=/home/rasp45g/python
 if [ $# -eq 1 ]
   then
     case "$1" in
-      "run") # Update python files and run
+      "run") # Update python files and run interactable script
         scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}src/*.py ${DEST_DIR}
-        # Activate venv
         source .venv/bin/activate
-        # Execute the main Python script
         python main.py
         deactivate
       ;;
-      "simple") # Run auto script
-        # Activate venv
+      "simple") # Run interactable script without updating files
         source .venv/bin/activate
-        # Execute the main Python script
         python main.py
         deactivate
       ;;
@@ -50,10 +46,8 @@ if [ $# -eq 1 ]
           no arguments to only update python files
           "
     esac
-  else # If no arguments given run current local version
-    # Activate venv
+  else # If no arguments given run automated measurements script
     source .venv/bin/activate
-    # Execute the main Python script
 #    python main.py
     python automatic.py
     deactivate

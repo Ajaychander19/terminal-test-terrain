@@ -38,6 +38,7 @@ def get_earfcns_pcis(measurements_file_path: str):
     :return: dictionary of unique ordered couples of (earfcn, pci) associated to the number of their appearance
     in measurements format: {(earfcn: int, pci: int): frequency: int}
     """
+    # FIXME: It still counts the lines omitted because of lack of gps coordinates
     earfcns: dict[int, list[int]] = dict()
     sorted_earfcns_pcis: list[(int, int)] = list()
     with open(measurements_file_path, "r") as measurements_file:
@@ -119,6 +120,14 @@ class Writer:
 class MeasurementsWriter(Writer):
     def __init__(self, data_dir: str = "./measurements/", filename: str = "measurement.csv", is_tmp: bool = False,
                  operator_info: COPS = None):
+        """
+
+        NOTE: Must be instantiated using a with statement as it doesn't provide a dedicated close() method
+        :param data_dir:
+        :param filename:
+        :param is_tmp:
+        :param operator_info:
+        """
         now = datetime.now()
 
         date_dir = now.strftime("%d-%m-%Y")
@@ -144,9 +153,11 @@ class ProcessedFileWriter(Writer):
     def __init__(self, measurements_file_path: str, output_dir: str = "./data/", filename: str = "M1",
                  is_tmp: bool = False):
         """
-        Takes a COMET measurement file and create a CORENTIN compatible cev.csv file with processed measurements.
+        Takes a COMET measurement file and creates a CORENTIN compatible cev.csv file with processed measurements.
         The constructor only creates the file, to process measurements print_header() and print_measurements()
         methods must be called
+
+        Note: This class must be instantiated using with statement as it doesn't provide a dedicated close() method
 
         :param measurements_file_path: Path to the COMET measurements file
         :param output_dir: Path to the directory where output file will be stored
@@ -247,11 +258,11 @@ class ProcessedFileWriter(Writer):
 
         with open(self._measurements_file_path, "r") as measurements_file:
             # Since coordinates are copied directly to output file with no change they can be kept as str
-            coordinates = ("0", "0")
+            coordinates = ("", "")
             current_measure_index = 0
-            # {(earfcn, pci): (rsrp, rsrq, rssi)}
-            current_measure = dict()
+            current_measure = dict()  # {(earfcn, pci): (rsrp, rsrq, rssi)}
             passed_header = False
+            ignore_measurement = False
             for line in measurements_file:
                 stripped_line = line.strip()
                 # Ignore header
@@ -263,6 +274,12 @@ class ProcessedFileWriter(Writer):
                 values = [value.strip() for value in stripped_line.split('|')]
                 if stripped_line.startswith("GPS"):
                     coordinates = (values[2], values[3])
+                    if coordinates[0] == '' or coordinates[1] == '':
+                        ignore_measurement = True
+                        # current_measure_index += 1 # In theory it's the timestamp, so it should be incremented
+                        continue
+                    else:
+                        ignore_measurement = False
                     # GPS line delimits the start of a measurement. After finishing reading previous measurement
                     # (neighbours) we can print all rsrp, rsrq, rssi measurements for all cells at once
                     if current_measure:
@@ -272,6 +289,8 @@ class ProcessedFileWriter(Writer):
                     current_measure_index += 1
 
                 elif stripped_line.startswith("MEASURE_SERVING"):
+                    if ignore_measurement:
+                        continue
                     self.write("CELLINFO|" + str(current_measure_index) + "|" +
                                coordinates[0] + "|" + coordinates[1] + "|" +  # lat|lng
                                values[8] + "|" + values[7] + "|" +  # earfcn|pci|
@@ -287,8 +306,12 @@ class ProcessedFileWriter(Writer):
                                )
                     self.write_line()
                 elif stripped_line.startswith("MEASURE_NEIGHBOUR_INTRA"):
+                    if ignore_measurement:
+                        continue
                     current_measure[(int(values[4]), int(values[3]))] = (values[6], values[5], values[7])
                 elif stripped_line.startswith("MEASURE_NEIGHBOUR_INTER"):
+                    if ignore_measurement:
+                        continue
                     current_measure[(int(values[4]), int(values[3]))] = (values[6], values[5], values[7])
 
     def write_measurement_line(self, coordinates, current_measure, current_measure_index, meas_type: str):
@@ -332,8 +355,8 @@ if __name__ == '__main__':
     # Get MiB taken by this process
     # import os, psutil; print(psutil.Process().memory_info().rss / 1024 ** 2)
     before = datetime.now()
-    with ProcessedFileWriter("./measurements/06-06-2024/tmp_10"
-                             "-14_measurement.csv", is_tmp=False) as writer:
+    with ProcessedFileWriter("./measurements/06-06-2024/tmp_15"
+                             "-23_measurement.csv", is_tmp=False) as writer:
         writer.print_header()
         writer.print_measurements()
     after = datetime.now()
