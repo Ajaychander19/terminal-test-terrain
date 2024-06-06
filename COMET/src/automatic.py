@@ -15,9 +15,9 @@ if __name__ == '__main__':
         ATCS = ATCommandSender(connection)
 
         pin_ok = False
-        print("Waiting 15 seconds on start-up just in case")
+        print("Waiting 10 seconds on start-up just in case")
         while not pin_ok:
-            time.sleep(15)
+            time.sleep(10)
             response = ATCS.enter_pin("0000")  # response is empty if got an error
             pin_ok = (response != "")
             if not pin_ok:

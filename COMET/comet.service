@@ -1,0 +1,14 @@
+# This file must be placed in the /etc/systemd/system directory. All paths must be modified to
+# Point to where COMET files are located (here it is /home/rasp45g/python/)
+[Unit]
+Description=COMET
+
+[Service]
+ExecStart=/home/rasp45g/python/run.sh
+WorkingDirectory=/home/rasp45g/python
+StandardOutput=file:/home/rasp45g/python/logs/output.log
+StandardError=file:/home/rasp45g/python/logs/error.log
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
