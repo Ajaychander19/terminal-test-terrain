@@ -120,12 +120,13 @@ class ATCommandSender:
         while not signal_acquired and minutes_elapsed < minutes:
             for i in range(6):
                 response = self.send_command('AT+CGPSINFO')
-                handle_response(response)
+                # handle_response(response)
                 if response.splitlines()[0].strip() != "+CGPSINFO: ,,,,,,,,":
                     print("Signal acquired, got: ")
                     print(response)
                     signal_acquired = True
                     break
+                print("No GPS signal, waiting...")
                 time.sleep(10)
             minutes_elapsed += 1
         return signal_acquired

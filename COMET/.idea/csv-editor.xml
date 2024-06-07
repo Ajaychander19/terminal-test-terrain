@@ -31,28 +31,7 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="/measurements/03-06-2024/tmp_10-46_measurement.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="|" />
-            </Attribute>
-          </value>
-        </entry>
         <entry key="/measurements/03-06-2024/tmp_10-49_measurement.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="|" />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/measurements/05-06-2024/tmp_15-55_measurement.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="|" />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/measurements/05-06-2024/tmp_15-59_measurement.csv">
           <value>
             <Attribute>
               <option name="separator" value="|" />
@@ -80,14 +59,7 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="/measurements/31-05-2024/tmp_09-50_measurement.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="|" />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/measurements/31-05-2024/tmp_09-55_measurement.csv">
+        <entry key="/measurements/07-06-2024/tmp_12-07_measurement.csv">
           <value>
             <Attribute>
               <option name="separator" value="|" />

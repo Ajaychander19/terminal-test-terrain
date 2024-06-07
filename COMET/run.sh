@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# To start automatic background execution
+#sudo nano /etc/systemd/system/comet.service
+#sudo systemctl daemon-reload
+#sudo systemctl start comet.service
+#sudo systemctl status comet.service
 # Variables
 DEV_COMPUTER_IP=10.51.0.147
 DEV_COMPUTER_USER=stepan-tyurin
@@ -48,7 +53,6 @@ if [ $# -eq 1 ]
     esac
   else # If no arguments given run automated measurements script
     source .venv/bin/activate
-#    python main.py
     python automatic.py
     deactivate
 fi

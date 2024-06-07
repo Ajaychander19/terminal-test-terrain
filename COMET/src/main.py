@@ -91,9 +91,6 @@ if __name__ == '__main__':
                             "): \n").strip()
             if command == "stop":
                 break
-            if command == "full-stop":
-                ATCS.send_command("AT+CPOF")
-                break
             if "measurement" in command:
                 arguments = command.split()
                 if len(arguments) != 2:
@@ -125,7 +122,7 @@ if __name__ == '__main__':
 
                         dt_after_commands = datetime.now()
 
-                        # FIXME: this should logically a method of writer class
+                        # FIXME: this should logically be a method of writer class
                         for info in position_info:
                             writer.write_line(info.to_printable_string())
 
@@ -168,3 +165,6 @@ if __name__ == '__main__':
             dt_after = datetime.now()
             print(command + " done at: ", dt_after)
             print("It took ", (dt_after - dt_before).microseconds, " microseconds\n")
+
+        # Power down the module
+        ATCS.send_command("AT+CPOF")

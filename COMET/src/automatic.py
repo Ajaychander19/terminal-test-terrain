@@ -10,43 +10,35 @@ from SerialConnection import SerialConnection
 from ATCommandSender import ATCommandSender
 
 if __name__ == '__main__':
+    print("Waiting 10 seconds on start-up just in case")
+    time.sleep(10)
+
     with SerialConnection('/dev/ttyUSB2') as connection:
-        timeout = 0
         ATCS = ATCommandSender(connection)
 
-        pin_ok = False
-        print("Waiting 10 seconds on start-up just in case")
-        while not pin_ok:
-            time.sleep(10)
-            response = ATCS.enter_pin("0000")  # response is empty if got an error
-            pin_ok = (response != "")
-            if not pin_ok:
-                print("Couldn't connect to the SIM, retrying...")
-            timeout += 15
-            if timeout >= 60:
-                sys.exit("Couldn't connect to the SIM, aborting (waited for 60 seconds)")
-        time.sleep(5)
-
         timeout = 0
-        while "READY" not in ATCS.send_command("AT+CPIN?"):
-            print("SIM not ready, retrying...")
+        sim_ready = "READY" in ATCS.send_command("AT+CPIN?")
+        while not sim_ready:
+            print("SIM not ready, trying to activate...")
+            ATCS.enter_pin("0000")
             time.sleep(10)
-            if "READY" not in ATCS.send_command("AT+CPIN?"):
-                ATCS.enter_pin("0000")
+            sim_ready = "READY" in ATCS.send_command("AT+CPIN?")
+
             timeout += 10
-            if timeout >= 60:
-                sys.exit("Couldn't connect to the SIM, aborting (waited for 60 seconds)")
+            if timeout >= 180:
+                sys.exit("Couldn't activate the SIM, aborting (waited for 180 seconds)")
+        print("SIM card ready")
 
         print("Defaulting to LTE only mode")
         ATCS.send_command('AT+CNMP=38')
 
         timeout = 0
-        while "NO SERVICE" in ATCS.send_command('AT+CPSI?'):
+        while "NO SERVICE" in ATCS.send_command('AT+CPSI?'):  # CPSI car plus léger
             print("No service, waiting...")
             time.sleep(10)
             timeout += 10
-            if timeout >= 120:
-                sys.exit("Couldn't get a signal, aborting (waited for 120 seconds)")
+            if timeout >= 600:
+                sys.exit("Couldn't connect to mobile network, aborting (waited for 600 seconds)")
         print("Service OK")
 
         ATCS.restart_gps()
@@ -54,15 +46,16 @@ if __name__ == '__main__':
         gps_signal_acquired = False
         if not gps_signal_acquired:
             print("Trying to acquire GPS signal...")
-            gps_signal_acquired = ATCS.get_gps_signal(10)
+            gps_signal_acquired = ATCS.get_gps_signal(30)  # Try to get a signal for 30 minutes
             if not gps_signal_acquired:
-                print("Couldn't acquire GPS signal, aborting measurements")
+                sys.exit("Couldn't acquire GPS signal, aborting measurements (waited for 30 minutes)")
+        print("GPS OK")
 
         print("Starting measurements")
         with MeasurementsWriter(is_tmp=True, operator_info=ATCS.get_operator()) as writer:
             writer.print_header()
 
-            timeout = 5400  # 90 minutes
+            timeout = 3600  # 60 minutes
             measurements_duration_elapsed = 0
 
             # Wait until the start of the second to get a nice round number
