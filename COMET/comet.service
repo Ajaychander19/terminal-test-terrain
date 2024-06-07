@@ -8,7 +8,8 @@ ExecStart=/home/rasp45g/python/run.sh
 WorkingDirectory=/home/rasp45g/python
 StandardOutput=file:/home/rasp45g/python/logs/output.log
 StandardError=file:/home/rasp45g/python/logs/error.log
+User=rasp45g
+Group=rasp45g
 Restart=no
 
 [Install]
-WantedBy=multi-user.target
