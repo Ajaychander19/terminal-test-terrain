@@ -355,15 +355,15 @@ if __name__ == '__main__':
     # Get MiB taken by this process
     # import os, psutil; print(psutil.Process().memory_info().rss / 1024 ** 2)
     before = datetime.now()
-    with ProcessedFileWriter("./measurements/06-06-2024/tmp_15"
-                             "-23_measurement.csv", is_tmp=False) as writer:
+    with ProcessedFileWriter("./measurements/11-06-2024/tmp_15"
+                             "-16_measurement.csv", is_tmp=False) as writer:
         writer.print_header()
         writer.print_measurements()
     after = datetime.now()
 
     duration = after - before
     print(duration)
-    duration_per_second = duration.total_seconds()/180
+    duration_per_second = duration.total_seconds()/(40*60)
     print(duration_per_second)
     estimated_two_hour_duration = duration_per_second * (2*60*60)
     print(estimated_two_hour_duration)

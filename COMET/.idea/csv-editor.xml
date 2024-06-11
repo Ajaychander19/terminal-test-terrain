@@ -31,6 +31,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/data/11-06-2024/cevSFR_20240611_1609-M1.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="|" />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/measurements/03-06-2024/tmp_10-49_measurement.csv">
           <value>
             <Attribute>
@@ -60,6 +67,13 @@
           </value>
         </entry>
         <entry key="/measurements/07-06-2024/tmp_12-07_measurement.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="|" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/measurements/11-06-2024/tmp_15-16_measurement.csv">
           <value>
             <Attribute>
               <option name="separator" value="|" />

@@ -68,6 +68,8 @@ if __name__ == '__main__':
                 ATCS.send_command('AT+CNMP=2')
 
             timeout = 0
+            # Technically AT+CREG? response can be twice as fast but it has different correct response codes and...
+            # AT+COPS could also work, but same, it a bit more complicated form
             while "NO SERVICE" in ATCS.send_command('AT+CPSI?'):
                 print("No service, waiting...")
                 time.sleep(10)
@@ -76,9 +78,9 @@ if __name__ == '__main__':
                     sys.exit("Couldn't get a signal, aborting (waited for 120 seconds)")
             print("Service OK")
 
-        ATCS.restart_gps()
-        gps_signal_acquired = False
-        print("GPS OK")
+        # ATCS.restart_gps()
+        # gps_signal_acquired = False
+        # print("GPS OK")
 
         while True:
             command = input("type the command to send "
@@ -167,4 +169,6 @@ if __name__ == '__main__':
             print("It took ", (dt_after - dt_before).microseconds, " microseconds\n")
 
         # Power down the module
+        # Ideally it should be done on errors to, __exit__ method would be ideal, but that would make to many
+        # nested with statements...
         ATCS.send_command("AT+CPOF")

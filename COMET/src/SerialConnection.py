@@ -50,7 +50,6 @@ class SerialConnection:
         if self.module:
             self.module.write((cmd + "\r\n").encode('utf-8'))
 
-    # TODO: add a try-except for timeout
     def read_response(self) -> list:
         result = list()
         if not self.module:
@@ -69,7 +68,7 @@ class SerialConnection:
         # I'm not sure what are the rules for ending this. What I usually get is
         # OK +CPIN: READY SMS DONE PB DONE
         # But I'm not sure if it's reliable.
-        while not ("PB DONE" in line or line.startswith("+CME")):
+        while not ("PB DONE" in line or "ERROR" in line):  # or line.startswith("+CME")
             line = self.module.readline().decode('utf-8').strip()
             if line not in ['\n', '\r\n', '']:
                 result.append(line + "\n")

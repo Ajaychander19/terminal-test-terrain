@@ -10,6 +10,7 @@ from SerialConnection import SerialConnection
 from ATCommandSender import ATCommandSender
 
 if __name__ == '__main__':
+    dt_start = datetime.now()
     print("Waiting 10 seconds on start-up just in case")
     time.sleep(10)
 
@@ -33,7 +34,8 @@ if __name__ == '__main__':
         ATCS.send_command('AT+CNMP=38')
 
         timeout = 0
-        while "NO SERVICE" in ATCS.send_command('AT+CPSI?'):  # CPSI car plus léger
+        # Technically AT+CREG? response can be twice as fast but it has different correct response codes and...
+        while "NO SERVICE" in ATCS.send_command('AT+CPSI?'):
             print("No service, waiting...")
             time.sleep(10)
             timeout += 10
@@ -48,8 +50,13 @@ if __name__ == '__main__':
             print("Trying to acquire GPS signal...")
             gps_signal_acquired = ATCS.get_gps_signal(30)  # Try to get a signal for 30 minutes
             if not gps_signal_acquired:
-                sys.exit("Couldn't acquire GPS signal, aborting measurements (waited for 30 minutes)")
+                sys.exit("Couldn't acquire GPS signal, aborting measurements (tried for 30 minutes)")
         print("GPS OK")
+
+        dt_before_meas = datetime.now()
+
+        print("It took " + str((dt_before_meas - dt_start).total_seconds())
+              + " seconds from boot to start of measurements")
 
         print("Starting measurements")
         with MeasurementsWriter(is_tmp=True, operator_info=ATCS.get_operator()) as writer:
