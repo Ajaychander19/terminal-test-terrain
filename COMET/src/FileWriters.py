@@ -286,6 +286,7 @@ class ProcessedFileWriter(Writer):
                         self.write_measurement_line(coordinates, current_measure, current_measure_index, "RSRP")
                         self.write_measurement_line(coordinates, current_measure, current_measure_index, "RSRQ")
                         self.write_measurement_line(coordinates, current_measure, current_measure_index, "RSSI")
+                        current_measure = dict()  # Empty dict to avoid keeping old measurements
                     current_measure_index += 1
 
                 elif stripped_line.startswith("MEASURE_SERVING"):
