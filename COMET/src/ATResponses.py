@@ -41,7 +41,7 @@ class AccesTechnology(Enum):
     NGRAN = 12
     EUTRA_NR = 13
 
-
+# TODO: Add inheritence or interface for common methods
 class QENGServing:
     """
     This class holds all data received from the response of the AT+QENG="servingcell" command.
@@ -262,6 +262,13 @@ class QENGServing:
 
         return None
 
+    def __bool__(self):
+        """
+        Evaluates to True if connected state
+        :return:
+        """
+        return self.state == UE_State.CONNECT
+
 
 class QENGNeighbour:
     """
@@ -402,6 +409,13 @@ class QENGNeighbour:
 
         return None
 
+    def __bool__(self):
+        """
+        Always returns True as a neighbour can only exist if network is connected
+        :return:
+        """
+        return True
+
 
 def prefix_with_zeros(left_digits: int, nb: str, sep: str = ".") -> str:
     """Prefixes nb with 0 until it has `left_digits` amount of digits in the left part
@@ -529,6 +543,13 @@ class CGPSINFO:
                    date=values[4], utc_time=values[5],
                    alt=float(values[6]), speed=float(values[7]), course=float(values[8])
                    )
+
+    def __bool__(self):
+        """
+        Evaluates to True if contains meaningful localisation info (non empty values)
+        :return:
+        """
+        return self.lat != ""
 
 
 class COPS:

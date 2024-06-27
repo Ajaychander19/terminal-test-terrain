@@ -2,3 +2,4 @@ measurements/*
 data/*
 *.aof
 cev*.csv
+logs

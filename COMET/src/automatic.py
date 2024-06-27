@@ -1,69 +1,144 @@
 import os
-import sys
 import time
 from datetime import datetime, timedelta
 
 import pause
+import psutil
 
 from FileWriters import MeasurementsWriter
 from SerialConnection import SerialConnection
 from ATCommandSender import ATCommandSender
 
-if __name__ == '__main__':
-    dt_start = datetime.now()
-    print("Waiting 10 seconds on start-up just in case")
-    time.sleep(10)
+from gpiozero import LED
+from gpiozero import Button
 
-    with SerialConnection('/dev/ttyUSB2') as connection:
-        ATCS = ATCommandSender(connection)
+measurements_started = False
+shutdown_requested = False
 
-        timeout = 0
-        sim_ready = "READY" in ATCS.send_command("AT+CPIN?")
-        while not sim_ready:
-            print("SIM not ready, trying to activate...")
-            ATCS.enter_pin("0000")
-            time.sleep(10)
-            sim_ready = "READY" in ATCS.send_command("AT+CPIN?")
 
-            timeout += 10
-            if timeout >= 180:
-                sys.exit("Couldn't activate the SIM, aborting (waited for 180 seconds)")
-        print("SIM card ready")
+def start_measurements():
+    global measurements_started
+    measurements_started = not measurements_started
 
-        print("Defaulting to LTE only mode")
-        ATCS.send_command('AT+CNMP=38')
 
-        timeout = 0
-        # Technically AT+CREG? response can be twice as fast but it has different correct response codes and...
-        while "NO SERVICE" in ATCS.send_command('AT+CPSI?'):
-            print("No service, waiting...")
-            time.sleep(10)
-            timeout += 10
-            if timeout >= 600:
-                sys.exit("Couldn't connect to mobile network, aborting (waited for 600 seconds)")
-        print("Service OK")
+def shutdown():
+    global shutdown_requested
+    shutdown_requested = True
 
-        ATCS.restart_gps()
 
-        gps_signal_acquired = False
-        if not gps_signal_acquired:
-            print("Trying to acquire GPS signal...")
-            gps_signal_acquired = ATCS.get_gps_signal(30)  # Try to get a signal for 30 minutes
-            if not gps_signal_acquired:
-                sys.exit("Couldn't acquire GPS signal, aborting measurements (tried for 30 minutes)")
-        print("GPS OK")
+def log_memory_usage(log_file):
+    process = psutil.Process(os.getpid())
+    memory_info = process.memory_info()
+    log_file.write(f"{time.time()},{memory_info.rss / 1024}\n")  # KB
 
-        dt_before_meas = datetime.now()
 
-        print("It took " + str((dt_before_meas - dt_start).total_seconds())
-              + " seconds from boot to start of measurements")
+def init(atcs: ATCommandSender, log_file):
+    global measurements_started
+    global shutdown_requested
+
+    print("Module initialisation started")
+    sim_ready = "READY" in atcs.send_command("AT+CPIN?")
+
+    if shutdown_requested or not measurements_started:
+        return
+
+    red_led.blink(on_time=1, off_time=1)
+    cpt = 10  # try to unlock sim every 10 iterations of the loop
+    while not sim_ready:
+        if cpt == 10:
+            print("SIM not ready, trying to unlock...")
+            atcs.enter_pin("0000")
+            cpt = 0
+
+        time.sleep(1)
+        cpt += 1
+        sim_ready = "READY" in atcs.send_command("AT+CPIN?")
+
+        if shutdown_requested or not measurements_started:
+            return
+    print("SIM card ready")
+    red_led.off()
+
+    log_memory_usage(log_file)
+
+    print("Defaulting to LTE only mode")
+    atcs.send_command('AT+CNMP=38')
+
+    if shutdown_requested or not measurements_started:
+        return
+
+    red_led.blink(on_time=1, off_time=0.5)
+    # Technically AT+CREG? response can be twice as fast but it has different correct response codes and...
+    while "NO SERVICE" in atcs.send_command('AT+CPSI?'):
+        print("No service, waiting...")
+        time.sleep(1)  # CPSI is easy enough to do every second
+
+        if shutdown_requested or not measurements_started:
+            return
+    print("Service OK")
+    red_led.off()
+
+    log_memory_usage(log_file)
+
+    atcs.restart_gps()
+
+    if shutdown_requested or not measurements_started:
+        return
+
+    # red_led.blink(on_time=0.5, off_time=3)
+    # gps_signal_acquired = False
+    # while not gps_signal_acquired:
+    #     print("Trying to acquire GPS signal...")
+    #     # TODO: add function to get gps response, so that is can be used same as network loop
+    #     response = atcs.send_command('AT+CGPSINFO')
+    #     gps_signal_acquired = response.splitlines()[0].strip() != "+CGPSINFO: ,,,,,,,,"
+    #     time.sleep(1)
+    #
+    #     if shutdown_requested or not measurements_started:
+    #         return
+    # print("GPS OK")
+    # red_led.off()
+
+    dt_before_meas = datetime.now()
+    print("It took " + str((dt_before_meas - dt_start).total_seconds())
+          + " seconds to initialize")
+    log_memory_usage(log_file)
+
+    return
+
+
+def start():
+    global shutdown_requested
+    global measurements_started
+
+    hour = datetime.now().strftime("%H-%M")
+    log_file_path = f"./logs/{hour}_memory_usage.csv"
+    green_led.off()
+    red_led.on()
+    # red led will be continuously on until the connection is established
+    # usually it's instant, but sometimes it can take a while if program starts right at boot or if it's restarted
+    with SerialConnection(module_path) as connection, open(log_file_path, "w") as log_file:
+        red_led.off()
+        log_file.write("timestamp,memory_usage_mb\n")
+        atcs = ATCommandSender(connection)
+
+        init(atcs, log_file)
+        if shutdown_requested:
+            atcs.send_command("AT+CPOF")
+            return
+        if not measurements_started:
+            return
 
         print("Starting measurements")
-        with MeasurementsWriter(is_tmp=True, operator_info=ATCS.get_operator()) as writer:
+        green_led.on()
+        with MeasurementsWriter(is_tmp=True, operator_info=atcs.get_operator()) as writer:
             writer.print_header()
 
-            timeout = 3600  # 60 minutes
-            measurements_duration_elapsed = 0
+            if shutdown_requested:
+                atcs.send_command("AT+CPOF")
+                return
+            if not measurements_started:
+                return
 
             # Wait until the start of the second to get a nice round number
             starting_time = datetime.now()
@@ -74,43 +149,113 @@ if __name__ == '__main__':
             try:
                 file_time = os.stat("./stop").st_ctime
             except OSError:
-                pass
+                print("WARNING: stop file not found, measurements will have to be stopped with the button")
 
-            end_loop = False
-            while measurements_duration_elapsed < timeout and not end_loop:
+            log_counter = 0
+            current_measurement = 0
+            gps_error = False
+            network_error = False
+            print("Measurements loop started")
+            while measurements_started and not shutdown_requested:
+                green_led.on()
                 # Starting time is accurate to at least the second, I think.
-                position_info = ATCS.get_position(starting_time)
-                serving_cell_list = ATCS.get_serving_cell(starting_time)
-                neighbour_cell_list = ATCS.get_neighbour_cells(starting_time)
+                position_info = atcs.get_position(starting_time)
+                serving_cell_list = atcs.get_serving_cell(starting_time)
+                neighbour_cell_list = atcs.get_neighbour_cells(starting_time)
 
                 dt_after_commands = datetime.now()
 
                 for info in position_info:
+                    if not info:  # If no position found
+                        if not gps_error:  # If it's first time, start blinking
+                            red_led.off()
+                            red_led.blink(on_time=0.5, off_time=3)
+                            gps_error = True
+                    else:
+                        gps_error = False
+                        red_led.off()
+
                     writer.write_line(info.to_printable_string())
 
                 # Not sure if in NSA 5G both should be written or only one.
                 for cell in serving_cell_list:
+                    if not cell:  # If no network found
+                        if not network_error:  # If first time, start blinking
+                            red_led.off()
+                            network_error = True
+                            red_led.blink(on_time=1.0, off_time=0.5)
+                    else:
+                        network_error = False
+                        red_led.off()
+
                     writer.write_line(cell.to_printable_string())
 
                 for cell in neighbour_cell_list:
                     writer.write_line(cell.to_printable_string())
 
                 dt_after_writing = datetime.now()
-                print("Measurement ", str(measurements_duration_elapsed),
+                print("Measurement ", str(current_measurement),
                       " took ", (dt_after_commands - starting_time).microseconds / 1000, " milliseconds ",
                       "and ", (dt_after_writing - dt_after_commands).microseconds,
                       " microseconds to save to file")
 
-                measurements_duration_elapsed += 1
+                starting_time = datetime.now()
+                starting_time = starting_time + timedelta(microseconds=(1000000 - starting_time.microsecond))
+                # half_time = starting_time + timedelta(microseconds=(1000000 / 2 - starting_time.microsecond))
+                # pause.until(half_time)
+                green_led.off()
+                pause.until(starting_time)
+
+                if log_counter >= 30:  # Save memory readings every 30 measurements
+                    log_memory_usage(log_file)
+                    log_counter = 0
+                log_counter += 1
+
+                current_measurement += 1
                 if file_time is not None:
                     # If the stop file was modified (by touch or else), stop the execution
                     if os.stat("./stop").st_ctime != file_time:
-                        end_loop = True
+                        measurements_started = False
                         print("Measurements stopped by user command")
 
-                starting_time = datetime.now()
-                starting_time = starting_time + timedelta(microseconds=(1000000 - starting_time.microsecond))
-                pause.until(starting_time)
-
         # Power down the module
-        ATCS.send_command("AT+CPOF")
+        if shutdown_requested:
+            atcs.send_command("AT+CPOF")
+        green_led.off()
+        red_led.off()
+
+
+if __name__ == '__main__':
+    dt_start = datetime.now()
+    module_path = '/dev/ttyUSB2'
+
+    with (LED("GPIO26") as green_led,
+          LED("GPIO24") as red_led,
+          Button("GPIO25", pull_up=True, bounce_time=0.1, hold_time=3) as start_button
+          ):
+        start_button.when_held = shutdown
+        start_button.when_released = start_measurements
+
+        # red led continuously
+        red_led.on()
+        # Check if the module is connected by checking the device file
+        # Red will be lit on boot until the module is properly connected
+        print("Waiting for module")
+        while not os.path.exists(module_path):
+            time.sleep(0.5)
+        print("Module found")
+        red_led.off()
+
+        green_led.on()
+        print("Press start button to start measurements")
+        while not shutdown_requested:
+            if measurements_started:
+                start()
+                if not shutdown_requested:
+                    print("Press start button to start a new measurements")
+                    green_led.on()
+            time.sleep(0.5)
+
+    # When shutdown is requested, wait the measurement session to end, reach end of context (close leds and buttons)
+    # and shutdown
+    os.system("sudo shutdown -h now")

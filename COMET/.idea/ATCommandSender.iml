@@ -3,6 +3,9 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/.venv/bin" />
+      <excludeFolder url="file://$MODULE_DIR$/.venv/lib" />
+      <excludeFolder url="file://$MODULE_DIR$/.venv/share" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.12 (COMET)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

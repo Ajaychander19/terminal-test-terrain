@@ -1,3 +1,5 @@
+from time import sleep
+
 import serial
 
 
@@ -29,14 +31,18 @@ class SerialConnection:
 
     def __enter__(self):
         # Open the serial connection
-        self.module = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
-        if self.module.is_open:
-            print("Serial connection opened.")
-            print("-------------------------------")
-        else:
-            raise ConnectionError("Couldn't open a connection to " + self.port)
-
-        return self
+        while True:
+            try:  # Try to open a connection, if exception is raised, retry
+                self.module = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
+                if self.module.is_open:
+                    print("Serial connection opened.")
+                    print("-------------------------------")
+                    return self
+                else:
+                    raise ConnectionError("Couldn't open a connection to " + self.port)
+            except serial.SerialException as e:
+                print(f"Failed to open connection: {e}. Retrying in 3 seconds...")
+                sleep(3)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Close the serial connection
