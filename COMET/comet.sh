@@ -16,14 +16,10 @@ if [ $# -eq 1 ]
     case "$1" in
       "run") # Update python files and run interactable script
         scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}src/*.py ${DEST_DIR}
-        source .venv/bin/activate
         python main.py
-        deactivate
       ;;
       "simple") # Run interactable script without updating files
-        source .venv/bin/activate
         python main.py
-        deactivate
       ;;
       "update") # Only update python and shell scripts
         scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}src/*.py ${DEST_DIR}
@@ -32,9 +28,7 @@ if [ $# -eq 1 ]
       "update-full") # Update all including installing package requirements (requires internet connection)
         scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}src/*.py ${DEST_DIR}
         scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}{*.sh,*.md,requirements.txt} ${DEST_DIR}
-        source .venv/bin/activate
         pip install -r ./requirements.txt
-        deactivate
       ;;
       "clean") # Removes tmp files
         rm -rf ./measurements/*/tmp_*
@@ -52,9 +46,7 @@ if [ $# -eq 1 ]
           "
     esac
   else # If no arguments given run automated measurements script
-    source .venv/bin/activate
     python automatic.py
-    deactivate
 fi
 
 
