@@ -16,10 +16,10 @@ if [ $# -eq 1 ]
     case "$1" in
       "run") # Update python files and run interactable script
         scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}src/*.py ${DEST_DIR}
-        python main.py
+        python manual.py
       ;;
       "simple") # Run interactable script without updating files
-        python main.py
+        python manual.py
       ;;
       "update") # Only update python and shell scripts
         scp -r ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}src/*.py ${DEST_DIR}
