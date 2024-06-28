@@ -37,11 +37,26 @@ class ATCommandSender:
             print(cmd + " isn't an AT command")
             return ""
         self.module.send_command(cmd)
-        # print("Sent: " + cmd)
         result = ""
         lines = self.module.read_response()
         for line in lines:
             result += line
+        return result
+
+    def get_gps_info(self) -> str:
+        """
+        Sends AT+CGPSINFO command to query module position. Result is "+CGPSINFO: ,,,,,,,," if no position found.
+        :returns: string corresponding to the position line, the entire response if wrong format
+        """
+        self.module.send_command("AT+CGPSINFO")
+        result = ""
+        lines: list[str] = self.module.read_response()
+        for line in lines:
+            if "+CGPSINFO" in line:
+                result = line.strip()
+                break
+            else:
+                result += line
         return result
 
     def enter_pin(self, pin: str) -> str:

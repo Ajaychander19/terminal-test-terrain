@@ -14,6 +14,8 @@ from gpiozero import Button
 
 measurements_started = False
 shutdown_requested = False
+gps_error = False
+network_error = False
 
 
 def start_measurements():
@@ -32,6 +34,24 @@ def log_memory_usage(log_file):
     log_file.write(f"{time.time()},{memory_info.rss / 1024}\n")  # KB
 
 
+def update_error_led():
+    if gps_error and network_error:
+        # Both errors present, use the fastest blink pattern
+        red_led.off()
+        red_led.blink(on_time=0.5, off_time=0.5)
+    elif gps_error:
+        # Only GPS error
+        red_led.off()
+        red_led.blink(on_time=0.5, off_time=3)
+    elif network_error:
+        # Only network error
+        red_led.off()
+        red_led.blink(on_time=1.0, off_time=0.5)
+    else:
+        # No errors
+        red_led.off()
+
+
 def init(atcs: ATCommandSender, log_file):
     global measurements_started
     global shutdown_requested
@@ -44,6 +64,7 @@ def init(atcs: ATCommandSender, log_file):
 
     red_led.blink(on_time=1, off_time=1)
     cpt = 10  # try to unlock sim every 10 iterations of the loop
+    before = datetime.now()
     while not sim_ready:
         if cpt == 10:
             print("SIM not ready, trying to unlock...")
@@ -57,6 +78,11 @@ def init(atcs: ATCommandSender, log_file):
         if shutdown_requested or not measurements_started:
             return
     print("SIM card ready")
+    after = datetime.now()
+    if (after - before).total_seconds() > 1.0:
+        print("It took " + str((after - before).total_seconds())
+              + " seconds to unlock the SIM")
+
     red_led.off()
 
     log_memory_usage(log_file)
@@ -68,14 +94,21 @@ def init(atcs: ATCommandSender, log_file):
         return
 
     red_led.blink(on_time=1, off_time=0.5)
-    # Technically AT+CREG? response can be twice as fast but it has different correct response codes and...
-    while "NO SERVICE" in atcs.send_command('AT+CPSI?'):
+    before = datetime.now()
+    network_ok = "NO SERVICE" not in atcs.send_command('AT+CPSI?')
+    if not network_ok:
         print("No service, waiting...")
+    while not network_ok:
         time.sleep(1)  # CPSI is easy enough to do every second
+        network_ok = "NO SERVICE" not in atcs.send_command('AT+CPSI?')
 
         if shutdown_requested or not measurements_started:
             return
     print("Service OK")
+    after = datetime.now()
+    if (after - before).total_seconds() > 1.0:
+        print("It took " + str((after - before).total_seconds())
+              + " seconds to get network signal")
     red_led.off()
 
     log_memory_usage(log_file)
@@ -87,16 +120,21 @@ def init(atcs: ATCommandSender, log_file):
 
     # red_led.blink(on_time=0.5, off_time=3)
     # gps_signal_acquired = False
+    # before = datetime.now()
     # while not gps_signal_acquired:
     #     print("Trying to acquire GPS signal...")
-    #     # TODO: add function to get gps response, so that is can be used same as network loop
-    #     response = atcs.send_command('AT+CGPSINFO')
-    #     gps_signal_acquired = response.splitlines()[0].strip() != "+CGPSINFO: ,,,,,,,,"
+    #     # response = atcs.send_command('AT+CGPSINFO')
+    #     # gps_signal_acquired = response.splitlines()[0].strip() != "+CGPSINFO: ,,,,,,,,"
+    #     gps_signal_acquired = (atcs.get_gps_info() != "+CGPSINFO: ,,,,,,,,")
     #     time.sleep(1)
     #
     #     if shutdown_requested or not measurements_started:
     #         return
     # print("GPS OK")
+    # after = datetime.now()
+    # if (after - before).total_seconds() > 1.0:
+    #     print("It took " + str((after - before).total_seconds())
+    #           + " seconds to get GPS signal")
     # red_led.off()
 
     dt_before_meas = datetime.now()
@@ -110,6 +148,8 @@ def init(atcs: ATCommandSender, log_file):
 def start():
     global shutdown_requested
     global measurements_started
+    global network_error
+    global gps_error
 
     hour = datetime.now().strftime("%H-%M")
     log_file_path = f"./logs/{hour}_memory_usage.csv"
@@ -153,8 +193,8 @@ def start():
 
             log_counter = 0
             current_measurement = 0
-            gps_error = False
-            network_error = False
+            gps_error = network_error = current_gps_error = current_network_error = False
+            current_error_state = last_error_state = (current_gps_error, current_network_error)
             print("Measurements loop started")
             while measurements_started and not shutdown_requested:
                 green_led.on()
@@ -165,33 +205,33 @@ def start():
 
                 dt_after_commands = datetime.now()
 
-                for info in position_info:
+                for info in position_info:  # TODO: There really is no need for a loop here
                     if not info:  # If no position found
-                        if not gps_error:  # If it's first time, start blinking
-                            red_led.off()
-                            red_led.blink(on_time=0.5, off_time=3)
-                            gps_error = True
+                        current_gps_error = True
                     else:
-                        gps_error = False
-                        red_led.off()
+                        current_gps_error = False
 
                     writer.write_line(info.to_printable_string())
 
                 # Not sure if in NSA 5G both should be written or only one.
                 for cell in serving_cell_list:
                     if not cell:  # If no network found
-                        if not network_error:  # If first time, start blinking
-                            red_led.off()
-                            network_error = True
-                            red_led.blink(on_time=1.0, off_time=0.5)
+                        current_network_error = True
                     else:
-                        network_error = False
-                        red_led.off()
+                        current_network_error = False
 
                     writer.write_line(cell.to_printable_string())
 
                 for cell in neighbour_cell_list:
                     writer.write_line(cell.to_printable_string())
+
+                # Check if error state has changed to prevent resetting error blink
+                current_error_state = (current_gps_error, current_network_error)
+                if current_error_state != last_error_state:
+                    gps_error = current_gps_error
+                    network_error = current_network_error
+                    update_error_led()
+                    last_error_state = current_error_state
 
                 dt_after_writing = datetime.now()
                 print("Measurement ", str(current_measurement),
@@ -258,4 +298,5 @@ if __name__ == '__main__':
 
     # When shutdown is requested, wait the measurement session to end, reach end of context (close leds and buttons)
     # and shutdown
+    print("Shutting down now")
     os.system("sudo shutdown -h now")
