@@ -50,7 +50,7 @@ class ATCommandSender:
         """
         self.module.send_command("AT+CGPSINFO")
         result = ""
-        lines: list[str] = self.module.read_response()
+        lines = self.module.read_response()
         for line in lines:
             if "+CGPSINFO" in line:
                 result = line.strip()

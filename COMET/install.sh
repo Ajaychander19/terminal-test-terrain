@@ -97,7 +97,7 @@ echo "------------------------------"
 echo
 
 
-#### REBOOT RPI
+#### START COMET
 while true; do
     read -rp $'Start the program now? (y/n)\n' yn
     case $yn in

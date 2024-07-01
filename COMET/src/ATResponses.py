@@ -197,6 +197,7 @@ class QENGServing:
                     if len(values) != 20:
                         print("Incorrect amount of values in response line: got " + str(len(values))
                               + " but 20 are expected for LTE")
+                        print(*values, ",")
                         return None
                     # checks like if (cqi > 0 and cqi < 31) could be added, but I think it's safe enough to assume that
                     # if the beginning is correct the rest is as well
@@ -213,6 +214,7 @@ class QENGServing:
                     if len(values) != 17:
                         print("Incorrect amount of values in response line: got " + str(len(values))
                               + " but 17 are expected for NR5G-SA")
+                        print(*values, ",")
                         return None
                     return cls(timestamp=timestamp,
                                cell_type=cell_type, state=ue_state, network_type=NetworkType(values[2]),
@@ -235,6 +237,7 @@ class QENGServing:
                 if len(values) != 18:
                     print("Incorrect amount of values in response line: got " + str(len(values))
                           + " but 18 are expected for LTE in EN-DC mode")
+                    print(*values, ",")
                     return None
                 return cls(timestamp=timestamp,
                            cell_type=cell_type, state=UE_State.CONNECT, network_type=NetworkType("LTE"),
@@ -250,6 +253,7 @@ class QENGServing:
                 if len(values) != 11:
                     print("Incorrect amount of values in response line: got " + str(len(values))
                           + " but 11 are expected for LTE")
+                    print(*values, ",")
                     return None
                 return cls(timestamp=timestamp,
                            cell_type=cell_type, state=UE_State.CONNECT, network_type=NetworkType("NR5G-NSA"),
@@ -367,6 +371,7 @@ class QENGNeighbour:
         # Should be at least 2 to know network type
         if len(values) < 2:
             print("Incorrect neighbourcell response format (too little values)")
+            print(*values, ",")
             return None
 
         cell_type: Cell_Type = Cell_Type(values[0])
@@ -382,6 +387,7 @@ class QENGNeighbour:
             if len(values) != 13:
                 print("Incorrect amount of values in response line: got " + str(len(values))
                       + " but 13 are expected for neighbourcell intra")
+                print(*values, ",")
                 return None
 
             return cls(timestamp=timestamp,
@@ -397,6 +403,7 @@ class QENGNeighbour:
             if len(values) != 12:
                 print("Incorrect amount of values in response line: got " + str(len(values))
                       + " but 12 are expected for neighbourcell intra")
+                print(*values, ",")
                 return None
 
             return cls(timestamp=timestamp,

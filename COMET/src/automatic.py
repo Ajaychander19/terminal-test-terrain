@@ -56,7 +56,6 @@ def init(atcs: ATCommandSender, log_file):
     global measurements_started
     global shutdown_requested
 
-    print("Module initialisation started")
     sim_ready = "READY" in atcs.send_command("AT+CPIN?")
 
     if shutdown_requested or not measurements_started:
@@ -64,7 +63,7 @@ def init(atcs: ATCommandSender, log_file):
 
     red_led.blink(on_time=1, off_time=1)
     cpt = 10  # try to unlock sim every 10 iterations of the loop
-    before = datetime.now()
+    init_start_time = datetime.now()
     while not sim_ready:
         if cpt == 10:
             print("SIM not ready, trying to unlock...")
@@ -79,8 +78,8 @@ def init(atcs: ATCommandSender, log_file):
             return
     print("SIM card ready")
     after = datetime.now()
-    if (after - before).total_seconds() > 1.0:
-        print("It took " + str((after - before).total_seconds())
+    if (after - init_start_time).total_seconds() > 1.0:
+        print("It took " + str((after - init_start_time).total_seconds())
               + " seconds to unlock the SIM")
 
     red_led.off()
@@ -137,8 +136,8 @@ def init(atcs: ATCommandSender, log_file):
     #           + " seconds to get GPS signal")
     # red_led.off()
 
-    dt_before_meas = datetime.now()
-    print("It took " + str((dt_before_meas - dt_start).total_seconds())
+    after = datetime.now()
+    print("It took " + str((after - init_start_time).total_seconds())
           + " seconds to initialize")
     log_memory_usage(log_file)
 
@@ -158,11 +157,13 @@ def start():
     # red led will be continuously on until the connection is established
     # usually it's instant, but sometimes it can take a while if program starts right at boot or if it's restarted
     with SerialConnection(module_path) as connection, open(log_file_path, "w") as log_file:
-        red_led.off()
         log_file.write("timestamp,memory_usage_mb\n")
         atcs = ATCommandSender(connection)
 
+        red_led.off()
+
         init(atcs, log_file)
+
         if shutdown_requested:
             atcs.send_command("AT+CPOF")
             return
@@ -185,16 +186,16 @@ def start():
             starting_time = starting_time + timedelta(microseconds=(1000000 - starting_time.microsecond))
             pause.until(starting_time)
 
-            file_time = None
-            try:
-                file_time = os.stat("./stop").st_ctime
-            except OSError:
-                print("WARNING: stop file not found, measurements will have to be stopped with the button")
+            # file_time = None
+            # try:
+            #     file_time = os.stat("./stop").st_ctime
+            # except OSError:
+            #     print("WARNING: stop file not found, measurements will have to be stopped with the button")
 
             log_counter = 0
             current_measurement = 0
             gps_error = network_error = current_gps_error = current_network_error = False
-            current_error_state = last_error_state = (current_gps_error, current_network_error)
+            last_error_state = (current_gps_error, current_network_error)
             print("Measurements loop started")
             while measurements_started and not shutdown_requested:
                 green_led.on()
@@ -241,8 +242,6 @@ def start():
 
                 starting_time = datetime.now()
                 starting_time = starting_time + timedelta(microseconds=(1000000 - starting_time.microsecond))
-                # half_time = starting_time + timedelta(microseconds=(1000000 / 2 - starting_time.microsecond))
-                # pause.until(half_time)
                 green_led.off()
                 pause.until(starting_time)
 
@@ -252,11 +251,11 @@ def start():
                 log_counter += 1
 
                 current_measurement += 1
-                if file_time is not None:
-                    # If the stop file was modified (by touch or else), stop the execution
-                    if os.stat("./stop").st_ctime != file_time:
-                        measurements_started = False
-                        print("Measurements stopped by user command")
+                # if file_time is not None:
+                #     # If the stop file was modified (by touch or else), stop the execution
+                #     if os.stat("./stop").st_ctime != file_time:
+                #         measurements_started = False
+                #         print("Measurements stopped by user command")
 
         # Power down the module
         if shutdown_requested:
@@ -271,7 +270,7 @@ if __name__ == '__main__':
 
     with (LED("GPIO26") as green_led,
           LED("GPIO24") as red_led,
-          Button("GPIO25", pull_up=True, bounce_time=0.1, hold_time=3) as start_button
+          Button("GPIO25", pull_up=True, bounce_time=0.1, hold_time=2) as start_button
           ):
         start_button.when_held = shutdown
         start_button.when_released = start_measurements
@@ -283,7 +282,27 @@ if __name__ == '__main__':
         print("Waiting for module")
         while not os.path.exists(module_path):
             time.sleep(0.5)
+            if shutdown_requested:
+                green_led.close()
+                red_led.close()
+                start_button.close()
+                print("Shutting down now")
+                os.system("sudo shutdown -h now")
         print("Module found")
+
+        # Waiting for at least 30 seconds is very important because after it is connected, the module sends a bunch
+        # of messages to initialize. There is no way to know for sure when it's ended and writing/reading
+        # during this time can create an infinite loop completely blocking the execution.
+        print("Waiting 30 seconds at first boot to let module finish initializations...")
+        for i in range(30):
+            time.sleep(1)
+            if shutdown_requested:
+                green_led.close()
+                red_led.close()
+                start_button.close()
+                print("Shutting down now")
+                os.system("sudo shutdown -h now")
+
         red_led.off()
 
         green_led.on()
@@ -294,7 +313,7 @@ if __name__ == '__main__':
                 if not shutdown_requested:
                     print("Press start button to start a new measurements")
                     green_led.on()
-            time.sleep(0.5)
+            time.sleep(0.5)  # Maybe increase it, it kinda uses a lot of CPU time with 0.5 (>3%)
 
     # When shutdown is requested, wait the measurement session to end, reach end of context (close leds and buttons)
     # and shutdown

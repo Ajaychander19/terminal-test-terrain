@@ -25,7 +25,7 @@ class SerialConnection:
         300,600,1200,2400,4800,9600,19200,38400,57600,115200,
         23400,460800,912600 Low speed baud rate
         3000000 High speed baud rate"""
-        self.timeout: int = timeout
+        self.timeout: float = timeout
         self.encoding: str = encoding
         self.module: serial.Serial | None = None
 
@@ -50,32 +50,37 @@ class SerialConnection:
             self.module.close()
 
         if exc_tb:
-            print("Serial Connection closed because of an error: ", exc_tb)
+            print("Serial Connection closed because of an error")
 
-    def send_command(self, cmd: str) -> None:
+    def send_command(self, cmd: str):
         if self.module:
-            self.module.write((cmd + "\r\n").encode('utf-8'))
+            self.module.write((cmd + "\r\n").encode(self.encoding))
 
-    def read_response(self) -> list:
+    def read_response(self) -> list[str] | None:
+        """
+        Read a response of an AT command from the module until "OK" or "ERROR" is found.
+        :return: List of lines read of None if timeout occurred
+        """
         result = list()
         if not self.module:
             return result
 
         line: str = ""
         while not (line.endswith("OK") or line.endswith("ERROR")):
-            line = self.module.readline().decode('utf-8').strip()
+            line = self.module.readline().decode(self.encoding).strip()
             if line not in ['\n', '\r\n', '']:
                 result.append(line + "\n")
+
         return result
 
-    def read_pin_response(self) -> list:
+    def read_pin_response(self) -> list[str] | None:
         result = list()
         line: str = ""
         # I'm not sure what are the rules for ending this. What I usually get is
         # OK +CPIN: READY SMS DONE PB DONE
         # But I'm not sure if it's reliable.
         while not ("PB DONE" in line or "ERROR" in line):  # or line.startswith("+CME")
-            line = self.module.readline().decode('utf-8').strip()
+            line = self.module.readline().decode(self.encoding).strip()
             if line not in ['\n', '\r\n', '']:
                 result.append(line + "\n")
         return result
