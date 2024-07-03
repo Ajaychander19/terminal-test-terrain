@@ -21,7 +21,7 @@ if [ "$PYTHON_VERSION" -lt 11 ]; then
         * ) echo "Please answer yes or no";;
     esac
   done
-elif [ "$PYTHON_VERSION" -lt 7 ]; then
+elif [ "$PYTHON_VERSION" -lt 10 ]; then
   echo "Incompatible Python version detected (Python 3.$PYTHON_VERSION)";
   while true; do
     read -rp $'Install Python3.11 (y) or abort? (n)\n' yn

@@ -1,7 +1,21 @@
 import os
 from io import TextIOWrapper
 from datetime import datetime
+
 from ATResponses import COPS
+
+
+def syntax_error(line: int, msg: str):
+    """Raises a syntax error.
+
+    Parameters:
+        line: line of the file where the error occurred.
+        msg: error message.
+
+    Raises:
+        RuntimeError: the corresponding syntax error.
+    """
+    raise RuntimeError(f'Error: line {str(line)}, {msg}')
 
 
 def get_operator_from_measurements(measurements_file_path: str) -> str:
@@ -90,13 +104,23 @@ def get_earfcns_pcis(measurements_file_path: str):
 
 
 class Writer:
-    def __init__(self, data_dir: str, filename: str, is_tmp: bool):
-        self.dir_path: str = data_dir
+    """
+    Base class for writing text to a file in the specified directory with specified filename.
+
+    Must be used with a "with" statement, if it isn't, file must be opened manually
+    (writer.file = open(writer.dir_path + writer.filename, "w")
+    """
+    def __init__(self, dir_path: str, filename: str, is_tmp: bool):
+        self.dir_path: str = dir_path
         self.filename: str = filename
         self.is_tmp: bool = is_tmp
+        self.file_content: str = ""
         self.file: TextIOWrapper | None = None
 
     def __enter__(self):
+        """
+        Creates a file in the specified directory (which is created if doesn't exist) on "with" statement
+        """
         if not os.path.isdir(self.dir_path):
             os.mkdir(self.dir_path)
 
@@ -106,24 +130,39 @@ class Writer:
             self.file = open(self.dir_path + self.filename, "w")
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, traceback):
+        """
+        Closes the file when the "with" statement is exited (normally or because of an exception)
+        :param exc_type:
+        :param exc_val:
+        :param traceback:
+        :return:
+        """
         if self.file:
             self.file.close()
 
-    def write(self, line: str = ""):
-        self.file.write(line)
+    def write(self, text: str = ""):
+        self.file.write(text)
+        self.file_content += text
 
     def write_line(self, line: str = ""):
         self.file.write(line + "\n")
+        self.file_content += (line + "\n")
+
+    def get_file_path(self) -> str:
+        if self.is_tmp:
+            return self.dir_path + "tmp_" + self.filename
+        else:
+            return self.dir_path + self.filename
 
 
 class MeasurementsWriter(Writer):
-    def __init__(self, data_dir: str = "./measurements/", filename: str = "measurement.csv", is_tmp: bool = False,
+    def __init__(self, dir_path: str = "./measurements/", filename: str = "measurement.csv", is_tmp: bool = False,
                  operator_info: COPS = None):
         """
 
         NOTE: Must be instantiated using a with statement as it doesn't provide a dedicated close() method
-        :param data_dir:
+        :param dir_path:
         :param filename:
         :param is_tmp:
         :param operator_info:
@@ -132,23 +171,56 @@ class MeasurementsWriter(Writer):
 
         date_dir = now.strftime("%d-%m-%Y")
         file_prefix = now.strftime("%H-%M_")
-        super().__init__(data_dir + date_dir + "/", file_prefix + filename, is_tmp)
-        self.operator_info = operator_info
+        super().__init__(dir_path + date_dir + "/", file_prefix + filename, is_tmp)
+        self.operator_info: COPS = operator_info
 
     def print_header(self):
-        self.write_line("HEADER")
-        self.write_line("VERSION|1.0")
-        self.write_line("DATE|" + datetime.now().strftime("%d-%m-%Y %H:%M"))
-        self.write_line("OPERATOR|" + self.operator_info.oper)
         # self.write_line("TECHNO|" + self.operator_info.act.name)
-        self.write_line("GPS|TIMESTAMP|LATITUDE|LONGITUDE|ALTITUDE")
-        self.write_line("MEASURE_SERVING|TIMESTAMP|NETWORK_TYPE|TAC|CELLID|MCC|MNC|PCID|EARFCN|RSRQ|RSRP|RSSI|SINR")
-        self.write_line("MEASURE_NEIGHBOUR_INTRA|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI")
-        self.write_line("MEASURE_NEIGHBOUR_INTER|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI")
-        self.write_line()
-        self.write_line("MEASUREMENTS")
+        header = ("HEADER\n"
+                  "VERSION|1.0\n"
+                  f"DATE|{datetime.now().strftime('%d-%m-%Y %H:%M')}\n"
+                  f"OPERATOR|{self.operator_info.operator_name}\n"
+                  "GPS_LOST|\n"
+                  "GPS|TIMESTAMP|LATITUDE|LONGITUDE|ALTITUDE\n"
+                  "MEASURE_SERVING|TIMESTAMP|NETWORK_TYPE|TAC|CELLID|MCC|MNC|PCID|EARFCN|RSRQ|RSRP|RSSI|SINR|IS_EN_DC\n"
+                  "MEASURE_NEIGHBOUR_INTRA|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI\n"
+                  "MEASURE_NEIGHBOUR_INTER|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI\n"
+                  "\n"
+                  "MEASUREMENTS\n")
+        self.write(header)
+
+    @staticmethod
+    def add_gps_lost_header(file_path: str, file_content: list[str], gps_lost: bool):
+        """
+        Add information about whether the GPS signal was lost during measurements or not to the measurement file header.
+
+        This will rewrite the file at `file_path` with lines of text given by `file_content`,
+        while adding YES or NO to the GPS_LOST entry in the header depending on `gps_lost` parameter
+
+        This function rewrites the entire file and can take fairly long time to write on big files.
+        For example on a file with 1 hour of measurements it could take around 100ms or more.
+
+        :param file_path: absolute or relative path to the measurement file
+        :param file_content: Old content of the measurement file in form of list of lines. It must contain a header and
+        the measurements that were taken. Each line must end with a line break.
+        :param gps_lost: if True then write GPS_LOST|YES to header, if False write GPS_LOST|NO
+        """
+        with open(file_path, "w") as file:
+            # Ideally it would simply read the content of the file before writing but at that point its content is not
+            # yet available
+            lines = file_content
+            if len(lines) < 10:
+                print(f"ERROR: Tried adding GPS lost entry to an empty or non-measurement file: {file_path}")
+                return
+            if gps_lost:
+                lines[4] = "GPS_LOST|YES\n"
+            else:
+                lines[4] = "GPS_LOST|NO\n"
+
+            file.writelines(lines)
 
 
+# TODO: Add error handling
 class ProcessedFileWriter(Writer):
     def __init__(self, measurements_file_path: str, output_dir: str = "./data/", filename: str = "M1",
                  is_tmp: bool = False):
@@ -225,7 +297,7 @@ class ProcessedFileWriter(Writer):
         self.write_line("CONTENT")
         self.write_line("VERSION|2.0")
         self.write_line("DATE|" + datetime.now().strftime("%d-%m-%Y %H:%M"))
-        self.write_line("TECHNO|4G")
+        self.write_line("TECHNO|4G")  # TODO: add 5G if possible with COMET
 
         self.write("MEAS_EARFCNS||||")
         for earfcn_pci in earfcn_pci_couples_freq.keys():

@@ -97,22 +97,51 @@ class ATCommandSender:
             print("GPS ON in standalone mode")
 
     def get_serving_cell(self, timestamp: datetime = None) -> list[QENGServing]:
+        """
+        Sends the AT+QENG="servingcell" command and retrieves a list of QENGServing instances holding the serving
+        cell data
+
+        :param timestamp: Defines the timestamp of the measurement. If None, uses datetime.now() as timestamp.
+        :return: List of QENGServing instances holding the serving cell data.
+            Has 2 instances in EN-DC mode and a single one in other modes.
+        """
         lines: list[str] = self.send_command('AT+QENG="servingcell"').splitlines()
-        # Can hold 2 instances if in EN-DC mode
-        list_serving: list[QENGServing] = list()
-        for line in lines:
-            if line.startswith("+QENG"):
-                list_serving.append(QENGServing.from_string(line, timestamp))
+        lines = [x for x in lines if x.strip()]  # Remove empty lines
+        list_serving: list[QENGServing] = list()  # Can hold 2 instances if in EN-DC mode
+
+        if len(lines) == 1:
+            if "ERROR" in lines[0]:
+                list_serving.append(QENGServing.from_string(lines[0], timestamp))
+
+        elif len(lines) == 2:  # Second line is "OK"
+            list_serving.append(QENGServing.from_string(lines[0], timestamp))
+
+        elif len(lines) == 4:  # EN-DC mode, last line is "OK"
+            ue_state = QENGServing.get_ue_state_from_response(lines[0])
+            list_serving.append(QENGServing.from_string(lines[1], timestamp, ue_state))
+            list_serving.append(QENGServing.from_string(lines[2], timestamp, ue_state))
+
+        # Only save valid instances. We still want the instances with no connection
         cleaned_list = [x for x in list_serving if x is not None]
         return cleaned_list
 
     def get_neighbour_cells(self, timestamp: datetime = None) -> list[QENGNeighbour]:
+        """
+        Sends the AT+QENG="neighbourcell" command and retrieves a list of QENGNeighbour instances holding the
+        data from all received neighbouring cells in LTE mode
+
+        :param timestamp: Defines the timestamp of the measurement. If None, uses datetime.now() as timestamp.
+        :return: List of QENGNeighbour instances holding data from all neighbouring cells in LTE mode, discarding
+            WCDMA cells
+        """
         lines: list[str] = self.send_command('AT+QENG="neighbourcell"').splitlines()
         list_neighbour: list[QENGNeighbour] = list()
         for line in lines:
             if line.startswith("+QENG"):
                 list_neighbour.append(QENGNeighbour.from_string(line, timestamp))
-        cleaned_list = [x for x in list_neighbour if x is not None]
+
+        # Only save valid instances that are not in WCDMA mode
+        cleaned_list = [x for x in list_neighbour if x is not None and x]
         return cleaned_list
 
     def get_position(self, timestamp: datetime = None) -> list[CGPSINFO]:
