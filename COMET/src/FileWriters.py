@@ -176,10 +176,13 @@ class MeasurementsWriter(Writer):
 
     def print_header(self):
         # self.write_line("TECHNO|" + self.operator_info.act.name)
+        operator_name = "Unknown"
+        if self.operator_info is not None:
+            operator_name = self.operator_info.operator_name
         header = ("HEADER\n"
                   "VERSION|1.0\n"
                   f"DATE|{datetime.now().strftime('%d-%m-%Y %H:%M')}\n"
-                  f"OPERATOR|{self.operator_info.operator_name}\n"
+                  f"OPERATOR|{operator_name}\n"
                   "GPS_LOST|\n"
                   "GPS|TIMESTAMP|LATITUDE|LONGITUDE|ALTITUDE\n"
                   "MEASURE_SERVING|TIMESTAMP|NETWORK_TYPE|TAC|CELLID|MCC|MNC|PCID|EARFCN|RSRQ|RSRP|RSSI|SINR|IS_EN_DC\n"
