@@ -1,3 +1,7 @@
+"""
+Requires Python 3.6 or newer (f-strings)
+"""
+
 import os
 import time
 from datetime import datetime
@@ -8,6 +12,16 @@ OFFSET = 5  # actual column of the first earfcn column
 
 
 def measure_time(func):
+    """A wrapper function that allows to see for how long the function was active
+
+    Usage:
+        >>> @measure_time
+        >>> def dummy():
+        >>>     pass
+        >>> dummy()
+        >>> print(f"Total time taken by func: {dummy.total_time:.4f} seconds")
+    """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time.time()
@@ -186,17 +200,31 @@ class CometToCevConverter:
         Takes a COMET measurement file and creates a CORENTIN compatible cev.csv file with processed measurements.
         The constructor only creates the file, to process measurements the process() method must be called
 
+        The measurement file must at least contain a valid header (including an operator name) and at least one
+        valid measurement, an exception will be raised if it's not the case.
+
+        Example:
+            >>> with CometToCevConverter("../measurements/11-06-2024/tmp_15-16_measurement.csv") as converter:
+            >>>     converter.process()
+            >>> with open("../cev/05-07-2024/cevSFR_20240705_1457-M1.csv") as file:
+            >>>     print(file.read())
+
         :param measurements_file_path: Path to the COMET measurements file
         :param output_dir: Path to the directory where output file will be stored
         :param filename: an additional name to the file (will be prefixed with cev and date, can be empty)
         """
 
+        self.current_measure: dict[(int, int), (int, int, int)] = dict()
+        """The dictionary containing the network measurements for each cell of the current measurement"""
         self.columns: dict[(int, int), int] = dict()
         """Indexes of columns associated to each couple in following format: {(earfcn, pci): column_index}"""
         self.measurements_file_path = os.path.abspath(measurements_file_path)
         """Path to the COMET measurements file"""
         self.operator_name = get_operator_from_measurements(self.measurements_file_path)
         """Name of the mobile network operator extracted from the measurements file"""
+        self.measurements_starting_timestamp: datetime = datetime(1970, 1, 1)
+        """The starting datetime of the measurement session. 
+        Must be extracted from the header or the first measurement"""
 
         if self.operator_name == "":
             raise RuntimeError("Couldn't find the operator name")
@@ -210,13 +238,16 @@ class CometToCevConverter:
         file_date = now.strftime("%Y%m%d_%H%M")
 
         self.output_dir_path: str = os.path.abspath(_output_dir + dir_date) + "/"
+        """The absolute path to the output directory"""
         self.output_filename: str = "cev" + self.operator_name + "_" + file_date + "-" + filename + ".csv"
+        """The output file name"""
 
         self.file: TextIOWrapper | None = None
+        """Output file access"""
 
     def __enter__(self):
         """
-        Creates a file in the specified directory (which is created if doesn't exist) on "with" statement
+        Creates a file in the specified directory (which is created if it doesn't exist) on "with" statement
         """
         self.open()
         return self
@@ -228,31 +259,32 @@ class CometToCevConverter:
         :param exc_val:
         :param traceback:
         """
-        if self.file:
-            self.file.close()
+        self.close()
 
     def open(self):
+        """Open the output file in write mode, creating the file and intermediary directories if needed"""
         if not os.path.isdir(self.output_dir_path):
             os.makedirs(self.output_dir_path)
 
         self.file = open(self.output_dir_path + self.output_filename, "w")
 
     def close(self):
-        """
-        Close the file and erase saved file content from memory
-        """
+        """Close the output file finishing writing to disc"""
         if self.file:
             self.file.close()
 
     def write(self, text: str):
+        """Write a string to the output file
+
+        :param text: Text to write to file
+        """
         self.file.write(text)
 
     def process(self):
-        """
-        Convert the COMET measurement file to a CORENTIN compatible cev.csv file.
-        This will parse the measurement file twice and write the converted measurements to the cev file.
+        """Convert the COMET measurement file to a CORENTIN compatible cev.csv file.
+        This will parse the measurement file twice and write the converted measurements to the output cev file.
 
-        On very large files this might take a few seconds
+        Might take around a second on very large files
         """
         before = datetime.now()
         self.print_header()
@@ -315,9 +347,8 @@ class CometToCevConverter:
         beams_line = "|".join("0" for _ in range(nb_couples))
         self.write(f"MEAS_BEAMS|||||{beams_line}\n")
 
-        # Write frequencies of each couple
-        # I need to try it with a for values
-        meas_nb_line = "|".join(str(frequency) for _, frequency in earfcn_pci_couples_freq.items())
+        # Write number of occurrences of each couple
+        meas_nb_line = "|".join(str(frequency) for frequency in earfcn_pci_couples_freq.values())
         self.write(f"MEAS_NB|||||{meas_nb_line}\n")
 
     def print_measurements(self):
@@ -333,17 +364,26 @@ class CometToCevConverter:
         with open(self.measurements_file_path, "r") as measurements_file:
             # Since coordinates are copied directly to output file with no change they can be kept as str
             coordinates = ("", "")
-            current_measure_index = 0  # TODO: Check if a timestamp with "holes" in it will work
-            current_measure = dict()  # {(earfcn, pci): (rsrp, rsrq, rssi)}
+            seconds_since_start: float = 0.0
+            self.current_measure = dict()  # {(earfcn, pci): (rsrp, rsrq, rssi)}
             passed_header = False
             ignore_measurement = False
 
             for line in measurements_file:
                 stripped_line = line.strip()
-                # Ignore header
+                # Find the starting date in the header, ignore the rest of it
                 if not passed_header:
+                    if stripped_line.startswith("DATE"):
+                        values = [value.strip() for value in stripped_line.split('|')]
+                        if len(values) != 2:
+                            syntax_error(line=0, msg="No date found in the measurements file header "
+                                                     "or the date line has wrong format", fatal=True)
+                        self.measurements_starting_timestamp = datetime.strptime(values[1], '%d-%m-%Y %H:%M:%S')
+
                     if stripped_line.startswith('MEASUREMENTS'):
                         passed_header = True
+                        if self.measurements_starting_timestamp == datetime(1970, 1, 1):
+                            syntax_error(line=0, msg="No date found in the measurements file header", fatal=True)
                     continue
 
                 # If the line must be omitted, ignore the entire measurement
@@ -361,12 +401,11 @@ class CometToCevConverter:
                         ignore_measurement = False
                     # GPS line delimits the start of a measurement. After finishing reading previous measurement
                     # (neighbours) we can print all rsrp, rsrq, rssi measurements for all cells at once
-                    if current_measure:
-                        self.write_measurement_line(coordinates, current_measure, current_measure_index, "RSRP")
-                        self.write_measurement_line(coordinates, current_measure, current_measure_index, "RSRQ")
-                        self.write_measurement_line(coordinates, current_measure, current_measure_index, "RSSI")
-                        current_measure = dict()  # Empty dict to avoid keeping old measurements
-                    current_measure_index += 1
+                    self.write_measurements_lines(coordinates, seconds_since_start)
+
+                    # Gives the "index" of the measurement in the measurement file, doesn't have to be continuous
+                    seconds_since_start = (datetime.strptime(values[1], '%Y-%m-%d %H:%M:%S') -
+                                           self.measurements_starting_timestamp).total_seconds()
 
                 elif stripped_line.startswith("MEASURE_SERVING"):
                     if ignore_measurement:
@@ -374,26 +413,48 @@ class CometToCevConverter:
                     # In EN-DC mode there will be 2 lines of MEASURE_SERVING. We're only interested in the LTE one here.
                     if values[2] != "LTE":
                         continue
-                    self.write_serving_cell_lines(coordinates, current_measure_index, values)
+                    self.write_serving_cell_lines(coordinates, seconds_since_start, values)
                 elif stripped_line.startswith("MEASURE_NEIGHBOUR_INTRA"):
                     if ignore_measurement:
                         continue
-                    current_measure[(int(values[4]), int(values[3]))] = (values[6], values[5], values[7])
+                    self.current_measure[(int(values[4]), int(values[3]))] = (values[6], values[5], values[7])
                 elif stripped_line.startswith("MEASURE_NEIGHBOUR_INTER"):
                     if ignore_measurement:
                         continue
-                    current_measure[(int(values[4]), int(values[3]))] = (values[6], values[5], values[7])
+                    self.current_measure[(int(values[4]), int(values[3]))] = (values[6], values[5], values[7])
+
+            # Write the last measurement
+            self.write_measurements_lines(coordinates, seconds_since_start)
+
+    def write_measurements_lines(self, coordinates, seconds_since_start):
+        """Write the 3 MEASUREMENT line of the current measurement. This method will empty the current_measurement
+        attribute to avoid keeping old measurements after they are written to file
+
+        :param coordinates: couple (lat: str, long: str) with the GPS coordinates of the measurement
+        :param seconds_since_start: Number of seconds elapsed since the start of the measurement session
+        """
+        if self.current_measure:
+            self.write_measurement_line(coordinates, seconds_since_start, "RSRP")
+            self.write_measurement_line(coordinates, seconds_since_start, "RSRQ")
+            self.write_measurement_line(coordinates, seconds_since_start, "RSSI")
+            self.current_measure = dict()  # Empty dict to avoid keeping old measurements
 
     @measure_time
-    def write_serving_cell_lines(self, coordinates, current_measure_index, values):
-        cell_info = (f"MEASURE_SERVING|{str(current_measure_index)}|"
-                     f"{coordinates[0]}|{coordinates[1]}|"  # lat|lng
-                     f"{values[8]}|{values[7]}|"  # earfcn|pci|
-                     f"{values[10]}|{values[9]}|{values[11]}|{values[12]}"
-                     f"\n")
+    def write_serving_cell_lines(self, coordinates: (str, str), seconds_since_start: float, values: list):
+        """Write to the output file the MEASURE_SERVING and CELLINFO lines
 
-        serving_info = (
-            f"CELLINFO|{str(current_measure_index)}|{coordinates[0]}|{coordinates[1]}|"
+        :param coordinates: couple (lat: str, long: str) with the GPS coordinates of the measurement
+        :param seconds_since_start: Number of seconds elapsed since the start of the measurement session
+        :param values: The values extracted from the MEASURE_SERVING line of the measurements file
+        """
+        serving_info = (f"MEASURE_SERVING|{str(seconds_since_start)}|"
+                        f"{coordinates[0]}|{coordinates[1]}|"  # lat|lng
+                        f"{values[8]}|{values[7]}|"  # earfcn|pci|
+                        f"{values[10]}|{values[9]}|{values[11]}|{values[12]}"
+                        f"\n")
+
+        cell_info = (
+            f"CELLINFO|{str(seconds_since_start)}|{coordinates[0]}|{coordinates[1]}|"
             f"{values[8]}|{values[7]}|"
             f"{str(int(values[3], 16))}|{values[4]}|{values[5]}|{values[6]}"
             f"\n")
@@ -402,13 +463,13 @@ class CometToCevConverter:
         self.write(serving_info)
 
     @measure_time
-    def write_measurement_line(self, coordinates: (str, str), current_measure: dict, current_measure_index,
-                               meas_type: str):
-        """
+    def write_measurement_line(self, coordinates: (str, str),
+                               seconds_since_start: float, meas_type: str):
+        """Write a MEASUREMENT line to the output file with the RSRP, RSRQ or RSSI or the current measurement
+        depending on the meas_type parameter
 
         :param coordinates: couple (lat: str, long: str) with coordinates of the measurement
-        :param current_measure:
-        :param current_measure_index:
+        :param seconds_since_start: Number of seconds elapsed since the start of the measurement session
         :param meas_type: "RSRP" or "RSRQ" or "RSSI"
         """
         if meas_type == "RSRP":
@@ -422,13 +483,13 @@ class CometToCevConverter:
 
         # couples must be ordered in the same way as the header couples
         sorted_index_meas = list()
-        for couple, meas in current_measure.items():
+        for couple, meas in self.current_measure.items():
             sorted_index_meas.append((self.columns[couple], meas))
         sorted_index_meas = sorted(sorted_index_meas)
         current_column = OFFSET
 
         # Using a list join instead of string concatenation is slightly faster
-        res_parts = ["MEASUREMENT|", str(current_measure_index), "|", coordinates[0], "|", coordinates[1], "|",
+        res_parts = ["MEASUREMENT|", str(seconds_since_start), "|", coordinates[0], "|", coordinates[1], "|",
                      meas_type]
 
         for (index, meas) in sorted_index_meas:
@@ -447,5 +508,5 @@ class CometToCevConverter:
 
 
 if __name__ == '__main__':
-    with CometToCevConverter("../measurements/05-07-2024/tmp_13-54_measurement.csv") as writer:
+    with CometToCevConverter("../measurements/11-06-2024/tmp_15-16_measurement.csv") as writer:
         writer.process()

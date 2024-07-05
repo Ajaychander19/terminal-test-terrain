@@ -86,7 +86,7 @@ class MeasurementsWriter:
             operator_name = self.operator_info.operator_name
         header = ("HEADER\n"
                   "VERSION|1.0\n"
-                  f"DATE|{datetime.now().strftime('%d-%m-%Y %H:%M')}\n"
+                  f"DATE|{datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n"
                   f"OPERATOR|{operator_name}\n"
                   "GPS_LOST|\n"
                   "GPS|TIMESTAMP|LATITUDE|LONGITUDE|ALTITUDE\n"
