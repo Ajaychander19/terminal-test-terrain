@@ -6,7 +6,7 @@ import pause
 
 from ATCommandSender import ATCommandSender, handle_response
 from SerialConnection import SerialConnection
-from FileWriters import MeasurementsWriter
+from MeasurementsWriter import MeasurementsWriter
 
 import time
 

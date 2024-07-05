@@ -150,7 +150,7 @@ class QENGServing:
         :return: String in the format
             'MEASURE_SERVING|TIMESTAMP|NETWORK_TYPE|TAC|CELLID|MCC|MNC|PCID|EARFCN|RSRQ|RSRP|RSSI|SINR|IS_EN_DC'
         """
-        if self.state == UE_State.UNKNOWN:
+        if self.state == UE_State.UNKNOWN or self.state == UE_State.SEARCH or self.state == UE_State.LIMSRV:
             return f"MEASURE_SERVING|{str(self.timestamp)}|||||||||||"
 
         if self.network_type == NetworkType.WCDMA:
@@ -327,9 +327,9 @@ class QENGServing:
 
     def __bool__(self):
         """
-        Evaluates to True if is connected to network
+        Evaluates to True if is connected and registered to network
         """
-        return self.state != UE_State.UNKNOWN
+        return self.state != UE_State.UNKNOWN and self.state != UE_State.SEARCH and self.state != UE_State.LIMSRV
 
 
 class QENGNeighbour:

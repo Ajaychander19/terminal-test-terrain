@@ -5,7 +5,7 @@ from time import sleep, time
 from datetime import datetime, timedelta
 import pause
 
-from FileWriters import MeasurementsWriter
+from MeasurementsWriter import MeasurementsWriter
 from SerialConnection import SerialConnection
 from ATCommandSender import ATCommandSender
 
@@ -330,7 +330,7 @@ def start_measurement_session():
                     else:
                         current_gps_error = False
                         continuous_gps_error_counter = 0
-                    writer.write_line(info.to_printable_string())
+                    writer.print_gps_measurement(info)
                 if continuous_gps_error_counter > 30:
                     print("No GPS signal for 30 seconds")
                     gps_lost = True
@@ -342,11 +342,11 @@ def start_measurement_session():
                         current_network_error = True
                     else:
                         current_network_error = False
-                    writer.write_line(cell.to_printable_string())
+                    writer.print_serving_cell_measurement(cell)
 
                 if not current_network_error:  # Only search for neighbours if serving cell is ok
                     for cell in atcs.get_neighbour_cells(starting_time):
-                        writer.write_line(cell.to_printable_string())
+                        writer.print_neighbour_cell_measurement(cell)
 
                 # Check if error state has changed to prevent resetting error blink
                 current_error_state = (current_gps_error, current_network_error)
@@ -380,7 +380,7 @@ def start_measurement_session():
 
         before = datetime.now()
         # Add the GPS lost header. This will rewrite the file, so it might take a bit of time
-        MeasurementsWriter.add_gps_lost_header(file_path, file_content, gps_lost)
+        MeasurementsWriter.add_gps_lost_header(file_path, gps_lost)
         print(f"It took {(datetime.now() - before).total_seconds()} seconds to add the GPS lost entry to the header")
 
         # Power down the module
@@ -420,7 +420,7 @@ if __name__ == '__main__':
         # of messages to initialize. There is no way to know for sure when it's ended and writing/reading
         # during this time can create an infinite loop completely blocking the execution.
         print("Waiting 30 seconds at first boot to let module finish initializations...")
-        for i in range(1):
+        for i in range(30):
             sleep(1)
             if shutdown_requested:
                 green_led.close()
