@@ -150,6 +150,9 @@ def get_earfcns_pcis(measurements_file_path: str) -> dict[(int, int), int]:
     with open(measurements_file_path, "r") as measurements_file:
         passed_header = False
         ignore_measurement = False
+        # I'm not sure if
+        previous_pci_earfcn = (0, 0)
+        previous_serving = False
         for line in measurements_file:
             # Ignore header
             if not passed_header:
@@ -164,6 +167,7 @@ def get_earfcns_pcis(measurements_file_path: str) -> dict[(int, int), int]:
             # New measurement starts with GPS
             if line.startswith('GPS'):
                 ignore_measurement = False
+                previous_serving = False
                 continue
             if ignore_measurement:
                 continue
@@ -172,11 +176,19 @@ def get_earfcns_pcis(measurements_file_path: str) -> dict[(int, int), int]:
                 parts = line.strip().split('|')
                 pci = int(parts[7])
                 earfcn = int(parts[8])
+                previous_serving = True
+                previous_pci_earfcn = (pci, earfcn)
             elif line.startswith('MEASURE_NEIGHBOUR_INTRA') or line.startswith('MEASURE_NEIGHBOUR_INTER'):
                 parts = line.strip().split('|')
                 pci = int(parts[3])
                 earfcn = int(parts[4])
+                # If previous line was measure_serving,
+                # and it had the same pci and earfcn, don't count it, it's the same cell
+                if previous_serving and previous_pci_earfcn == (pci, earfcn):
+                    previous_serving = False
+                    continue
             else:
+                previous_serving = False
                 continue
 
             # Keep duplicates with a list to calculate frequency later
@@ -523,3 +535,5 @@ class CometToCevConverter:
 if __name__ == '__main__':
     with CometToCevConverter("../measurements/11-06-2024/tmp_15-16_measurement.csv") as writer:
         writer.process()
+    # with CometToCevConverter("../measurements/08-07-2024/tmp_16-24_measurement.csv") as writer:
+    #     writer.process()

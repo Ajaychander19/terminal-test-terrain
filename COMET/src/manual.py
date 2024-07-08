@@ -75,7 +75,7 @@ def check_for_gps(atcs: ATCommandSender):
     while not signal_acquired:
         print("Trying to acquire GPS signal...")
         signal_acquired = (atcs.get_gps_info() != "+CGPSINFO: ,,,,,,,,")
-        time.sleep(1)
+        time.sleep(10)
     print("GPS OK")
 
 
@@ -127,7 +127,8 @@ if __name__ == '__main__':
             command = input("type the command to send "
                             "(\n"
                             "* 'stop' to end the program execution\n"
-                            "* 'measurements n' to start measurements for n second. If no GPS signal, will wait for it."
+                            "* 'measurements n' to start measurements for n second. "
+                            "If no GPS signal, will wait for it\n"
                             "* 'gps' to wait until a GPS signal is found\n"
                             "* any AT command to get a response\n"
                             "): \n").strip()

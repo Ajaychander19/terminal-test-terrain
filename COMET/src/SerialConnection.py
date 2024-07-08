@@ -56,8 +56,9 @@ class SerialConnection:
         """
         if exc_tb:
             print("Serial Connection closed because of an error")
-            print("Powering down the module")
-            self.send_command("AT+CPOF")
+            # This must only be in the automatic mode when the RPI is powered down as well
+            # print("Powering down the module")
+            # self.send_command("AT+CPOF")
 
         # Close the serial connection
         if self.module:

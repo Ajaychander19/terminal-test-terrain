@@ -377,8 +377,6 @@ def start_measurement_session():
                         measurements_started = False
                         print("Measurements stopped via stop file")
 
-            file_content = writer.file_content.splitlines(keepends=True)
-
         before = datetime.now()
         # Add the GPS lost header. This will rewrite the file, so it might take a bit of time
         MeasurementsWriter.add_gps_lost_header(file_path, gps_lost)

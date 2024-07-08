@@ -43,6 +43,9 @@ class ATCommandSender:
     def get_gps_info(self) -> str:
         """
         Sends AT+CGPSINFO command to query module position. Result is "+CGPSINFO: ,,,,,,,," if no position found.
+
+        Despite what the AT command manual says, the +CGPSINFO: line is given before the OK line, not after.
+
         :returns: a single line with the localisation information (+CGPSINFO line), the entire response if an error
         occurred.
         """
