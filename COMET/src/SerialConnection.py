@@ -45,12 +45,14 @@ class SerialConnection:
                 sleep(3)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_tb:
+            print("Serial Connection closed because of an error")
+            print("Powering down the module")
+            self.send_command("AT+CPOF")
+
         # Close the serial connection
         if self.module:
             self.module.close()
-
-        if exc_tb:
-            print("Serial Connection closed because of an error")
 
     def send_command(self, cmd: str):
         if self.module:

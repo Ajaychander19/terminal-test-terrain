@@ -5,13 +5,6 @@ from ATResponses import QENGServing, QENGNeighbour, CGPSINFO, COPS
 from SerialConnection import SerialConnection
 
 
-def handle_response(response: str) -> None:
-    print("The response is:")
-    print("-------------------------------")
-    print(response)
-    print("-------------------------------\n")
-
-
 class ATCommandSender:
     """
     Class for sending AT commands to a device and receiving responses

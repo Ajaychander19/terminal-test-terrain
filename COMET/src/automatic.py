@@ -84,7 +84,7 @@ def update_error_led():
 
 def check_for_sim(atcs: ATCommandSender, pin_code: str = "0000", log_file: TextIO = None) -> bool:
     """
-    Checks if the SIM card is activated, if it isn't tries to unlock using `_pin_code` in a loop until it is activated
+    Checks if the SIM card is activated, if it isn't tries to unlock using `pin_code` in a loop until it is activated
     or shutdown/measurements end was requested.
 
     The function tries to unlock the SIM card every 10 seconds and checks for its readiness every second because

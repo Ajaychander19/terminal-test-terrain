@@ -1,4 +1,7 @@
-import sys
+"""
+This script allows for manual sending of AT commands when executed
+"""
+
 from datetime import datetime
 from datetime import timedelta
 
@@ -10,42 +13,86 @@ from MeasurementsWriter import MeasurementsWriter
 
 import time
 
+
+def check_for_sim(atcs: ATCommandSender, pin: str = "0000"):
+    """
+    Checks if the SIM card is activated, if it isn't tries to unlock using `_pin_code` in a loop until it is activated.
+
+    The function tries to unlock the SIM card every 10 seconds and checks for its readiness every second because
+    it cas take some time before the SIM card is activated after the PIN code has been sent.
+
+    On average, this function takes 3 to 13 seconds to finish on start up and is nearly instant if the SIM card has
+    already been activated
+
+    :param pin: the pin code of the SIM card inserted in the module. Must be a numeric string in XXXX format.
+    :param atcs: An instance of an initialized `ATCommandSender`
+    """
+    cpt = 10  # try to unlock sim every 10 iterations of the loop
+    sim_ready = "READY" in atcs.send_command("AT+CPIN?")
+    while not sim_ready:
+        if cpt == 10:
+            print("SIM not ready, trying to unlock...")
+            atcs.enter_pin(pin)
+            cpt = 0
+
+        time.sleep(1)
+        cpt += 1
+        sim_ready = "READY" in atcs.send_command("AT+CPIN?")
+
+    print("SIM card ready")
+
+
+def check_for_network(atcs: ATCommandSender):
+    """
+    Checks for network signal, looping until it is found.
+
+    In most cases it is instant, but sometimes it can last for 3-10 seconds on start up. Will loop infinitely if no
+    network can be found for example when the SIM card is not activated or the module is forced in a network mode
+    not available locally (for example when forced to 5G when no 5G cells are present)
+
+    :param atcs: An instance of an initialized ATCommandSender
+    """
+    network_ok = "NO SERVICE" not in atcs.send_command('AT+CPSI?')
+    if not network_ok:
+        print("No service, waiting...")
+    while not network_ok:
+        time.sleep(1)  # CPSI is easy enough to do every second
+        network_ok = "NO SERVICE" not in atcs.send_command('AT+CPSI?')
+
+    print("Service OK")
+
+
+def check_for_gps(atcs: ATCommandSender):
+    """
+    Checks for GPS in a loop until a position is found.
+
+    This function can take anywhere from nearly instant (if a GPS fix is already acquired) to 3-4 minutes on average
+    on start up of the module or even 10-15 minutes in the worst case (when the module has never got a GPS fix before)
+
+    :param atcs: An instance of an initialized ATCommandSender
+    """
+    signal_acquired = False
+    while not signal_acquired:
+        print("Trying to acquire GPS signal...")
+        signal_acquired = (atcs.get_gps_info() != "+CGPSINFO: ,,,,,,,,")
+        time.sleep(1)
+    print("GPS OK")
+
+
 if __name__ == '__main__':
     dt = datetime.now()
-    print("Starting date and time is:", dt)
+    print("Starting date and time is: ", dt)
 
     with SerialConnection('/dev/ttyUSB2') as connection:
         ATCS = ATCommandSender(connection)
-        dt = datetime.now()
-        print("Connection opened at :", dt)
 
-        # Apparently before sending any commands I must check if "RDY" is received? Not sure if it's really necessary
-        # but documentation says so...
-
-        timeout = 0
-        first_time = input("Is this script being executed for the first time since powering up the module? (yes/no)\n")
+        first_time = input("Do you want to setup the module? (yes/no)\n").strip()
         if first_time.lower() == "yes" or first_time.lower() == "y":
-            pin_ok = False
-            print("Waiting 15 seconds on start-up just in case")
-            while not pin_ok:
-                time.sleep(15)
-                response = ATCS.enter_pin("0000")  # response is empty if got an error
-                pin_ok = (response != "")
-                if not pin_ok:
-                    print("Couldn't connect to the SIM, retrying...")
-                timeout += 15
-                if timeout >= 60:
-                    sys.exit("Couldn't connect to the SIM, aborting (waited for 60 seconds)")
+            pin_code = input("Enter the PIN code: \n").strip()
+            while len(pin_code) != 4 or not pin_code.isnumeric():
+                pin_code = input("Incorrect PIN code format! Enter the PIN code: \n").strip()
 
-            timeout = 0
-            while "READY" not in ATCS.send_command("AT+CPIN?"):
-                print("SIM not ready, retrying...")
-                time.sleep(10)
-                if "READY" not in ATCS.send_command("AT+CPIN?"):
-                    ATCS.enter_pin("0000")
-                timeout += 10
-                if timeout >= 60:
-                    sys.exit("Couldn't connect to the SIM, aborting (waited for 60 seconds)")
+            check_for_sim(atcs=ATCS, pin=pin_code)
 
             mode = input("type the network mode to use "
                          "(\n"
@@ -67,28 +114,21 @@ if __name__ == '__main__':
                 print("Defaulting to automatic mode")
                 ATCS.send_command('AT+CNMP=2')
 
-            timeout = 0
-            # Technically AT+CREG? response can be twice as fast but it has different correct response codes and...
-            # AT+COPS could also work, but same, it a bit more complicated form
-            while "NO SERVICE" in ATCS.send_command('AT+CPSI?'):
-                print("No service, waiting...")
-                time.sleep(10)
-                timeout += 10
-                if timeout >= 120:
-                    sys.exit("Couldn't get a signal, aborting (waited for 120 seconds)")
-            print("Service OK")
+            check_for_network(atcs=ATCS)
 
-        # ATCS.restart_gps()
-        # gps_signal_acquired = False
-        # print("GPS OK")
+            setup_gps = input("Do you want to setup the GPS and wait for a fix? (yes/no)\n").strip()
+            if setup_gps.lower() == "yes" or setup_gps.lower() == "y":
+                ATCS.restart_gps()
+                check_for_gps(atcs=ATCS)
+
+            print("Setup complete")
 
         while True:
             command = input("type the command to send "
                             "(\n"
                             "* 'stop' to end the program execution\n"
-                            "* 'measurements n' to start measurements for n seconds (will try to get GPS signal for "
-                            "10 minutes if no signal)\n"
-                            "* 'gps n' to start acquiring gps signal for n minutes\n"
+                            "* 'measurements n' to start measurements for n second. If no GPS signal, will wait for it."
+                            "* 'gps' to wait until a GPS signal is found\n"
                             "* any AT command to get a response\n"
                             "): \n").strip()
             if command == "stop":
@@ -99,11 +139,7 @@ if __name__ == '__main__':
                     print("Incorrect measurement command (must have one and only numeric argument): " + command)
                     break
 
-                if not gps_signal_acquired:
-                    print("Trying to acquire GPS signal...")
-                    gps_signal_acquired = ATCS.get_gps_signal(10)
-                    if not gps_signal_acquired:
-                        print("Couldn't acquire GPS signal, aborting measurements")
+                check_for_gps(atcs=ATCS)
                 print("Starting measurements")
                 with MeasurementsWriter(is_tmp=True, operator_info=ATCS.get_operator()) as writer:
                     writer.print_header()
@@ -150,25 +186,21 @@ if __name__ == '__main__':
 
             if "gps" in command:
                 arguments = command.split()
-                if len(arguments) != 2:
-                    print("gps command must have one and only numeric argument got: " + command + " instead")
+                if len(arguments) != 1:
+                    print("gps command doesn't require arguments, got: " + command + " instead")
                     break
-                print("Attempting to acquire a GPS signal")
-                gps_signal_acquired = ATCS.get_gps_signal(int(arguments[1]))
-                if gps_signal_acquired:
-                    print("GPS Signal acquired")
-                else:
-                    print("Couldn't get a GPS satellite fix")
+                check_for_gps(atcs=ATCS)
                 continue
 
             dt_before = datetime.now()
-            handle_response(ATCS.send_command(command))
+            print("The response is:")
+            print("-------------------------------")
+            print(ATCS.send_command(command))
+            print("-------------------------------")
+            print()
 
             dt_after = datetime.now()
             print(command + " done at: ", dt_after)
             print("It took ", (dt_after - dt_before).microseconds, " microseconds\n")
 
-        # Power down the module
-        # Ideally it should be done on errors to, __exit__ method would be ideal, but that would make to many
-        # nested with statements...
         ATCS.send_command("AT+CPOF")
