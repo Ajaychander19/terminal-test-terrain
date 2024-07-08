@@ -323,14 +323,14 @@ def start_measurement_session():
             while measurements_started and not shutdown_requested:
                 green_led.on()
 
-                for info in atcs.get_position(starting_time):  # TODO: There really is no need for a loop here
-                    if not info:  # If no position found
-                        current_gps_error = True
-                        continuous_gps_error_counter += 1
-                    else:
-                        current_gps_error = False
-                        continuous_gps_error_counter = 0
-                    writer.print_gps_measurement(info)
+                gps_info = atcs.get_position(starting_time)
+                if not gps_info:  # If no position found
+                    current_gps_error = True
+                    continuous_gps_error_counter += 1
+                else:
+                    current_gps_error = False
+                    continuous_gps_error_counter = 0
+                writer.print_gps_measurement(gps_info)
                 if continuous_gps_error_counter > 30:
                     print("No GPS signal for 30 seconds")
                     gps_lost = True

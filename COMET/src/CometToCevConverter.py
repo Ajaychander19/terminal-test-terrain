@@ -266,9 +266,8 @@ class CometToCevConverter:
     def __exit__(self, exc_type, exc_val, traceback):
         """
         Closes the file when the "with" statement is exited (normally or because of an exception)
-        :param exc_type:
-        :param exc_val:
-        :param traceback:
+
+        The exception parameters are ignored, exceptions will be reported in a normal way.
         """
         self.close()
 

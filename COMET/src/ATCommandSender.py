@@ -15,21 +15,25 @@ class ATCommandSender:
         Provides methods for sending specific AT commands and receiving responses in specialized format.\n
         NOTE: send_command() method works for any module but other methods are made specifically for SIM8262E 5 module
 
-        :param SerialConnection connection: The serial connection to the module. Most likely uses ttyUSB2 as port path.
+        :param SerialConnection connection: An open serial connection to the module.
         """
         self.module = connection
         ""
 
     def send_command(self, cmd: str) -> str:
         """
-        Sends cmd
+        Send an AT command to the module and read the response. If cmd is in wrong format (doesn't start with AT),
+        return empty string. If the command is not recognized by the module,
+        it will be interpreted and the module will respond with "ERROR".
+
         :param str cmd: the AT command to send, for example cmd="AT+CSQ"
-        :returns: string corresponding to the lines of the response
+        :returns: a multiline string with all lines of the response
         """
-        if not cmd.lower().startswith("at"):
+        if not cmd.strip().upper().startswith("AT"):
             print(cmd + " isn't an AT command")
             return ""
         self.module.send_command(cmd)
+
         result = ""
         lines = self.module.read_response()
         for line in lines:
@@ -39,7 +43,8 @@ class ATCommandSender:
     def get_gps_info(self) -> str:
         """
         Sends AT+CGPSINFO command to query module position. Result is "+CGPSINFO: ,,,,,,,," if no position found.
-        :returns: string corresponding to the position line, the entire response if wrong format
+        :returns: a single line with the localisation information (+CGPSINFO line), the entire response if an error
+        occurred.
         """
         self.module.send_command("AT+CGPSINFO")
         result = ""
@@ -53,6 +58,13 @@ class ATCommandSender:
         return result
 
     def enter_pin(self, pin: str) -> str:
+        """
+        Send AT+CPIN=pin command. Will return the entire response on success and empty string on error.
+
+        :param pin: The pin code of the SIM card. Must be 4 characters long, with numeric characters only,
+            for example "0000".
+        :return: A multiline string containing the lines of the response.
+        """
         if not pin.isnumeric():
             print(pin + " isn't a PIN code (must be numbers)")
             return ""
@@ -71,6 +83,9 @@ class ATCommandSender:
         return result
 
     def restart_gps(self):
+        """
+        Restart a GPS session in standalone mode.
+        """
         self.module.send_command("AT+CGPS?")
         lines = self.module.read_response()
         current_gps = ""
@@ -91,7 +106,7 @@ class ATCommandSender:
 
     def get_serving_cell(self, timestamp: datetime = None) -> list[QENGServing]:
         """
-        Sends the AT+QENG="servingcell" command and retrieves a list of QENGServing instances holding the serving
+        Send the AT+QENG="servingcell" command and retrieves a list of QENGServing instances holding the serving
         cell data
 
         :param timestamp: Defines the timestamp of the measurement. If None, uses datetime.now() as timestamp.
@@ -120,7 +135,7 @@ class ATCommandSender:
 
     def get_neighbour_cells(self, timestamp: datetime = None) -> list[QENGNeighbour]:
         """
-        Sends the AT+QENG="neighbourcell" command and retrieves a list of QENGNeighbour instances holding the
+        Send the AT+QENG="neighbourcell" command and retrieves a list of QENGNeighbour instances holding the
         data from all received neighbouring cells in LTE mode
 
         :param timestamp: Defines the timestamp of the measurement. If None, uses datetime.now() as timestamp.
@@ -137,41 +152,25 @@ class ATCommandSender:
         cleaned_list = [x for x in list_neighbour if x is not None and x]
         return cleaned_list
 
-    def get_position(self, timestamp: datetime = None) -> list[CGPSINFO]:
+    def get_position(self, timestamp: datetime = None) -> CGPSINFO | None:
+        """
+        Send the AT+CGPSINFO command to query the module's localisation.
+
+        :param timestamp: Defines the timestamp of the measurement. If None, uses datetime.now() as timestamp.
+        :return: An instance of CGPSINFO class filled with localisation information
+        (can be empty if no fix was acquired), or None if no CGPSINFO response was found.
+        """
         lines: list[str] = self.send_command('AT+CGPSINFO').splitlines()
-        list_serving: list[CGPSINFO] = list()
         for line in lines:
             if line.startswith("+CGPSINFO:"):
-                list_serving.append(CGPSINFO.from_string(line, timestamp))
-        cleaned_list = [x for x in list_serving if x is not None]
-        return cleaned_list
-
-    def get_gps_signal(self, minutes: int) -> bool:
-        signal_acquired = False
-        minutes_elapsed = 0
-
-        if int(minutes) == 0:
-            response = self.send_command('AT+CGPSINFO')
-            return response.splitlines()[0].strip() != "+CGPSINFO: ,,,,,,,,"
-
-        while not signal_acquired and minutes_elapsed < minutes:
-            for i in range(6):
-                response = self.send_command('AT+CGPSINFO')
-                # handle_response(response)
-                if response.splitlines()[0].strip() != "+CGPSINFO: ,,,,,,,,":
-                    print("Signal acquired, got: ")
-                    print(response)
-                    signal_acquired = True
-                    break
-                print("No GPS signal, waiting...")
-                time.sleep(10)
-            minutes_elapsed += 1
-        return signal_acquired
+                return CGPSINFO.from_string(line, timestamp)
+        return None
 
     def get_operator(self) -> COPS:
         """
+        Send AT+COPS? command to query the mobile operator on which the module is currently registered.
 
-        :return:
+        :return: An instance of COPS class with the operator name
         """
         lines = self.send_command('AT+COPS?').splitlines()
         for line in lines:

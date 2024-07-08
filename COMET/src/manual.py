@@ -7,7 +7,7 @@ from datetime import timedelta
 
 import pause
 
-from ATCommandSender import ATCommandSender, handle_response
+from ATCommandSender import ATCommandSender
 from SerialConnection import SerialConnection
 from MeasurementsWriter import MeasurementsWriter
 
@@ -140,6 +140,7 @@ if __name__ == '__main__':
                     break
 
                 check_for_gps(atcs=ATCS)
+
                 print("Starting measurements")
                 with MeasurementsWriter(is_tmp=True, operator_info=ATCS.get_operator()) as writer:
                     writer.print_header()
@@ -153,22 +154,17 @@ if __name__ == '__main__':
                     pause.until(starting_time)
 
                     while measurements_duration_elapsed < timeout:
-                        # Starting time is accurate to at least the second, I think.
-                        position_info = ATCS.get_position(starting_time)
-                        serving_cell_list = ATCS.get_serving_cell(starting_time)
-                        neighbour_cell_list = ATCS.get_neighbour_cells(starting_time)
-
                         dt_after_commands = datetime.now()
 
-                        # FIXME: this should logically be a method of writer class
-                        for info in position_info:
-                            writer.print_gps_measurement(info)
+                        # Print GPS
+                        writer.print_gps_measurement(ATCS.get_position(starting_time))
 
-                        # Not sure if in NSA 5G both should be written or only one.
-                        for cell in serving_cell_list:
+                        # Print serving cell (two of them if in EN-DC mode)
+                        for cell in ATCS.get_serving_cell(starting_time):
                             writer.print_serving_cell_measurement(cell)
 
-                        for cell in neighbour_cell_list:
+                        # Print neighbouring cells
+                        for cell in ATCS.get_neighbour_cells(starting_time):
                             writer.print_neighbour_cell_measurement(cell)
 
                         measurements_duration_elapsed += 1
