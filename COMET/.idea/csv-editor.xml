@@ -3,6 +3,13 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
+        <entry key="/cev/05-07-2024/cevSFR_20240705_1602-M1.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="|" />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/cevSFR_20240522_1030-M1.csv">
           <value>
             <Attribute>
@@ -38,6 +45,20 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/data/11-06-2024/cevSFR_20240611_1628-M1.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="|" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/data/12-06-2024/cevSFR_20240612_0929-M1.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="|" />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/measurements/03-06-2024/tmp_10-49_measurement.csv">
           <value>
             <Attribute>
@@ -45,7 +66,28 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/measurements/03-07-2024/tmp_16-39_measurement.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="|" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/measurements/03-07-2024/tmp_16-40_measurement.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="|" />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/measurements/05-06-2024/tmp_16-08_measurement.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="|" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/measurements/05-07-2024/tmp_13-54_measurement.csv">
           <value>
             <Attribute>
               <option name="separator" value="|" />

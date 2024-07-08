@@ -74,7 +74,6 @@ class QENGServing:
                  arfcn: str = "", band: str = "", nr_dl_bandwidth: int = -1,
                  scs: int = -1, is_en_dc: bool = False
                  ):
-        # TODO: Add 5G SA stuff
         self.timestamp = timestamp
         self.cell_type = cell_type
         """Must be servingcell in this class"""
@@ -483,6 +482,7 @@ class QENGNeighbour:
                            )
             except ValueError:
                 print(f"One of the parameters in line had incorrect format: {line}")
+                return None
 
         elif nb_params == 12:  # LTE neighbourcell inter
             try:
@@ -495,9 +495,10 @@ class QENGNeighbour:
                            )
             except ValueError:
                 print(f"One of the parameters in line had incorrect format: {line}")
-        elif nb_params == 10:  # WCDMA, return instance with empty values
+                return None
+        elif nb_params == 10:  # WCDMA, return instance with empty values (will print empty string)
             return cls(timestamp=timestamp, cell_type=Cell_Type.neighbourcell)
-        elif nb_params == 7:  # LTE in WCDMA mode, return instance with empty values
+        elif nb_params == 7:  # LTE in WCDMA mode, return instance with empty values (will print empty string)
             return cls(timestamp=timestamp, cell_type=Cell_Type.neighbourcell)
         else:
             print(f'Incorrect AT+QENG="neighbourcell" response format (unrecognized number of parameter: {nb_params})')

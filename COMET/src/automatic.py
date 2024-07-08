@@ -344,7 +344,8 @@ def start_measurement_session():
                         current_network_error = False
                     writer.print_serving_cell_measurement(cell)
 
-                if not current_network_error:  # Only search for neighbours if serving cell is ok
+                # Only search for neighbours if serving cell is ok
+                if not current_network_error:
                     for cell in atcs.get_neighbour_cells(starting_time):
                         writer.print_neighbour_cell_measurement(cell)
 

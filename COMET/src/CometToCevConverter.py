@@ -55,6 +55,15 @@ def should_omit(line: str, line_index: int = 0) -> bool:
 
     Will report a non-fatal error at the given line index if the line is in wrong format
 
+    Examples:
+        >>> should_omit("GPS|2024|||")
+        >>> True
+        >>> should_omit("MEASURE_SERVING|2024-06-11 15:16:14|LTE|0xC0FA|159130624|208|10|75|2825|-18.1|-109.0|-72.3|-4")
+        >>> False
+        >>> should_omit("MEASURE_SERVING|10|75|2825|-18.1|-109.0|-72.3|-4")
+        >>> "MEASURE_SERVING is in wrong format, measurement will be omitted"
+        >>> True
+
     :param line_index: index of the line in the file, used for reporting errors
     :param line: a line of the COMET measurements file
     :return: True if line must be omitted, False if not
@@ -101,7 +110,9 @@ def get_operator_from_measurements(measurements_file_path: str) -> str:
     """
     with open(measurements_file_path, "r") as measurements_file:
         for i, line in enumerate(measurements_file):
-            stripped_line = line.strip()  # May be excessive but it's better just in case
+            stripped_line = line.strip()
+            if stripped_line == "":  # Ignore empty lines
+                continue
             if stripped_line.startswith('MEASUREMENTS'):
                 syntax_error(i, "No 'OPERATOR' line found in header", fatal=True)
                 break
@@ -371,6 +382,9 @@ class CometToCevConverter:
 
             for line in measurements_file:
                 stripped_line = line.strip()
+                if stripped_line == "":  # Ignore empty lines
+                    continue
+
                 # Find the starting date in the header, ignore the rest of it
                 if not passed_header:
                     if stripped_line.startswith("DATE"):

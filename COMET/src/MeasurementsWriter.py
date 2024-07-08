@@ -6,15 +6,31 @@ from ATResponses import COPS, CGPSINFO, QENGServing, QENGNeighbour
 
 
 class MeasurementsWriter:
-    def __init__(self, dir_path: str = "./measurements/", filename: str = "measurement.csv", is_tmp: bool = False,
+    def __init__(self, dir_path: str = "./measurements/", filename_suffix: str = "measurement", is_tmp: bool = False,
                  operator_info: COPS = None):
         """
+        Class for writing measurements to a COMET measurements file.
 
-        NOTE: Must be instantiated using a with statement as it doesn't provide a dedicated close() method
-        :param dir_path:
-        :param filename:
-        :param is_tmp:
-        :param operator_info:
+        For a valid COMET measurements file, write the header first with the `print_header()` method.
+        The measurements themselves must be written in a specific order: the GPS coordinates are always the first line
+        of a measurement, followed by serving cell line (or two lines in case of EN-DC), then the neighbouring cells
+        lines.
+
+        It is recommended to use the "with" statement when instantiating this class to make sure that the measurements
+        are saved to disc in case of errors.
+
+        This class allows to write a single measurements file, to make a new file create a new instance of
+        MeasurementsWriter
+
+        NOTE: If two instances of MeasurementsWriter are made at the same minute,
+        the second one will overwrite the first
+
+        :param dir_path: The path to the directory where measurements file will be stored. Can be relative or absolute.
+            (Files will be ordered in directories of the date they were created at, inside this path)
+        :param filename_suffix: A suffix added to the filename to distinguish the measurements files.
+            Actual file name will have the following format: "hour-minute_suffix.csv".
+        :param is_tmp: If True, filename will be prefixed with "tmp_".
+        :param operator_info: An instance of COPS class containing the information about the mobile operator.
         """
         now = datetime.now()
         date_dir = now.strftime("%d-%m-%Y")
@@ -22,33 +38,36 @@ class MeasurementsWriter:
 
         self.operator_info: COPS = operator_info
 
-        self.dir_path: str = os.path.abspath(dir_path + date_dir + "/") + "/"
-        self.filename: str = file_prefix + filename
-        self.is_tmp: bool = is_tmp
+        if not dir_path.endswith("/"):
+            dir_path += "/"
 
-        self.file_content: str = ""  # TODO: Remove this! It's memory AND processor intensive on long measurements
-        # Can even potentially break the program when concatenating the string will take more than 1 second
+        self.dir_path: str = os.path.abspath(dir_path + date_dir + "/") + "/"
+        self.filename: str = file_prefix + filename_suffix + ".csv"
+        self.is_tmp: bool = is_tmp
 
         self.file: TextIOWrapper | None = None
 
     def __enter__(self):
         """
-        Creates a file in the specified directory (which is created if doesn't exist) on "with" statement
+        Creates a file in the specified directory (which is created if it doesn't exist) on "with" statement
         """
         self.open()
         return self
 
     def __exit__(self, exc_type, exc_val, traceback):
         """
-        Closes the file when the "with" statement is exited (normally or because of an exception)
-        :param exc_type:
-        :param exc_val:
-        :param traceback:
+        Closes the file when the "with" statement is exited (normally or because of an exception).
+        
+        The exception parameters are ignored, exceptions will be reported in a normal way.
         """
         if self.file:
             self.file.close()
 
     def open(self):
+        """
+        Open a file in writing mode at path given by `dir_path` and `filename` attributes. This will create
+        intermediary directories if needed and will overwrite a file with the same name if it already exists.
+        """
         if not os.path.isdir(self.dir_path):
             os.makedirs(self.dir_path)
 
@@ -59,27 +78,40 @@ class MeasurementsWriter:
 
     def close(self):
         """
-        Close the file and erase saved file content from memory
+        Close the file access. This method must be called to assure that the file is properly written to disc. 
         """
         if self.file:
             self.file.close()
-        self.file_content = ""
 
-    def write(self, text: str = ""):
+    def __write(self, text: str = ""):
+        """
+        Write text to the measurements file with no additional treatment
+        
+        :param text: text to write to file
+        """
         self.file.write(text)
-        # self.file_content += text
 
-    def write_line(self, line: str = ""):
-        self.file.write(line + "\n")
-        # self.file_content += (line + "\n")
+    def __write_line(self, text: str = ""):
+        """
+        Write a line of text to the measurements file. This will add a linebreak to the written text
+        
+        :param text: string to write to file
+        """
+        self.file.write(text + "\n")
 
     def get_file_path(self) -> str:
+        """
+        Returns path to the measurements file
+        """
         if self.is_tmp:
             return self.dir_path + "tmp_" + self.filename
         else:
             return self.dir_path + self.filename
 
     def print_header(self):
+        """
+        Write the header to the measurements file
+        """
         # self.write_line("TECHNO|" + self.operator_info.act.name)
         operator_name = "Unknown"
         if self.operator_info is not None:
@@ -95,27 +127,48 @@ class MeasurementsWriter:
                   "MEASURE_NEIGHBOUR_INTER|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI\n"
                   "\n"
                   "MEASUREMENTS\n")
-        self.write(header)
+        self.__write(header)
 
-    def print_gps_measurement(self, info: CGPSINFO):
-        self.write_line(info.to_printable_string())
+    def print_gps_measurement(self, gps_info: CGPSINFO):
+        """
+        Write the GPS line to the measurements file depending on `gps_info` content.
 
-    def print_serving_cell_measurement(self, info: QENGServing):
-        self.write_line(info.to_printable_string())
+        This will print an empty GPS entry when no position is found.
+    
+        :param gps_info: an instance of CGPSINFO class filled with localisation measurements.
+        """
+        self.__write_line(gps_info.to_printable_string())
 
-    def print_neighbour_cell_measurement(self, info: QENGNeighbour):
-        self.write_line(info.to_printable_string())
+    def print_serving_cell_measurement(self, cell: QENGServing):
+        """
+        Write the MEASURE_SERVING line to the measurements file depending on `cell` content.
+        
+        This will print an empty MEASURE_SERVING entry when cell is in 3G or not registered on network
+
+        :param cell: an instance of QENGServing class filled with measurements from the serving cell.
+        """
+        self.__write_line(cell.to_printable_string())
+
+    def print_neighbour_cell_measurement(self, cell: QENGNeighbour):
+        """
+        Write the MEASURE_NEIGHBOUR_INTRA or MEASURE_NEIGHBOUR_INTER line to the measurements file
+        depending on `cell` content.
+
+        :param cell: an instance of QENGNeighbour class filled with measurements from a neighbouring cell.
+        """
+        self.__write_line(cell.to_printable_string())
 
     @staticmethod
     def add_gps_lost_header(file_path: str, gps_lost: bool):
         """
-        Add information about whether the GPS signal was lost during measurements or not to the measurement file header.
+        Add information about whether the GPS signal was lost during measurements 
+        or not to the measurements file header.
 
-        This will rewrite the file at `file_path` with lines of text given by `file_content`,
-        while adding YES or NO to the GPS_LOST entry in the header depending on `gps_lost` parameter
+        This will read the file at `file_path` and rewrite its content
+        with a GPS_LOST entry in the header depending on `gps_lost` parameter (GPS_LOST|NO or GPS_LOST|YES).
 
-        This function rewrites the entire file and can take fairly long time to write on big files.
-        For example on a file with 1 hour of measurements it could take around 100ms or more.
+        The file at `file_path` must be a measurement file produced by MeasurementsWriter and must at least contain
+        the header
 
         :param file_path: absolute or relative path to the measurement file to modify
         :param gps_lost: if True then write GPS_LOST|YES to header, if False write GPS_LOST|NO
@@ -138,4 +191,4 @@ class MeasurementsWriter:
 
 
 if __name__ == '__main__':
-    pass
+    print("MeasurementsWriter module is not executable")

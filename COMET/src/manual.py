@@ -126,14 +126,14 @@ if __name__ == '__main__':
 
                         # FIXME: this should logically be a method of writer class
                         for info in position_info:
-                            writer.write_line(info.to_printable_string())
+                            writer.print_gps_measurement(info)
 
                         # Not sure if in NSA 5G both should be written or only one.
                         for cell in serving_cell_list:
-                            writer.write_line(cell.to_printable_string())
+                            writer.print_serving_cell_measurement(cell)
 
                         for cell in neighbour_cell_list:
-                            writer.write_line(cell.to_printable_string())
+                            writer.print_neighbour_cell_measurement(cell)
 
                         measurements_duration_elapsed += 1
 
