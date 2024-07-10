@@ -54,8 +54,7 @@ class ATCommandSender:
         lines = self.module.read_response()
         for line in lines:
             if "+CGPSINFO" in line:
-                result = line.strip()
-                break
+                return line.strip()
             else:
                 result += line
         return result

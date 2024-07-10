@@ -56,7 +56,7 @@ def should_omit(line: str, line_index: int = 0) -> bool:
     Will report a non-fatal error at the given line index if the line is in wrong format
 
     Examples:
-        >>> should_omit("GPS|2024|||")
+        >>> should_omit("GPS|2024||")
         >>> True
         >>> should_omit("MEASURE_SERVING|2024-06-11 15:16:14|LTE|0xC0FA|159130624|208|10|75|2825|-18.1|-109.0|-72.3|-4")
         >>> False
@@ -73,7 +73,7 @@ def should_omit(line: str, line_index: int = 0) -> bool:
     nb_values = len(values)
 
     if stripped_line.startswith("GPS"):
-        if nb_values != 5:
+        if nb_values != 4:
             syntax_error(line_index, "MEASURE_GPS is in wrong format, measurement will be omitted", fatal=False)
             return True
         if values[2] == "":
@@ -85,7 +85,8 @@ def should_omit(line: str, line_index: int = 0) -> bool:
             return True
         pcid = int(values[7])
         earfcn = int(values[8])
-        if values[2] == "" or pcid == 0 or earfcn >= 4294967295:
+        # Ignore the non-LTE measurements in current version
+        if values[2].strip() != "LTE" or pcid == 0 or earfcn >= 4294967295:
             return True
         return False
     elif stripped_line.startswith("MEASURE_NEIGHBOUR_INTRA") or stripped_line.startswith("MEASURE_NEIGHBOUR_INTER"):
@@ -94,7 +95,7 @@ def should_omit(line: str, line_index: int = 0) -> bool:
             return True
         pcid = int(values[3])
         earfcn = int(values[4])
-        if values[2] == "" or pcid == 0 or earfcn >= 4294967295:
+        if values[2].strip() != "LTE" or pcid == 0 or earfcn >= 4294967295:
             return True
         return False
 
@@ -150,7 +151,6 @@ def get_earfcns_pcis(measurements_file_path: str) -> dict[(int, int), int]:
     with open(measurements_file_path, "r") as measurements_file:
         passed_header = False
         ignore_measurement = False
-        # I'm not sure if
         previous_pci_earfcn = (0, 0)
         previous_serving = False
         for line in measurements_file:
@@ -330,7 +330,7 @@ class CometToCevConverter:
         # Hashed dictionary to rapidly find the columns index associated to a couple (earfcn, pci).
         # Columns associate the actual column index to the (earfcn, pci) couple column
         self.columns = {couple: OFFSET + index for index, couple in enumerate(earfcn_pci_couples_freq)}
-        if self.columns == {}:  # TODO: actually ask if there is a point of writing cells with no associated measurement
+        if self.columns == {}:
             raise RuntimeError("No valid cells found")
 
         self.write("DEFINE\nVERSION|Version\nDATE|Date\nTECHNO|Techno\n")
@@ -347,6 +347,7 @@ class CometToCevConverter:
         meas_nb_header_line = "|".join(f"nb_meas_{i}" for i in range(nb_couples))
         self.write(f"MEAS_NB|NA|NA|NA|NA|{meas_nb_header_line}\n")
 
+        # TODO: decide if it's better to use to date of measurement or the date of conversion
         self.write("CELLINFO|Timestamp|Lat|Lng|EARFCN|PCI|TAC|CID|MCC|MNC\n"
                    "MEASURE_SERVING|Timestamp|Lat|Lng|Serving_EARFCN|Serving_PCI|Serving_RSRP|Serving_RSRQ"
                    "|Serving_RSSI|Serving_CINR\n"
@@ -533,7 +534,7 @@ class CometToCevConverter:
 
 
 if __name__ == '__main__':
-    with CometToCevConverter("../measurements/11-06-2024/tmp_15-16_measurement.csv") as writer:
-        writer.process()
-    # with CometToCevConverter("../measurements/08-07-2024/tmp_16-24_measurement.csv") as writer:
+    # with CometToCevConverter("../measurements/11-06-2024/tmp_15-16_measurement.csv") as writer:
     #     writer.process()
+    with CometToCevConverter("../measurements/10-07-2024/tmp_14-35_measurement.csv") as writer:
+        writer.process()

@@ -76,9 +76,11 @@ class QENGServing:
                  ):
         self.timestamp = timestamp
         self.cell_type = cell_type
-        """Must be servingcell in this class"""
+        """Type of the cell. Must be servingcell in this class"""
         self.state = state
+        """UE connection state: CONNECT, NOCONN, LIMSRV, SEARCH or UNKNOWN"""
         self.network_type = network_type
+        """Network type: LTE, 5G-NSA, 5G-SA or WCDMA."""
         self.is_tdd = is_tdd
         """Network mode. It has same values for both LTE and 5G NR SA ('TDD' or 'FDD')"""
         self.mcc = mcc
@@ -114,14 +116,18 @@ class QENGServing:
         self.rssi = rssi
         """LTE Received Signal Strength Indication. Multiplied by 10 from actual value."""
         self.sinr = sinr
-        """Not documented correctly for SIM8262E. SINR value is actually given directly and also is equal to RSSNR value
-        given by AT+CPSI? command"""
+        """Not documented properly for SIM8262E. Range of queried value should be -20 to 30.
+        The saved and printed value is directly the value given by the module. According to the manual,
+        a special formula must be applied (sinr = (1/5) * queried_sinr * 10 - 20) which gives a range of -60 to 40.
+        The values that it gives seem too strange to be true, which is why the the value given by the module is stored
+        directly, without applying any calculations"""
         self.cqi = cqi
         """Integer type. Channel Quality Indication. Range: 1–30."""
         self.tx_power = tx_power
         """TX power value in dBm (converted from 1/10 given). It is the maximum of all UL channel TX power. 
         The <tx_power> value is only meaningful when the device is in traffic."""
         self.srxlev = srxlev
+        """Suitable reception level for inter frequency cell."""
 
         # 5G NSA related
         self.arfcn = arfcn
@@ -169,9 +175,11 @@ class QENGServing:
         elif self.network_type == NetworkType.NR5GNSA or self.network_type == NetworkType.NR5GSA:
             earfcn = self.arfcn
 
+        sinr = self.sinr
+
         return (f"MEASURE_SERVING|{str(self.timestamp)}|{self.network_type.value}|{self.tac}|{self.cell_id}|"
                 f"{str(self.mcc)}|{str(self.mnc)}|{str(self.pcid)}|{earfcn}|"
-                f"{rsrq}|{rsrp}|{rssi}|{str(self.sinr)}|{en_dc}")
+                f"{rsrq}|{rsrp}|{rssi}|{str(sinr)}|{en_dc}")
 
     @staticmethod
     def get_ue_state_from_response(response_line: str) -> UE_State | None:
@@ -384,8 +392,8 @@ class QENGNeighbour:
         self.rssi = rssi
         """LTE Received Signal Strength Indication. Multiplied by 10 from actual value."""
         self.sinr = sinr
-        """Not documented correctly for SIM8262E. For neighbouring cell the sinr value is given but is always 0, it can
-        be ignored."""
+        """Not documented correctly for SIM8262E. For neighbouring cell the sinr value is given but is always 0 
+        and isn't used in CORENTIN, it can be ignored."""
         self.srxlev = srxlev
         """Select reception level value for base station in dB (see 3GPP 25.304)."""
         self.cell_resel_priority = cell_resel_priority
@@ -520,7 +528,7 @@ class CGPSINFO:
         >>> info = CGPSINFO.from_string('+CGPSINFO: 4807.190267,N,137.755623,W,010624,132225.0,113.0,0.0,0.0',
         >>> datetime.now())
         >>> info.to_printable_string()
-        >>> 'GPS|2024-06-11 15:16:14|48.119814|-1.6295829|113.0'
+        >>> 'GPS|2024-06-11 15:16:14|48.119814|-1.6295829'
         >>> info.lat
         >>> '4807.190267'
     """
@@ -544,7 +552,7 @@ class CGPSINFO:
         self.utc_time = utc_time
         """UTC Time. Output format is hhmmss.s"""
         self.alt = alt
-        """MSL Altitude. Unit is meters."""
+        """MSL Altitude. Unit is meters. Isn't really reliable most of times"""
         self.speed = speed
         """Speed Over Ground. Unit is knots."""
         self.course = course
@@ -558,20 +566,20 @@ class CGPSINFO:
             >>> info = CGPSINFO.from_string('+CGPSINFO: 4807.190267,N,137.755623,W,010624,132225.0,113.0,0.0,0.0',
             >>> datetime.now())
             >>> info.to_printable_string()
-            >>> 'GPS|2024-06-11 15:16:14|48.119814|-1.6295829|113.0'
+            >>> 'GPS|2024-06-11 15:16:14|48.119814|-1.6295829'
 
             >>> info = CGPSINFO.from_string('+CGPSINFO: ,,,,,,,,', datetime.now())
             >>> info.to_printable_string()
-            >>> 'GPS|2024-06-11 15:16:14|||'
+            >>> 'GPS|2024-06-11 15:16:14||'
 
-        :return: String in the format GPS|TIMESTAMP|LATITUDE|LONGITUDE|ALTITUDE
+        :return: String in the format GPS|TIMESTAMP|LATITUDE|LONGITUDE
         """
         if self.lat == "":
-            return f"GPS|{str(self.timestamp)}|||"
+            return f"GPS|{str(self.timestamp)}||"
 
         lat = str(self.__convert_lat_to_decimal())
         long = str(self.__convert_long_to_decimal())
-        return f"GPS|{str(self.timestamp)}|{lat}|{long}|{str(self.alt)}"
+        return f"GPS|{str(self.timestamp)}|{lat}|{long}"  # Altitude isn't useful for CORENTIN
 
     def __convert_lat_to_decimal(self) -> float:
         """
@@ -733,7 +741,7 @@ class COPS:
             >>> 'OPERATOR|Orange'
             >>> info = COPS(0, 2, "10", AccesTechnology(7))
             >>> info.to_printable_string()
-            >>> 'OPERATOR|Uknown'
+            >>> 'OPERATOR|Unknown'
 
         :return: String in the format 'OPERATOR|<operator_name>'
         """
