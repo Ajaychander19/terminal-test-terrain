@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 from io import TextIOWrapper
@@ -121,7 +122,7 @@ class MeasurementsWriter:
                   f"DATE|{datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n"
                   f"OPERATOR|{operator_name}\n"
                   "GPS_LOST|\n"
-                  "GPS|TIMESTAMP|LATITUDE|LONGITUDE|ALTITUDE\n"
+                  "GPS|TIMESTAMP|LATITUDE|LONGITUDE\n"
                   "MEASURE_SERVING|TIMESTAMP|NETWORK_TYPE|TAC|CELLID|MCC|MNC|PCID|EARFCN|RSRQ|RSRP|RSSI|SINR|IS_EN_DC\n"
                   "MEASURE_NEIGHBOUR_INTRA|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI\n"
                   "MEASURE_NEIGHBOUR_INTER|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI\n"
@@ -176,9 +177,12 @@ class MeasurementsWriter:
         with open(file_path, "r") as file:
             lines = file.readlines()
 
+        logger = logging.getLogger(__name__)
+        logging.basicConfig(filename='./logs/comet.log', level=logging.DEBUG)
+
         if len(lines) < 10:
-            print(f"ERROR: Tried adding GPS lost entry to an empty or non-measurement file: {file_path}")
-            print(f"Measurements file will not be modified")
+            logger.error(f"ERROR: Tried adding GPS lost entry to an empty or non-measurement file: {file_path}. "
+                         f"Measurements file will not be modified")
             return
 
         with open(file_path, "w") as file:

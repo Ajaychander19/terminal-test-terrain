@@ -5,7 +5,7 @@
 PYTHON_VERSION=$(python3 -c 'import sys; print(sys.version_info.minor)')
 
 if [ "$PYTHON_VERSION" -lt 11 ]; then
-  echo "Python 3.$PYTHON_VERSION detected which might not be compatible";
+  echo "Python 3.$PYTHON_VERSION detected which was not tested and might not be compatible";
   while true; do
     read -rp $'Install Python3.11 (y) or proceed with current version? (n)\n' yn
     case $yn in
@@ -21,7 +21,7 @@ if [ "$PYTHON_VERSION" -lt 11 ]; then
         * ) echo "Please answer yes or no";;
     esac
   done
-elif [ "$PYTHON_VERSION" -lt 10 ]; then
+elif [ "$PYTHON_VERSION" -lt 6 ]; then
   echo "Incompatible Python version detected (Python 3.$PYTHON_VERSION)";
   while true; do
     read -rp $'Install Python3.11 (y) or abort? (n)\n' yn

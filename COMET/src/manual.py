@@ -135,6 +135,7 @@ if __name__ == '__main__':
             if command == "stop":
                 break
             if "measurement" in command:
+                # TODO: add proper logging
                 arguments = command.split()
                 if len(arguments) != 2:
                     print("Incorrect measurement command (must have one and only numeric argument): " + command)

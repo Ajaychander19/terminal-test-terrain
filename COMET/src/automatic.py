@@ -1,7 +1,8 @@
+import logging
 import os
 import psutil
 
-from time import sleep, time
+from time import sleep
 from datetime import datetime, timedelta
 import pause
 
@@ -18,6 +19,20 @@ measurements_started = False
 shutdown_requested = False
 gps_error = False
 network_error = False
+
+
+def setup_logger():
+    res = logging.getLogger("COMET")
+
+    log_dir_path = os.path.abspath("./logs")
+    if not os.path.isdir(log_dir_path):
+        os.makedirs(log_dir_path)
+
+    logging.basicConfig(filename=f'./logs/comet_{datetime.now().strftime("%d-%m-%Y")}.log',
+                        format='%(asctime)s: %(levelname)s: %(message)s',
+                        datefmt='%d-%m-%Y %H:%M:%S',
+                        level=logging.DEBUG)
+    return res
 
 
 def toggle_measurement_session():
@@ -43,13 +58,14 @@ def log_memory_usage(log_file: TextIO):
     The memory usage is given in KB.
 
     The line is written in the format as in the example below:
-    1719909817.8414948,13502
+    1719909817.8414948,12582912
 
     :param log_file: file access open in write mode when the log line will be written
     """
     process = psutil.Process(os.getpid())
     memory_info = process.memory_info()
-    log_file.write(f"{time()},{memory_info.rss / 1024}\n")
+    log_file.write(f"{str(datetime.now())},{memory_info.rss / 1024},{process.memory_percent()},"
+                   f"{psutil.virtual_memory().percent}\n")
 
 
 def update_error_led():
@@ -82,7 +98,7 @@ def update_error_led():
         red_led.off()
 
 
-def check_for_sim(atcs: ATCommandSender, pin_code: str = "0000", log_file: TextIO = None) -> bool:
+def check_for_sim(atcs: ATCommandSender, pin_code: str = "0000") -> bool:
     """
     Checks if the SIM card is activated, if it isn't tries to unlock using `pin_code` in a loop until it is activated
     or shutdown/measurements end was requested.
@@ -93,7 +109,6 @@ def check_for_sim(atcs: ATCommandSender, pin_code: str = "0000", log_file: TextI
     On average, this function takes 3 to 13 seconds to finish on start up and is nearly instant if the SIM card has
     already been activated
 
-    :param log_file: file access open in write mode for memory logging
     :param pin_code: the pin code of the SIM card inserted in the module. Must be a numeric string in XXXX format.
     :param atcs: An instance of an initialized `ATCommandSender`
     :return: True when the SIM card is ready, False if the check was stopped externally
@@ -104,34 +119,30 @@ def check_for_sim(atcs: ATCommandSender, pin_code: str = "0000", log_file: TextI
 
     before = datetime.now()
     cpt = 10  # try to unlock sim every 10 iterations of the loop
-    sim_ready = "READY" in atcs.send_command("AT+CPIN?")
+    sim_ready = "READY" in atcs.send_command("AT+CPIN?", logger)
     while not sim_ready:
         if shutdown_requested or not measurements_started:
             return False
 
         if cpt == 10:
-            print("SIM not ready, trying to unlock...")
-            atcs.enter_pin(pin_code)
+            logger.info("SIM not ready, trying to unlock...")
+            atcs.enter_pin(pin_code, logger)
             cpt = 0
 
         sleep(1)
         cpt += 1
-        sim_ready = "READY" in atcs.send_command("AT+CPIN?")
+        sim_ready = "READY" in atcs.send_command("AT+CPIN?", logger)
 
-    print("SIM card ready")
+    logger.info("SIM card ready")
 
     after = datetime.now()
     if (after - before).total_seconds() > 1.0:
-        print("It took " + str((after - before).total_seconds())
-              + " seconds to unlock the SIM")
-
-    if log_file is not None:
-        log_memory_usage(log_file)
+        logger.debug(f"It took {str((after - before).total_seconds())} seconds to unlock the SIM")
 
     return True
 
 
-def check_for_network(atcs: ATCommandSender, log_file: TextIO = None) -> bool:
+def check_for_network(atcs: ATCommandSender) -> bool:
     """
     Checks for network signal, looping until it is found or shutdown/measurements end was requested.
 
@@ -139,7 +150,6 @@ def check_for_network(atcs: ATCommandSender, log_file: TextIO = None) -> bool:
     network can be found for example when the SIM card is not activated or the module is forced in a network mode
     not available locally (for example when forced to 5G when no 5G cells are present)
 
-    :param log_file: file access open in write mode for memory logging
     :param atcs: An instance of an initialized ATCommandSender
     :return: True when the network signal has been received, False if the check was stopped externally
         (by requesting shutdown or measurements end by holding/pressing the push button)
@@ -148,36 +158,31 @@ def check_for_network(atcs: ATCommandSender, log_file: TextIO = None) -> bool:
     global shutdown_requested
 
     before = datetime.now()
-    network_ok = "NO SERVICE" not in atcs.send_command('AT+CPSI?')
+    network_ok = "NO SERVICE" not in atcs.send_command('AT+CPSI?', logger)
     if not network_ok:
-        print("No service, waiting...")
+        logger.info("No service, waiting...")
     while not network_ok:
         if shutdown_requested or not measurements_started:
             return False
 
         sleep(1)  # CPSI is easy enough to do every second
-        network_ok = "NO SERVICE" not in atcs.send_command('AT+CPSI?')
+        network_ok = "NO SERVICE" not in atcs.send_command('AT+CPSI?', logger)
 
-    print("Service OK")
+    logger.info("Service OK")
     after = datetime.now()
     if (after - before).total_seconds() > 1.0:
-        print("It took " + str((after - before).total_seconds())
-              + " seconds to get network signal")
-
-    if log_file is not None:
-        log_memory_usage(log_file)
+        logger.debug(f"It took {str((after - before).total_seconds())} seconds to get network signal")
 
     return True
 
 
-def check_for_gps(atcs: ATCommandSender, log_file: TextIO = None) -> bool:
+def check_for_gps(atcs: ATCommandSender) -> bool:
     """
     Checks for GPS in a loop until a position is found or shutdown/measurements end was requested.
 
     This function can take anywhere from nearly instant (if a GPS fix is already acquired) to 3-4 minutes on average
     on start up of the module or even 10-15 minutes in the worst case (when the module has never got a GPS fix before)
 
-    :param log_file: file access open in write mode for memory logging
     :param atcs: An instance of an initialized ATCommandSender
     :return: True when the GPS signal has been received, False if the check was stopped externally
         (by requesting shutdown or measurements end by holding/pressing the push button)
@@ -188,25 +193,24 @@ def check_for_gps(atcs: ATCommandSender, log_file: TextIO = None) -> bool:
 
     gps_signal_acquired = False
     before = datetime.now()
+    log_counter = 60
     while not gps_signal_acquired:
         if shutdown_requested or not measurements_started:
             return False
 
-        print("Trying to acquire GPS signal...")
-        # response = atcs.send_command('AT+CGPSINFO')
-        # gps_signal_acquired = response.splitlines()[0].strip() != "+CGPSINFO: ,,,,,,,,"
+        if log_counter >= 60:
+            logger.info("Trying to acquire GPS signal...")
+            log_counter = 0
+
         gps_signal_acquired = (atcs.get_gps_info() != "+CGPSINFO: ,,,,,,,,")
+        log_counter += 1
         sleep(1)
 
-    print("GPS OK")
+    logger.info("GPS OK")
 
     after = datetime.now()
     if (after - before).total_seconds() > 1.0:
-        print("It took " + str((after - before).total_seconds())
-              + " seconds to get GPS signal")
-
-    if log_file is not None:
-        log_memory_usage(log_file)
+        logger.debug(f"It took {str((after - before).total_seconds())} seconds to get GPS signal")
 
     return True
 
@@ -229,27 +233,28 @@ def setup_module(atcs: ATCommandSender, log_file: TextIO = None):
     init_start_time = datetime.now()
 
     red_led.blink(on_time=1, off_time=1)
-    if not check_for_sim(atcs, "0000", log_file):
+    if not check_for_sim(atcs, "0000"):
         return
     red_led.off()
 
-    print("Defaulting to LTE only mode")
-    atcs.send_command('AT+CNMP=38')
+    logger.info("Defaulting to LTE only mode")
+    atcs.send_command('AT+CNMP=38', logger)
 
-    red_led.blink(on_time=1, off_time=0.5)
-    if not check_for_network(atcs, log_file):
+    red_led.blink(on_time=3, off_time=0.5)
+    if not check_for_network(atcs):
         return
     red_led.off()
 
-    # atcs.restart_gps()
-    #
-    # red_led.blink(on_time=0.5, off_time=3)
-    # if not check_for_gps(atcs, log_file):
-    #     return
-    # red_led.off()
+    atcs.restart_gps(logger)
 
-    print("It took " + str((datetime.now() - init_start_time).total_seconds())
-          + " seconds to initialize")
+    red_led.blink(on_time=0.5, off_time=3)
+    if not check_for_gps(atcs):
+        return
+    red_led.off()
+
+    if log_file is not None:
+        log_memory_usage(log_file)
+    logger.info(f"It took {str((datetime.now() - init_start_time).total_seconds())} seconds to initialize")
 
 
 def start_measurement_session():
@@ -279,25 +284,26 @@ def start_measurement_session():
     red_led.on()
     # red led will be continuously on until the connection is established
     # usually it's instant, but sometimes it can take a while if program starts right at boot or if it's restarted
-    with SerialConnection(module_path) as connection, open(log_file_path, "w") as log_file:
-        log_file.write("timestamp,memory_usage_mb\n")
+    logger.info(f"Opening serial connection on {module_path}")
+    before = datetime.now()
+    with SerialConnection(module_path) as connection, open(log_file_path, "w") as memory_log:
+        logger.debug(f"Serial connection opened on {module_path}, took {(datetime.now() - before).total_seconds()}")
+        logger.info("Starting a new measurement session")
+        memory_log.write("timestamp,process_memory_usage_kb,process_memory_usage_percent,total_memory_usage_percent\n")
         atcs = ATCommandSender(connection)
 
         red_led.off()
-        setup_module(atcs, log_file)
+        setup_module(atcs, memory_log)
         if shutdown_requested:
-            atcs.send_command("AT+CPOF")
+            logger.info("Powering down the module")
+            atcs.send_command("AT+CPOF", logger)
             return
         if not measurements_started:
             return
 
-        print("Starting measurements")
+        logger.info("Commencing measurements")
         green_led.on()
         file_path: str
-        # I don't like storing the entire file content in memory
-        # (even if it shouldn't be more than 100MB in the worst case)
-        # but it seems to be the only way to reliably have it when rewriting the header
-        file_content: list[str]
         with MeasurementsWriter(is_tmp=True, operator_info=atcs.get_operator()) as writer:
             file_path = writer.get_file_path()
             writer.print_header()
@@ -311,7 +317,7 @@ def start_measurement_session():
             try:
                 file_time = os.stat("./stop").st_ctime
             except OSError:
-                print("WARNING: stop file not found, measurements will have to be stopped with the button")
+                logger.warning("stop file not found, measurements will have to be stopped with the button")
 
             log_counter = 0
             current_measurement = 0
@@ -319,7 +325,7 @@ def start_measurement_session():
             gps_lost = False
             gps_error = network_error = current_gps_error = current_network_error = False
             last_error_state = (current_gps_error, current_network_error)
-            print("Measurements loop started")
+            logger.debug("Measurements loop started")
             while measurements_started and not shutdown_requested:
                 green_led.on()
 
@@ -332,7 +338,7 @@ def start_measurement_session():
                     continuous_gps_error_counter = 0
                 writer.print_gps_measurement(gps_info)
                 if continuous_gps_error_counter > 30:
-                    print("No GPS signal for 30 seconds")
+                    logger.warning("No GPS signal for 30 seconds")
                     gps_lost = True
                     continuous_gps_error_counter = 0
 
@@ -357,8 +363,8 @@ def start_measurement_session():
                     update_error_led()
                     last_error_state = current_error_state
 
-                print("Measurement ", str(current_measurement),
-                      " took ", (datetime.now() - starting_time).microseconds / 1000, " milliseconds")
+                logger.info(f"Measurement {str(current_measurement)} took "
+                            f"{(datetime.now() - starting_time).microseconds / 1000} milliseconds")
 
                 starting_time = datetime.now()
                 starting_time = starting_time + timedelta(microseconds=(1000000 - starting_time.microsecond))
@@ -366,7 +372,7 @@ def start_measurement_session():
                 pause.until(starting_time)
 
                 if log_counter >= 30:  # Save memory readings every 30 measurements
-                    log_memory_usage(log_file)
+                    log_memory_usage(memory_log)
                     log_counter = 0
                 log_counter += 1
 
@@ -375,16 +381,18 @@ def start_measurement_session():
                     # If the stop file was modified (by touch or else), stop the execution
                     if os.stat("./stop").st_ctime != file_time:
                         measurements_started = False
-                        print("Measurements stopped via stop file")
+                        logger.info("Measurements stopped via stop file")
 
         before = datetime.now()
         # Add the GPS lost header. This will rewrite the file, so it might take a bit of time
         MeasurementsWriter.add_gps_lost_header(file_path, gps_lost)
-        print(f"It took {(datetime.now() - before).total_seconds()} seconds to add the GPS lost entry to the header")
+        logger.debug(f"It took {(datetime.now() - before).total_seconds()} "
+                     f"seconds to add the GPS lost entry to the header")
 
         # Power down the module
         if shutdown_requested:
-            atcs.send_command("AT+CPOF")
+            logger.info("Powering down the module")
+            atcs.send_command("AT+CPOF", logger)
         green_led.off()
         red_led.off()
 
@@ -392,6 +400,9 @@ def start_measurement_session():
 if __name__ == '__main__':
     dt_start = datetime.now()
     module_path = '/dev/ttyUSB2'
+    logger = setup_logger()
+    logger.info("")
+    logger.info("Starting COMET")
 
     with (LED("GPIO26") as green_led,
           LED("GPIO24") as red_led,
@@ -404,43 +415,43 @@ if __name__ == '__main__':
         red_led.on()
         # Check if the module is connected by checking the device file
         # Red will be lit on boot until the module is properly connected
-        print("Waiting for module")
+        logger.info("Waiting for module")
         while not os.path.exists(module_path):
             sleep(0.5)
             if shutdown_requested:
                 green_led.close()
                 red_led.close()
                 start_button.close()
-                print("Shutting down now")
+                logger.info("Shutting down now")
                 os.system("sudo shutdown -h now")
-        print("Module found")
+        logger.info("Module found")
 
         # Waiting for at least 30 seconds is very important because after it is connected, the module sends a bunch
         # of messages to initialize. There is no way to know for sure when it's ended and writing/reading
         # during this time can create an infinite loop completely blocking the execution.
-        print("Waiting 30 seconds at first boot to let module finish initializations...")
+        logger.info("Waiting 30 seconds at first boot to let module finish initializations...")
         for i in range(30):
             sleep(1)
             if shutdown_requested:
                 green_led.close()
                 red_led.close()
                 start_button.close()
-                print("Shutting down now")
+                logger.info("Shutting down now")
                 os.system("sudo shutdown -h now")
 
         red_led.off()
 
         green_led.on()
-        print("Press start button to start measurements")
+        logger.info("Waiting for the start button to be pushed")
         while not shutdown_requested:
             if measurements_started:
                 start_measurement_session()
+                red_led.off()
                 if not shutdown_requested:
-                    print("Press start button to start a new measurements")
                     green_led.on()
-            sleep(0.5)  # Maybe increase it, it kinda uses a lot of CPU time with 0.5 (>3%)
+            sleep(0.5)
 
     # When shutdown is requested, wait the measurement session to end, reach end of context (close leds and buttons)
     # and shutdown
-    print("Shutting down now")
+    logger.info("Shutting down now")
     os.system("sudo shutdown -h now")

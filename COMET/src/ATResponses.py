@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from enum import Enum
 
@@ -190,13 +191,15 @@ class QENGServing:
             The line must be in the following format: '+QENG: "servingcell",<state>'
         :return: The UE_State enum corresponding to the UE state or None if response_line is in wrong format
         """
+        logger = logging.getLogger("COMET")
+
         line = response_line.strip()
         if not line.startswith("+QENG"):
-            print(f"Wrong format for EN-DC UE state line, got: {response_line}")
+            logger.error(f"Wrong format for EN-DC UE state line, got: {response_line}")
             return None
         values: list[str] = line.removeprefix('+QENG:').replace('"', '').strip().split(',')
         if len(values) != 2 or values[1] != "servingcell":
-            print(f"Wrong format for EN-DC UE state line, got: {response_line}")
+            logger.error(f"Wrong format for EN-DC UE state line, got: {response_line}")
             return None
 
         return UE_State(values[1])
@@ -230,6 +233,7 @@ class QENGServing:
             or None if the line format is incorrect or if network type is WCDMA
             or an empty instance evaluating to False with UNKNOWN UE state when no network connection
         """
+        logger = logging.getLogger("COMET")
         if timestamp is None:
             timestamp = datetime.now()
 
@@ -247,8 +251,8 @@ class QENGServing:
         # if it doesn't match it's probably in the wrong format
         if nb_params == 20:  # LTE
             if values[0] != "servingcell":
-                print(f'Unrecognized parameter: "servingcell" was expected but {values[0]} was given)')
-                print(f'The line given was: {line}')
+                logger.error(f'Unrecognized parameter: "servingcell" was expected but {values[0]} was given)')
+                logger.error(f'The line given was: {line}')
                 return None
             try:
                 return cls(timestamp=timestamp,
@@ -261,14 +265,14 @@ class QENGServing:
                            sinr=int(values[16]), cqi=int(values[17]), tx_power=int(values[18]),
                            srxlev=int(values[19]))
             except ValueError:
-                print(f"One of the parameters in line had incorrect format: {line}")
+                logger.error(f"One of the parameters in line had incorrect format: {line}")
         elif nb_params == 17:  # 5G-SA or 3G
             # If on 3G, return None, we want to ignore it
             if values[2] == "WCDMA":
                 return None
             if values[0] != "servingcell":
-                print(f'Unrecognized parameter: "servingcell" was expected but {values[0]} was given)')
-                print(f'The line given was: {line}')
+                logger.error(f'Unrecognized parameter: "servingcell" was expected but {values[0]} was given)')
+                logger.error(f'The line given was: {line}')
                 return None
 
             try:
@@ -282,12 +286,12 @@ class QENGServing:
                            scs=int(values[15]), srxlev=int(values[16])
                            )
             except ValueError:
-                print(f"One of the parameters in line had incorrect format: {line}")
+                logger.error(f"One of the parameters in line had incorrect format: {line}")
 
         elif nb_params == 11:  # 5G-NSA in EN-DC mode
             if values[0] != "NR5G-NSA":
-                print(f'Unrecognized parameter: "NR5G-NSA" was expected but {values[0]} was given)')
-                print(f'The line given was: {line}')
+                logger.error(f'Unrecognized parameter: "NR5G-NSA" was expected but {values[0]} was given)')
+                logger.error(f'The line given was: {line}')
                 return None
 
             ue_state = en_dc_ue_mode
@@ -303,11 +307,11 @@ class QENGServing:
                            is_en_dc=True
                            )
             except ValueError:
-                print(f"One of the parameters in line had incorrect format: {line}")
+                logger.error(f"One of the parameters in line had incorrect format: {line}")
         elif nb_params == 18:  # LTE in EN-DC mode
             if values[0] != "LTE":
-                print(f'Unrecognized parameter: "LTE" was expected but {values[0]} was given)')
-                print(f'The line given was: {line}')
+                logger.error(f'Unrecognized parameter: "LTE" was expected but {values[0]} was given)')
+                logger.error(f'The line given was: {line}')
                 return None
 
             ue_state = en_dc_ue_mode
@@ -325,11 +329,12 @@ class QENGServing:
                            srxlev=int(values[17]), is_en_dc=True
                            )
             except ValueError:
-                print(f"One of the parameters in line had incorrect format: {line}")
+                logger.error(f"One of the parameters in line had incorrect format: {line}")
 
         else:
-            print(f'Incorrect AT+QENG="servingcell" response format (unrecognized number of parameter: {nb_params})')
-            print(f'The line given was: {line}')
+            logger.error(f'Incorrect AT+QENG="servingcell" response format '
+                         f'(unrecognized number of parameter: {nb_params})')
+            logger.error(f'The line given was: {line}')
             return None
 
     def __bool__(self):
@@ -469,6 +474,8 @@ class QENGNeighbour:
         if "ERROR" in line:  # We're not interested in neighbours when there is no network
             return None
 
+        logger = logging.getLogger("COMET")
+
         # Remove +QENG: prefix from all lines and split values separated by ','
         # Second strip because spacing after QENG can be inconsistent
         values: list[str] = line.strip().removeprefix('+QENG:').replace('"', '').strip().split(',')
@@ -489,7 +496,7 @@ class QENGNeighbour:
                            s_intra_search=int(values[12])
                            )
             except ValueError:
-                print(f"One of the parameters in line had incorrect format: {line}")
+                logger.error(f"One of the parameters in line had incorrect format: {line}")
                 return None
 
         elif nb_params == 12:  # LTE neighbourcell inter
@@ -502,15 +509,15 @@ class QENGNeighbour:
                            threshX_low=int(values[10]), threshX_high=int(values[11])
                            )
             except ValueError:
-                print(f"One of the parameters in line had incorrect format: {line}")
+                logger.error(f"One of the parameters in line had incorrect format: {line}")
                 return None
         elif nb_params == 10:  # WCDMA, return instance with empty values (will print empty string)
             return cls(timestamp=timestamp, cell_type=Cell_Type.neighbourcell)
         elif nb_params == 7:  # LTE in WCDMA mode, return instance with empty values (will print empty string)
             return cls(timestamp=timestamp, cell_type=Cell_Type.neighbourcell)
         else:
-            print(f'Incorrect AT+QENG="neighbourcell" response format (unrecognized number of parameter: {nb_params})')
-            print(f'The line given was: {line}')
+            logger.error(f'Incorrect AT+QENG="neighbourcell" response format (unrecognized number of parameter: {nb_params})')
+            logger.error(f'The line given was: {line}')
             return None
 
     def __bool__(self):
@@ -649,13 +656,15 @@ class CGPSINFO:
         values: list[str] = line.strip().removeprefix('+CGPSINFO:').replace('"', '').strip().split(',')
         values = [value.strip() for value in values]
 
+        logger = logging.getLogger("COMET")
+
         _timestamp = timestamp
         if _timestamp is None:
             _timestamp = datetime.now()
 
         if len(values) != 9:
-            print(f"Incorrect AT+CGPSINFO response format (9 values expected, {len(values)} found)")
-            print(f"The AT+CGPSINFO response was: {line}")
+            logger.error(f"Incorrect AT+CGPSINFO response format (9 values expected, {len(values)} found)")
+            logger.error(f"The AT+CGPSINFO response was: {line}")
             return None
 
         # If latitude is an empty string then no GPS info was given by the response
@@ -670,7 +679,7 @@ class CGPSINFO:
                        alt=float(values[6]), speed=float(values[7]), course=float(values[8])
                        )
         except ValueError:
-            print(f"One of the parameters in line had incorrect format: {line}")
+            logger.error(f"One of the parameters in line had incorrect format: {line}")
 
     @staticmethod
     def prefix_with_zeros(left_digits: int, nb: str, sep: str = ".") -> str:
@@ -817,17 +826,19 @@ class COPS:
         values: list[str] = line.strip().removeprefix('+COPS:').replace('"', '').strip().split(',')
         values = [value.strip() for value in values]
 
+        logger = logging.getLogger("COMET")
+
         if len(values) == 1:
-            print("No operator found, check network connection")
+            logger.error("No operator found, check network connection")
             return cls()
 
         if len(values) != 4:
-            print(f"Incorrect COPS response format (4 values expected, {len(values)} found)")
-            print(f"The COPS response was: {line}")
+            logger.error(f"Incorrect COPS response format (4 values expected, {len(values)} found)")
+            logger.error(f"The COPS response was: {line}")
             return None
 
         try:
             return cls(mode=int(values[0]), oper_format=int(values[1]), oper=values[2],
                        act=AccesTechnology(int(values[3])))
         except ValueError:
-            print(f"One of the parameters in line had incorrect format: {line}")
+            logger.error(f"One of the parameters in line had incorrect format: {line}")

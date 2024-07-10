@@ -35,6 +35,7 @@ if [ $# -eq 1 ]
       ;;
       "transfer") # Transfer all measurements file to the dev computer
         scp -r  ${DEST_DIR}/measurements/* ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}/measurements
+        scp -r  ${DEST_DIR}/logs/* ${DEV_COMPUTER_USER}@${DEV_COMPUTER_IP}:${SOURCE_DIR}/logs
       ;;
       *) echo "Accepted arguments:
           run (update python files and run main.py)

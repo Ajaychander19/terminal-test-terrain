@@ -1,3 +1,4 @@
+import logging
 from time import sleep
 
 import serial
@@ -35,6 +36,7 @@ class SerialConnection:
         Sometimes it can take a dozen seconds on start up of the module, while the connection is still in the "busy"
         state. If the serial port is used by another process or wasn't closed properly, will loop until it's closed.
         """
+        logger = logging.getLogger("COMET")
         while True:
             try:  # Try to open a connection, if exception is raised because connection is not possible, retry.
                 self.module = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
@@ -45,6 +47,7 @@ class SerialConnection:
                 else:
                     raise ConnectionError("Couldn't open a connection to " + self.port)
             except serial.SerialException as e:
+                logger.debug(f"Failed to open connection: {e}. Retrying in 3 seconds...")
                 print(f"Failed to open connection: {e}. Retrying in 3 seconds...")
                 sleep(3)
 
@@ -55,7 +58,9 @@ class SerialConnection:
         When exiting because of an exception, this will power down the module through AT+CPOF command.
         """
         if exc_tb:
-            print("Serial Connection closed because of an error")
+            logger = logging.getLogger("COMET")
+            logger.critical(f"Serial connection closed because of an error")
+            print("Serial connection closed because of an error")
             # This must only be in the automatic mode when the RPI is powered down as well
             # print("Powering down the module")
             # self.send_command("AT+CPOF")

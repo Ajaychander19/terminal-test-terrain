@@ -1,8 +1,12 @@
-import time
+import logging
 from datetime import datetime
 
 from ATResponses import QENGServing, QENGNeighbour, CGPSINFO, COPS
 from SerialConnection import SerialConnection
+
+
+class PinException(Exception):
+    pass
 
 
 class ATCommandSender:
@@ -20,17 +24,20 @@ class ATCommandSender:
         self.module = connection
         ""
 
-    def send_command(self, cmd: str) -> str:
+    def send_command(self, cmd: str, logger: logging.Logger = None) -> str:
         """
         Send an AT command to the module and read the response. If cmd is in wrong format (doesn't start with AT),
         return empty string. If the command is not recognized by the module,
         it will be interpreted and the module will respond with "ERROR".
 
+        :param logger: If not None, will log an error on unrecognized command
         :param str cmd: the AT command to send, for example cmd="AT+CSQ"
         :returns: a multiline string with all lines of the response
         """
         if not cmd.strip().upper().startswith("AT"):
-            print(cmd + " isn't an AT command")
+            print(f"{cmd} isn't an AT command")
+            if logger is not None:
+                logger.error(f"{cmd} was sent to the module, which is not an AT command")
             return ""
         self.module.send_command(cmd)
 
@@ -59,23 +66,33 @@ class ATCommandSender:
                 result += line
         return result
 
-    def enter_pin(self, pin: str) -> str:
+    def enter_pin(self, pin: str, logger: logging.Logger = None) -> str:
         """
         Send AT+CPIN=pin command. Will return the entire response on success and empty string on error.
 
+        :param logger: If not None, will log errors and will raise an exception (to be used in automatic mode).
         :param pin: The pin code of the SIM card. Must be 4 characters long, with numeric characters only,
             for example "0000".
         :return: A multiline string containing the lines of the response.
         """
         if not pin.isnumeric():
-            print(pin + " isn't a PIN code (must be numbers)")
+            print(f"{pin} isn't a PIN code (must be numbers)")
+            if logger is not None:
+                logger.error(f"Incorrect pin ({pin.strip()}) was used, must be numeric")
+                raise PinException
             return ""
         if not len(pin.strip()) == 4:
-            print("A PIN code must be 4 numbers long (got" + str(len(pin.strip())) + ")")
+            print(f"A PIN code must be 4 numbers long (got {str(len(pin.strip()))})")
+            if logger is not None:
+                logger.error(f"Incorrect pin ({pin.strip()}) was used, must 4 characters long")
+                raise PinException
             return ""
 
         self.module.send_command("AT+CPIN=" + pin.strip())
-        print("Sent: AT+CPIN=" + pin.strip())
+        print(f"Sent: AT+CPIN={pin.strip()}")
+        if logger is not None:
+            logger.info(f"Sent: AT+CPIN={pin.strip()}")
+
         result = ""
         lines = self.module.read_pin_response()
         for line in lines:
@@ -84,9 +101,11 @@ class ATCommandSender:
                 return ""
         return result
 
-    def restart_gps(self):
+    def restart_gps(self, logger: logging.Logger = None):
         """
         Restart a GPS session in standalone mode.
+
+        :param logger: If not None, will log GPS restarting.
         """
         self.module.send_command("AT+CGPS?")
         lines = self.module.read_response()
@@ -95,16 +114,26 @@ class ATCommandSender:
             current_gps += line
         if "+CGPS: 1,1" in current_gps.strip():
             print("GPS already ON in standalone mode")
+            if logger is not None:
+                logger.info("GPS already ON in standalone mode")
         else:
             print("Restarting GPS")
+            if logger is not None:
+                logger.info("Restarting GPS")
             self.module.send_command("AT+CGPS=0")
             self.module.read_response()
-            print("GPS OFF")
+            print("GPS session OFF")
+            if logger is not None:
+                logger.debug("GPS session OFF")
+
             self.module.send_command("AT+CGPS=1,1")
             lines = self.module.read_response()
             for line in lines:
                 print(line)
+
             print("GPS ON in standalone mode")
+            if logger is not None:
+                logger.debug("GPS ON in standalone mode")
 
     def get_serving_cell(self, timestamp: datetime = None) -> list[QENGServing]:
         """
