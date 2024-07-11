@@ -60,7 +60,7 @@ pip install -r ./requirements.txt
 # just in case
 sudo chmod 744 ./comet.sh
 sudo chmod 744 ./automatic.py
-sudo chmod 744 ./main.sh
+sudo chmod 744 ./manual.sh
 
 
 
