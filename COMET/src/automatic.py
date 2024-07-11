@@ -1,5 +1,7 @@
 import logging
 import os
+import sys
+
 import psutil
 
 from time import sleep
@@ -21,7 +23,7 @@ gps_error = False
 network_error = False
 
 
-def setup_logger():
+def setup_logger(print_to_stdout: bool = False):
     res = logging.getLogger("COMET")
 
     log_dir_path = os.path.abspath("./logs")
@@ -32,6 +34,8 @@ def setup_logger():
                         format='%(asctime)s: %(levelname)s: %(message)s',
                         datefmt='%d-%m-%Y %H:%M:%S',
                         level=logging.DEBUG)
+    if print_to_stdout:
+        res.addHandler(logging.StreamHandler(sys.stdout))  # print the messages to console too
     return res
 
 
@@ -278,15 +282,14 @@ def start_measurement_session():
     global network_error
     global gps_error
 
-    hour = datetime.now().strftime("%H-%M")
-    log_file_path = f"./logs/{hour}_memory_usage.csv"
+    memory_log_path = f"./logs/{datetime.now().strftime("%H-%M")}_memory_usage.csv"
     green_led.off()
     red_led.on()
     # red led will be continuously on until the connection is established
     # usually it's instant, but sometimes it can take a while if program starts right at boot or if it's restarted
     logger.info(f"Opening serial connection on {module_path}")
     before = datetime.now()
-    with SerialConnection(module_path) as connection, open(log_file_path, "w") as memory_log:
+    with SerialConnection(module_path) as connection, open(memory_log_path, "w", buffering=1) as memory_log:
         logger.debug(f"Serial connection opened on {module_path}, took {(datetime.now() - before).total_seconds()}")
         logger.info("Starting a new measurement session")
         memory_log.write("timestamp,process_memory_usage_kb,process_memory_usage_percent,total_memory_usage_percent\n")
@@ -400,7 +403,7 @@ def start_measurement_session():
 if __name__ == '__main__':
     dt_start = datetime.now()
     module_path = '/dev/ttyUSB2'
-    logger = setup_logger()
+    logger = setup_logger(print_to_stdout=True)
     logger.info("")
     logger.info("Starting COMET")
 
