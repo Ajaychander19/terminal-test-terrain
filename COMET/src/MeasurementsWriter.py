@@ -47,6 +47,10 @@ class MeasurementsWriter:
         self.is_tmp: bool = is_tmp
 
         self.file: TextIOWrapper | None = None
+        self.measurements_counter: int = 0
+        """Counter of current measurement"""
+        self.sync_period: int = 30
+        """Indicates how often measurements must be synced with disc (in number of writes)"""
 
     def __enter__(self):
         """
@@ -68,14 +72,17 @@ class MeasurementsWriter:
         """
         Open a file in writing mode at path given by `dir_path` and `filename` attributes. This will create
         intermediary directories if needed and will overwrite a file with the same name if it already exists.
+
+        The file is opened with a line by line buffering. This means that each write is 3-4 times slower (which is still
+        less than 100 microseconds) but ensures that every single measurement will be saved even on sudden shutdown
         """
         if not os.path.isdir(self.dir_path):
             os.makedirs(self.dir_path)
 
         if self.is_tmp:
-            self.file = open(self.dir_path + "tmp_" + self.filename, "w")
+            self.file = open(self.dir_path + "tmp_" + self.filename, "w", buffering=1)
         else:
-            self.file = open(self.dir_path + self.filename, "w")
+            self.file = open(self.dir_path + self.filename, "w", buffering=1)
 
     def close(self):
         """
@@ -86,11 +93,17 @@ class MeasurementsWriter:
 
     def __write(self, text: str = ""):
         """
-        Write text to the measurements file with no additional treatment
+        Write text to the measurements file.
+
+        Every `self.sync_period` measurement will sync the file with disc to prevent losing data in case of
+        power failure. This sync can take up to around 10ms, which is why it's only done periodically.
         
         :param text: text to write to file
         """
         self.file.write(text)
+        # Syncing with disc can take up to 10ms, so it is only done every self.sync_period measurements
+        if self.measurements_counter % self.sync_period == 0:
+            os.fsync(self.file.fileno())
 
     def __write_line(self, text: str = ""):
         """
@@ -98,7 +111,7 @@ class MeasurementsWriter:
         
         :param text: string to write to file
         """
-        self.file.write(text + "\n")
+        self.__write(text + "\n")
 
     def get_file_path(self) -> str:
         """
@@ -138,6 +151,7 @@ class MeasurementsWriter:
     
         :param gps_info: an instance of CGPSINFO class filled with localisation measurements.
         """
+        self.measurements_counter += 1
         self.__write_line(gps_info.to_printable_string())
 
     def print_serving_cell_measurement(self, cell: QENGServing):
@@ -148,6 +162,7 @@ class MeasurementsWriter:
 
         :param cell: an instance of QENGServing class filled with measurements from the serving cell.
         """
+        self.measurements_counter += 1
         self.__write_line(cell.to_printable_string())
 
     def print_neighbour_cell_measurement(self, cell: QENGNeighbour):
@@ -157,6 +172,7 @@ class MeasurementsWriter:
 
         :param cell: an instance of QENGNeighbour class filled with measurements from a neighbouring cell.
         """
+        self.measurements_counter += 1
         self.__write_line(cell.to_printable_string())
 
     @staticmethod
