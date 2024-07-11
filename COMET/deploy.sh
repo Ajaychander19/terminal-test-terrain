@@ -20,6 +20,6 @@ done
 
 # Execute the installation script on the Raspberry Pi
 echo "Executing installation script on Raspberry Pi..."
-ssh "$RPI_USER@$RPI_IP" "cd && sudo chmod 744 install.sh && sudo bash install.sh"
+ssh "$RPI_USER@$RPI_IP" "cd && sudo chmod 744 install.sh && sudo bash install.sh --non-interactive"
 
 echo "Deployment complete"

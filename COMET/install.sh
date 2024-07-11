@@ -1,43 +1,58 @@
 #!/bin/bash
 
+# Check for non-interactive mode
+INTERACTIVE=true
+if [[ "$1" == "--non-interactive" ]]; then
+  INTERACTIVE=false
+fi
 
-#### INSTALL PYTHON AND REQUIRED PACK
+install_python () {
+  echo "Installing Python3.11"
+  echo "------------------------------"
+  sudo add-apt-repository ppa:deadsnakes/ppa;
+  sudo apt update;
+  sudo apt install python3.11;
+}
+
+
+#### INSTALL PYTHON AND REQUIRED PACKAGES
 PYTHON_VERSION=$(python3 -c 'import sys; print(sys.version_info.minor)')
 
 if [ "$PYTHON_VERSION" -lt 11 ]; then
   echo "Python 3.$PYTHON_VERSION detected which was not tested and might not be compatible";
-  while true; do
-    read -rp $'Install Python3.11 (y) or proceed with current version? (n)\n' yn
-    case $yn in
-        [Yy]* )
-          echo "Installing Python3.11"
-          echo "------------------------------"
-          sudo add-apt-repository ppa:deadsnakes/ppa;
-          sudo apt update;
-          sudo apt install python3.11;
-          PYTHON_VERSION=11
-          break;;
-        [Nn]* ) break;;
-        * ) echo "Please answer yes or no";;
-    esac
-  done
+  if [ "$INTERACTIVE" = true ]; then
+    while true; do
+      read -rp $'Install Python3.11 (y) or proceed with current version? (n)\n' yn
+      case $yn in
+          [Yy]* )
+            install_python
+            PYTHON_VERSION=11
+            break;;
+          [Nn]* ) break;;
+          * ) echo "Please answer yes or no";;
+      esac
+    done
+  else
+    echo "Non-interactive mode: Proceeding with current Python version"
+  fi
 elif [ "$PYTHON_VERSION" -lt 6 ]; then
   echo "Incompatible Python version detected (Python 3.$PYTHON_VERSION)";
-  while true; do
-    read -rp $'Install Python3.11 (y) or abort? (n)\n' yn
-    case $yn in
-        [Yy]* )
-          echo "Installing Python3.11"
-          echo "------------------------------"
-          sudo add-apt-repository ppa:deadsnakes/ppa;
-          sudo apt update;
-          sudo apt install python3.11;
-          PYTHON_VERSION=11
-          break;;
-        [Nn]* ) exit;;
-        * ) echo "Please answer yes or no";;
-    esac
-  done
+  if [ "$INTERACTIVE" = true ]; then
+    while true; do
+      read -rp $'Install Python3.11 (y) or abort? (n)\n' yn
+      case $yn in
+          [Yy]* )
+            install_python
+            PYTHON_VERSION=11
+            break;;
+          [Nn]* ) exit;;
+          * ) echo "Please answer yes or no";;
+      esac
+    done
+  else
+    echo "Non-interactive mode: Installing Python3.11"
+    install_python
+  fi
 fi
 
 # Instead of modifying the symlink which can break the system, set an alias to the necessary python version
@@ -98,14 +113,19 @@ echo
 
 
 #### START COMET
-while true; do
-    read -rp $'Start the program now? (y/n)\n' yn
-    case $yn in
-        [Yy]* ) sudo systemctl start comet.service; break;;
-        [Nn]* ) break;;
-        * ) echo "Please answer yes or no";;
-    esac
-done
+if [ "$INTERACTIVE" = true ]; then
+  while true; do
+      read -rp $'Start the program now? (y/n)\n' yn
+      case $yn in
+          [Yy]* ) sudo systemctl start comet.service; break;;
+          [Nn]* ) break;;
+          * ) echo "Please answer yes or no";;
+      esac
+  done
+else
+  echo "Starting COMET"
+  sudo systemctl start comet.service;
+fi
 
 echo "------------------------------"
 echo "Installation complete"
