@@ -35,9 +35,10 @@ class ATCommandSender:
         :returns: a multiline string with all lines of the response
         """
         if not cmd.strip().upper().startswith("AT"):
-            print(f"{cmd} isn't an AT command")
             if logger is not None:
                 logger.error(f"{cmd} was sent to the module, which is not an AT command")
+            else:
+                print(f"{cmd} isn't an AT command")
             return ""
         self.module.send_command(cmd)
 
@@ -76,22 +77,25 @@ class ATCommandSender:
         :return: A multiline string containing the lines of the response.
         """
         if not pin.isnumeric():
-            print(f"{pin} isn't a PIN code (must be numbers)")
             if logger is not None:
                 logger.error(f"Incorrect pin ({pin.strip()}) was used, must be numeric")
                 raise PinException
+            else:
+                print(f"{pin} isn't a PIN code (must be numbers)")
             return ""
         if not len(pin.strip()) == 4:
-            print(f"A PIN code must be 4 numbers long (got {str(len(pin.strip()))})")
             if logger is not None:
                 logger.error(f"Incorrect pin ({pin.strip()}) was used, must 4 characters long")
                 raise PinException
+            else:
+                print(f"A PIN code must be 4 numbers long (got {str(len(pin.strip()))})")
             return ""
 
         self.module.send_command("AT+CPIN=" + pin.strip())
-        print(f"Sent: AT+CPIN={pin.strip()}")
         if logger is not None:
             logger.info(f"Sent: AT+CPIN={pin.strip()}")
+        else:
+            print(f"Sent: AT+CPIN={pin.strip()}")
 
         result = ""
         lines = self.module.read_pin_response()
@@ -113,27 +117,32 @@ class ATCommandSender:
         for line in lines:
             current_gps += line
         if "+CGPS: 1,1" in current_gps.strip():
-            print("GPS already ON in standalone mode")
             if logger is not None:
                 logger.info("GPS already ON in standalone mode")
+            else:
+                print("GPS already ON in standalone mode")
         else:
-            print("Restarting GPS")
             if logger is not None:
                 logger.info("Restarting GPS")
+            else:
+                print("Restarting GPS")
             self.module.send_command("AT+CGPS=0")
             self.module.read_response()
-            print("GPS session OFF")
+
             if logger is not None:
                 logger.debug("GPS session OFF")
-
+            else:
+                print("GPS session OFF")
             self.module.send_command("AT+CGPS=1,1")
+
             lines = self.module.read_response()
             for line in lines:
                 print(line)
 
-            print("GPS ON in standalone mode")
             if logger is not None:
                 logger.debug("GPS ON in standalone mode")
+            else:
+                print("GPS ON in standalone mode")
 
     def get_serving_cell(self, timestamp: datetime = None) -> list[QENGServing]:
         """

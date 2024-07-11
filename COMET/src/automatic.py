@@ -14,6 +14,7 @@ from ATCommandSender import ATCommandSender
 
 from gpiozero import LED
 from gpiozero import Button
+from gpiozero import CPUTemperature
 
 from typing import TextIO
 
@@ -21,6 +22,10 @@ measurements_started = False
 shutdown_requested = False
 gps_error = False
 network_error = False
+
+
+def log_temperature_error():
+    logger.critical("CPU temperature exceeded 80 degrees Celsius! ")
 
 
 def setup_logger(print_to_stdout: bool = False):
@@ -69,7 +74,7 @@ def log_memory_usage(log_file: TextIO):
     process = psutil.Process(os.getpid())
     memory_info = process.memory_info()
     log_file.write(f"{str(datetime.now())},{memory_info.rss / 1024},{process.memory_percent()},"
-                   f"{psutil.virtual_memory().percent}\n")
+                   f"{psutil.virtual_memory().percent},{psutil.cpu_percent()},{cpu.temperature}\n")
 
 
 def update_error_led():
@@ -249,12 +254,11 @@ def setup_module(atcs: ATCommandSender, log_file: TextIO = None):
         return
     red_led.off()
 
-    atcs.restart_gps(logger)
-
-    red_led.blink(on_time=0.5, off_time=3)
-    if not check_for_gps(atcs):
-        return
-    red_led.off()
+    # atcs.restart_gps(logger)
+    # red_led.blink(on_time=0.5, off_time=3)
+    # if not check_for_gps(atcs):
+    #     return
+    # red_led.off()
 
     if log_file is not None:
         log_memory_usage(log_file)
@@ -282,7 +286,7 @@ def start_measurement_session():
     global network_error
     global gps_error
 
-    memory_log_path = f"./logs/{datetime.now().strftime("%H-%M")}_memory_usage.csv"
+    memory_log_path = f"./logs/{datetime.now().strftime('%H-%M')}_memory_usage.csv"
     green_led.off()
     red_led.on()
     # red led will be continuously on until the connection is established
@@ -292,7 +296,8 @@ def start_measurement_session():
     with SerialConnection(module_path) as connection, open(memory_log_path, "w", buffering=1) as memory_log:
         logger.debug(f"Serial connection opened on {module_path}, took {(datetime.now() - before).total_seconds()}")
         logger.info("Starting a new measurement session")
-        memory_log.write("timestamp,process_memory_usage_kb,process_memory_usage_percent,total_memory_usage_percent\n")
+        memory_log.write("timestamp,process_memory_usage_kb,process_memory_usage_percent,"
+                         "total_memory_usage_percent,total_cpu_percent,cpu_temperature\n")
         atcs = ATCommandSender(connection)
 
         red_led.off()
@@ -409,10 +414,12 @@ if __name__ == '__main__':
 
     with (LED("GPIO26") as green_led,
           LED("GPIO24") as red_led,
-          Button("GPIO25", pull_up=True, bounce_time=0.1, hold_time=2) as start_button
+          Button("GPIO25", pull_up=True, bounce_time=0.1, hold_time=2) as start_button,
+          CPUTemperature(min_temp=30, max_temp=100) as cpu
           ):
         start_button.when_held = request_shutdown
         start_button.when_released = toggle_measurement_session
+        cpu.when_activated = log_temperature_error
 
         # red led continuously
         red_led.on()
