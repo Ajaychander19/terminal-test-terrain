@@ -3,3 +3,5 @@ data/*
 *.aof
 cev*.csv
 logs
+testScripts
+.idea/csv-editor.xml
