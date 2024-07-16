@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import logging
 import os
 import sys
@@ -8,6 +10,7 @@ from time import sleep
 from datetime import datetime, timedelta
 import pause
 
+from CometToCevConverter import CometToCevConverter
 from MeasurementsWriter import MeasurementsWriter
 from SerialConnection import SerialConnection
 from ATCommandSender import ATCommandSender
@@ -24,10 +27,6 @@ gps_error = False
 network_error = False
 
 
-def log_temperature_error():
-    logger.critical("CPU temperature exceeded 80 degrees Celsius! ")
-
-
 def setup_logger(print_to_stdout: bool = False):
     res = logging.getLogger("COMET")
 
@@ -36,7 +35,7 @@ def setup_logger(print_to_stdout: bool = False):
         os.makedirs(log_dir_path)
 
     logging.basicConfig(filename=f'./logs/comet_{datetime.now().strftime("%d-%m-%Y")}.log',
-                        format='%(asctime)s: %(levelname)s: %(message)s',
+                        format='[%(asctime)s] %(levelname)s: %(message)s',
                         datefmt='%d-%m-%Y %H:%M:%S',
                         level=logging.DEBUG)
     if print_to_stdout:
@@ -61,13 +60,19 @@ def request_shutdown():
     shutdown_requested = True
 
 
-def log_memory_usage(log_file: TextIO):
+def log_temperature_error():
+    """Prints a critical error if the temperature exceeded 80 degrees"""
+    logger.critical("CPU temperature exceeded 80 degrees Celsius! ")
+
+
+def log_system_metrics(log_file: TextIO):
     """
     Log current time and memory usage to `log_file`. Time is given as float in seconds since epoch,
-    The memory usage is given in KB.
+    The memory usage is given in KB, the temperature is given in degrees Celsius.
 
-    The line is written in the format as in the example below:
-    1719909817.8414948,12582912
+    The line is written in the following format:
+    time_in_epoch,memory_in_KB,process_memory_consumption_percent,total_memory_consumption_percent,cpu_use_percent,
+    cpu_temperature_in_degrees
 
     :param log_file: file access open in write mode when the log line will be written
     """
@@ -261,14 +266,14 @@ def setup_module(atcs: ATCommandSender, log_file: TextIO = None):
     # red_led.off()
 
     if log_file is not None:
-        log_memory_usage(log_file)
+        log_system_metrics(log_file)
     logger.info(f"It took {str((datetime.now() - init_start_time).total_seconds())} seconds to initialize")
 
 
 def start_measurement_session():
     """
     Starts a new measurement session. This function opens a serial connection and sets up the module.
-    It creates a new measurements file and loops forever, writing network and GPS data to the measurement file.
+    It creates a new measurement file and loops forever, writing network and GPS data to the measurement file.
 
     The function powers down the module and returns as soon as possible when shutdown was requested.
     It also returns when measurement session end was requested either by pressing the button
@@ -320,12 +325,6 @@ def start_measurement_session():
             starting_time = datetime.now()
             starting_time = starting_time + timedelta(microseconds=(1000000 - starting_time.microsecond))
             pause.until(starting_time)
-
-            file_time = None
-            try:
-                file_time = os.stat("./stop").st_ctime
-            except OSError:
-                logger.warning("stop file not found, measurements will have to be stopped with the button")
 
             log_counter = 0
             current_measurement = 0
@@ -380,22 +379,22 @@ def start_measurement_session():
                 pause.until(starting_time)
 
                 if log_counter >= 30:  # Save memory readings every 30 measurements
-                    log_memory_usage(memory_log)
+                    log_system_metrics(memory_log)
                     log_counter = 0
                 log_counter += 1
 
                 current_measurement += 1
-                if file_time is not None:
-                    # If the stop file was modified (by touch or else), stop the execution
-                    if os.stat("./stop").st_ctime != file_time:
-                        measurements_started = False
-                        logger.info("Measurements stopped via stop file")
 
-        before = datetime.now()
         # Add the GPS lost header. This will rewrite the file, so it might take a bit of time
         MeasurementsWriter.add_gps_lost_header(file_path, gps_lost)
-        logger.debug(f"It took {(datetime.now() - before).total_seconds()} "
-                     f"seconds to add the GPS lost entry to the header")
+        logger.debug("GPS_LOST header modified")
+
+        # Once the measurement file is done, make a converted cev file from it
+        green_led.off()
+        green_led.blink(on_time=0.5, off_time=0.5)
+        with CometToCevConverter(file_path) as writer:
+            writer.process()
+        green_led.off()
 
         # Power down the module
         if shutdown_requested:
