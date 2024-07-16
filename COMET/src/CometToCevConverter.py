@@ -316,7 +316,7 @@ class CometToCevConverter:
         print(f"It took {(datetime.now() - before).total_seconds()} to print the measurements")
 
         print(f"Total time taken by write_measurement_line: {self.write_measurement_line.total_time:.4f} seconds")
-        print(f"Total time taken by convert_serving: {self.write_serving_cell_lines.total_time:.4f} seconds")
+        print(f"Total time taken by write_serving_cell_lines: {self.write_serving_cell_lines.total_time:.4f} seconds")
 
     def print_header(self):
         """
@@ -536,5 +536,8 @@ class CometToCevConverter:
 if __name__ == '__main__':
     # with CometToCevConverter("../measurements/11-06-2024/tmp_15-16_measurement.csv") as writer:
     #     writer.process()
-    with CometToCevConverter("../measurements/10-07-2024/tmp_14-35_measurement.csv") as writer:
+    # with CometToCevConverter("../measurements/10-07-2024/tmp_14-35_measurement.csv") as writer:
+    #     writer.process()
+
+    with CometToCevConverter("../measurements/11-07-2024/tmp_16-27_measurement.csv") as writer:
         writer.process()

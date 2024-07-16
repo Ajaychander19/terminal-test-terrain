@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 """
 This script allows for manual sending of AT commands when executed
 """

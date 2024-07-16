@@ -8,10 +8,9 @@ class SerialConnection:
     def __init__(
             self,
             port_path,
-            baudrate=115200,  # 460800
+            baudrate=115200,
             timeout=5,  # Doesn't seem to be used in readline function
             encoding="ISO-8859-1"
-            # encoding='utf-8',
     ):
         """
         Opens a serial connection to a device and provides methods to send AT commands to it and receive responses
@@ -69,6 +68,13 @@ class SerialConnection:
         if self.module:
             self.module.close()
 
+    def readline(self) -> str:
+        """ Read a line in binary from the module and return the decoded string corresponding to that line
+
+        :return: String corresponding to the line read, decoded with SerialConnection.encoding
+        """
+        return self.module.readline().decode(self.encoding, errors='ignore')
+
     def send_command(self, cmd: str):
         """
         Send a text (for example an AT command) through the serial port.
@@ -86,7 +92,7 @@ class SerialConnection:
 
         line: str = ""
         while not (line.endswith("OK") or line.endswith("ERROR")):
-            line = self.module.readline().decode(self.encoding).strip()
+            line = self.readline().strip()
             if line not in ['\n', '\r\n', '']:
                 result.append(line + "\n")
 
@@ -106,7 +112,7 @@ class SerialConnection:
         line: str = ""
         # AT+CPIN will send SMS DONE and PB DONE after the initial OK
         while not ("PB DONE" in line or "ERROR" in line):
-            line = self.module.readline().decode(self.encoding).strip()
+            line = self.readline().strip()
             if line not in ['\n', '\r\n', '']:
                 result.append(line + "\n")
         return result

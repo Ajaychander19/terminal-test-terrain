@@ -41,7 +41,7 @@ class AccesTechnology(Enum):
     NR_5GCN = 11
     NGRAN = 12
     EUTRA_NR = 13
-    UNKNOWN = 15  # 15 appears in AT+COPS? when forced in NR5G only mode, but it doesn't appear in the manual
+    UNKNOWN = 15  # 15 appears in AT+COPS? when forced in NR5G only mode, but it is not documented in the manual
 
 
 class QENGServing:
@@ -52,8 +52,8 @@ class QENGServing:
     so some of the numbers might not represent their real value
     (for example RSSI here is multiplied by 10 from actual value)
 
-    Part of the data (like `ul_bandwidth` or `tx_power`) won't be saved to the measurement file but is still saved
-    in the class instance.
+    Part of the data (like `ul_bandwidth` or `tx_power`) won't be printed to the measurements file but is still saved
+    in the class instance if needed in the future.
 
     Example:
             >>> info = QENGServing.from_string('+QENG:"servingcell","CONNECT","LTE","FDD",208,10,158800132,82,'
@@ -145,7 +145,7 @@ class QENGServing:
         """Indicates if the response was given while in EN-DC mode if True"""
 
     def to_printable_string(self) -> str:
-        """Uses QENGServing instance data to return a string in a format printable to a measurement file.
+        """Uses QENGServing instance data to return a string in a format printable to a measurements file.
 
         Examples:
             >>> info = QENGServing.from_string('+QENG:"servingcell","CONNECT","LTE","FDD",208,10,158800132,82,'
