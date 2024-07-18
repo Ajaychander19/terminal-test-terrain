@@ -47,7 +47,7 @@ class SerialConnection:
                     raise ConnectionError("Couldn't open a connection to " + self.port)
             except serial.SerialException as e:
                 logger.debug(f"Failed to open connection: {e}. Retrying in 3 seconds...")
-                print(f"Failed to open connection: {e}. Retrying in 3 seconds...")
+                # print(f"Failed to open connection: {e}. Retrying in 3 seconds...")
                 sleep(3)
 
     def __exit__(self, exc_type, exc_val, exc_tb):

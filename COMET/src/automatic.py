@@ -77,8 +77,7 @@ def log_system_metrics(log_file: TextIO):
     :param log_file: file access open in write mode when the log line will be written
     """
     process = psutil.Process(os.getpid())
-    memory_info = process.memory_info()
-    log_file.write(f"{str(datetime.now())},{memory_info.rss / 1024},{process.memory_percent()},"
+    log_file.write(f"{str(datetime.now())},{process.memory_info().rss / 1024},{process.memory_percent()},"
                    f"{psutil.virtual_memory().percent},{psutil.cpu_percent()},{cpu.temperature}\n")
 
 
@@ -392,7 +391,7 @@ def start_measurement_session():
         # Once the measurement file is done, make a converted cev file from it
         green_led.off()
         green_led.blink(on_time=0.5, off_time=0.5)
-        with CometToCevConverter(file_path) as writer:
+        with CometToCevConverter(file_path, logger=logger) as writer:
             writer.process()
         green_led.off()
 
@@ -411,9 +410,9 @@ if __name__ == '__main__':
     logger.info("")
     logger.info("Starting COMET")
 
-    with (LED("GPIO26") as green_led,
-          LED("GPIO24") as red_led,
-          Button("GPIO25", pull_up=True, bounce_time=0.1, hold_time=2) as start_button,
+    with (Button("GPIO17", pull_up=True, bounce_time=0.1, hold_time=2) as start_button,
+          LED("GPIO16") as green_led,
+          LED("GPIO26") as red_led,
           CPUTemperature(min_temp=30, max_temp=100) as cpu
           ):
         start_button.when_held = request_shutdown

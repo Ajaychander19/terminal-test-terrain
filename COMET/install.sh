@@ -35,7 +35,7 @@ if [ "$PYTHON_VERSION" -lt 11 ]; then
   else
     echo "Non-interactive mode: Proceeding with current Python version"
   fi
-elif [ "$PYTHON_VERSION" -lt 6 ]; then
+elif [ "$PYTHON_VERSION" -lt 9 ]; then
   echo "Incompatible Python version detected (Python 3.$PYTHON_VERSION)";
   if [ "$INTERACTIVE" = true ]; then
     while true; do

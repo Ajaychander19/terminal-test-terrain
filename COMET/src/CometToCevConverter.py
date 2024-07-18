@@ -1,7 +1,7 @@
 """
 Requires Python 3.6 or newer (f-strings)
 """
-
+import logging
 import os
 import time
 from datetime import datetime
@@ -9,31 +9,6 @@ from functools import wraps
 from io import TextIOWrapper
 
 OFFSET = 5  # actual column of the first earfcn column
-
-
-def measure_time(func):
-    """A wrapper function that allows to see for how long the function was active
-
-    Usage:
-        >>> @measure_time
-        >>> def dummy():
-        >>>     pass
-        >>> dummy()
-        >>> print(f"Total time taken by func: {dummy.total_time:.4f} seconds")
-    """
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        wrapper.total_time += elapsed_time
-        return result
-
-    wrapper.total_time = 0
-    return wrapper
-
 
 def syntax_error(line: int, msg: str, fatal: bool = False):
     """Reports a syntax error at given line. If fatal parameter is True, raises an exception.
@@ -218,7 +193,8 @@ def get_earfcns_pcis(measurements_file_path: str) -> dict[(int, int), int]:
 
 
 class CometToCevConverter:
-    def __init__(self, measurements_file_path: str, output_dir: str = "../cev/", filename: str = "M1"):
+    def __init__(self, measurements_file_path: str, output_dir: str = "../cev/", filename: str = "M1",
+                 logger: logging.Logger = None):
         """
         Takes a COMET measurement file and creates a CORENTIN compatible cev.csv file with processed measurements.
         The constructor only creates the file, to process measurements the process() method must be called
@@ -237,10 +213,16 @@ class CometToCevConverter:
         :param filename: an additional name to the file (will be prefixed with cev and date, can be empty)
         """
 
+        self.logger = logger
+        """If not None, will report errors to the logger instead of rising an exception when possible"""
+        self.earfcn_pci_couples_freq: dict[(int, int), int] = dict()
+        """Dictionary of unique ordered couples of (earfcn, pci) associated to the number of their appearance
+        in measurements format: {(earfcn: int, pci: int): frequency: int}"""
+        self.columns: dict[(int, int), int] = dict()
+        """Indexes of columns associated to each couple in following format: {(earfcn, pci): column_index}.
+        This allows to rapidly find the actual column index to each (earfcn, pci) couple"""
         self.current_measure: dict[(int, int), (int, int, int)] = dict()
         """The dictionary containing the network measurements for each cell of the current measurement"""
-        self.columns: dict[(int, int), int] = dict()
-        """Indexes of columns associated to each couple in following format: {(earfcn, pci): column_index}"""
         self.measurements_file_path = os.path.abspath(measurements_file_path)
         """Path to the COMET measurements file"""
         self.operator_name = get_operator_from_measurements(self.measurements_file_path)
@@ -270,7 +252,8 @@ class CometToCevConverter:
 
     def __enter__(self):
         """
-        Creates a file in the specified directory (which is created if it doesn't exist) on "with" statement
+        Creates a file in the specified directory (which is created if it doesn't exist) on "with" statement.
+        The file will be created only if there were something to convert.
         """
         self.open()
         return self
@@ -284,11 +267,32 @@ class CometToCevConverter:
         self.close()
 
     def open(self):
-        """Open the output file in write mode, creating the file and intermediary directories if needed"""
-        if not os.path.isdir(self.output_dir_path):
-            os.makedirs(self.output_dir_path)
+        """
+        Read the measurements file to retrieve the (earfcn, pci) couples. If it's not empty (meaning that there is
+        something to convert), open the output file in write mode,
+        creating the file and intermediary directories if needed
+        """
+        before = datetime.now()
 
-        self.file = open(self.output_dir_path + self.output_filename, "w")
+        # Parse measurements file to get earfcn and pci data
+        self.earfcn_pci_couples_freq = get_earfcns_pcis(self.measurements_file_path)
+        self.columns = {couple: OFFSET + index for index, couple in enumerate(self.earfcn_pci_couples_freq)}
+
+        if self.logger is not None:
+            self.logger.debug(f"It took {(datetime.now() - before).total_seconds()} to process the cells (pci, earfcn)")
+        else:
+            print(f"It took {(datetime.now() - before).total_seconds()} to process the cells (pci, earfcn)")
+
+        # Only create the file if there were something to convert
+        if self.columns != {}:
+            if not os.path.isdir(self.output_dir_path):
+                os.makedirs(self.output_dir_path)
+            self.file = open(self.output_dir_path + self.output_filename, "w")
+        else:
+            if self.logger is None:
+                raise RuntimeError("No valid cells found")
+            else:  # If the logger is provided, just log the error and exit normally
+                self.logger.error("No valid cells found, measurements will not be converted")
 
     def close(self):
         """Close the output file finishing writing to disc"""
@@ -296,27 +300,30 @@ class CometToCevConverter:
             self.file.close()
 
     def write(self, text: str):
-        """Write a string to the output file
+        """
+        Write a string to the output file
 
         :param text: Text to write to file
         """
         self.file.write(text)
 
     def process(self):
-        """Convert the COMET measurement file to a CORENTIN compatible cev.csv file.
+        """
+        Convert the COMET measurement file to a CORENTIN compatible cev.csv file.
         This will parse the measurement file twice and write the converted measurements to the output cev file.
 
         Might take around a second on very large files
         """
-        before = datetime.now()
-        self.print_header()
-        print(f"It took {(datetime.now() - before).total_seconds()} to print the header")
-        before = datetime.now()
-        self.print_measurements()
-        print(f"It took {(datetime.now() - before).total_seconds()} to print the measurements")
+        if self.columns != {}:
+            before = datetime.now()
 
-        print(f"Total time taken by write_measurement_line: {self.write_measurement_line.total_time:.4f} seconds")
-        print(f"Total time taken by write_serving_cell_lines: {self.write_serving_cell_lines.total_time:.4f} seconds")
+            self.print_header()
+            self.print_measurements()
+
+            if self.logger is not None:
+                self.logger.debug(f"It took {(datetime.now() - before).total_seconds()} to print the file")
+            else:
+                print(f"It took {(datetime.now() - before).total_seconds()} to print the file")
 
     def print_header(self):
         """
@@ -324,14 +331,7 @@ class CometToCevConverter:
 
         This method also updates the columns attribute used in print_measurements() method.
         """
-        # Parse measurements file to get earfcn and pci data
-        earfcn_pci_couples_freq = get_earfcns_pcis(self.measurements_file_path)
-        nb_couples = len(earfcn_pci_couples_freq)
-        # Hashed dictionary to rapidly find the columns index associated to a couple (earfcn, pci).
-        # Columns associate the actual column index to the (earfcn, pci) couple column
-        self.columns = {couple: OFFSET + index for index, couple in enumerate(earfcn_pci_couples_freq)}
-        if self.columns == {}:
-            raise RuntimeError("No valid cells found")
+        nb_couples = len(self.earfcn_pci_couples_freq)
 
         self.write("DEFINE\nVERSION|Version\nDATE|Date\nTECHNO|Techno\n")
 
@@ -354,16 +354,16 @@ class CometToCevConverter:
                    "MEASUREMENT|Timestamp|Lat|Lng|Measurement_Name|Values\n"
                    "CONTENT\n"
                    "VERSION|2.0\n"
-                   f"DATE|{datetime.now().strftime("%d-%m-%Y %H:%M")}\n"
+                   f"DATE|{datetime.now().strftime('%d-%m-%Y %H:%M')}\n"
                    "TECHNO|4G\n",  # Only 4G measurements in COMET as it can't see neighbour cells in 5G mode
                    )
 
         # Write all earfcn found in ascending order
-        earfcn_line = "|".join(str(earfcn_pci[0]) for earfcn_pci in earfcn_pci_couples_freq.keys())
+        earfcn_line = "|".join(str(earfcn_pci[0]) for earfcn_pci in self.earfcn_pci_couples_freq.keys())
         self.write(f"MEAS_EARFCNS|||||{earfcn_line}\n")
 
         # Write all PCIs found in ascending order
-        pcis_line = "|".join(str(earfcn_pci[1]) for earfcn_pci in earfcn_pci_couples_freq.keys())
+        pcis_line = "|".join(str(earfcn_pci[1]) for earfcn_pci in self.earfcn_pci_couples_freq.keys())
         self.write(f"MEAS_PCIS|||||{pcis_line}\n")
 
         # 0 is assigned to all couples because beams aren't used in 4G
@@ -371,7 +371,7 @@ class CometToCevConverter:
         self.write(f"MEAS_BEAMS|||||{beams_line}\n")
 
         # Write number of occurrences of each couple
-        meas_nb_line = "|".join(str(frequency) for frequency in earfcn_pci_couples_freq.values())
+        meas_nb_line = "|".join(str(frequency) for frequency in self.earfcn_pci_couples_freq.values())
         self.write(f"MEAS_NB|||||{meas_nb_line}\n")
 
     def print_measurements(self):
@@ -465,7 +465,6 @@ class CometToCevConverter:
             self.write_measurement_line(coordinates, seconds_since_start, "RSSI")
             self.current_measure = dict()  # Empty dict to avoid keeping old measurements
 
-    @measure_time
     def write_serving_cell_lines(self, coordinates: (str, str), seconds_since_start: float, values: list):
         """Write to the output file the MEASURE_SERVING and CELLINFO lines
 
@@ -488,7 +487,6 @@ class CometToCevConverter:
         self.write(cell_info)
         self.write(serving_info)
 
-    @measure_time
     def write_measurement_line(self, coordinates: (str, str),
                                seconds_since_start: float, meas_type: str):
         """Write a MEASUREMENT line to the output file with the RSRP, RSRQ or RSSI or the current measurement
