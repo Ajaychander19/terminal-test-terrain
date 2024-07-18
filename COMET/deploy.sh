@@ -10,7 +10,11 @@ REMOTE_DIR="/home/$RPI_USER/"
 
 # Files to transfer
 FILES=("install.sh" "comet.sh" "requirements.txt" "src/ATCommandSender.py" "src/ATResponses.py" "src/automatic.py"
-       "src/manual.py" "src/MeasurementsWriter.py" "src/SerialConnection.py")
+       "src/manual.py" "src/MeasurementsWriter.py" "src/SerialConnection.py" "src/CometToCevConverter.py")
+
+# Replace the user name and directory in comet.sh script with the current user
+sed -i "s|USER_COMPUTER_USERNAME=.*|USER_COMPUTER_USERNAME=$(whoami)|" comet.sh
+sed -i "s|USER_DIR=.*|USER_DIR=$(pwd)|" comet.sh
 
 # Transfer files to the Raspberry Pi
 echo "Transferring files to Raspberry Pi..."
