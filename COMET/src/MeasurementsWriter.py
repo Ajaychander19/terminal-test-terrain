@@ -34,7 +34,7 @@ class MeasurementsWriter:
         :param operator_info: An instance of COPS class containing the information about the mobile operator.
         """
         now = datetime.now()
-        date_dir = now.strftime("%d-%m-%Y")
+        date_dir = now.strftime("%Y-%m-%d-")
         file_prefix = now.strftime("%H-%M_")
 
         self.operator_info: COPS = operator_info

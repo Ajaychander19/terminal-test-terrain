@@ -258,11 +258,11 @@ def setup_module(atcs: ATCommandSender, log_file: TextIO = None):
         return
     red_led.off()
 
-    # atcs.restart_gps(logger)
-    # red_led.blink(on_time=0.5, off_time=3)
-    # if not check_for_gps(atcs):
-    #     return
-    # red_led.off()
+    atcs.restart_gps(logger)
+    red_led.blink(on_time=0.5, off_time=3)
+    if not check_for_gps(atcs):
+        return
+    red_led.off()
 
     if log_file is not None:
         log_system_metrics(log_file)
@@ -284,13 +284,17 @@ def start_measurement_session():
     :return: Doesn't return any value but can return before measurements start
         if shutdown/measurements end was requested
     """
-    # TODO: Try to refactor the code
+    # TODO: Try to refactor this function
     global shutdown_requested
     global measurements_started
     global network_error
     global gps_error
 
-    memory_log_path = f"./logs/{datetime.now().strftime('%H-%M')}_memory_usage.csv"
+    logs_dir = f"./logs/{datetime.now().strftime('%Y-%m-%d')}/"
+    memory_log_path = f"{logs_dir}{datetime.now().strftime('%H-%M')}_memory_usage.csv"
+    if not os.path.isdir(logs_dir):
+        os.makedirs(logs_dir)
+
     green_led.off()
     red_led.on()
     # red led will be continuously on until the connection is established
@@ -391,7 +395,7 @@ def start_measurement_session():
         # Once the measurement file is done, make a converted cev file from it
         green_led.off()
         green_led.blink(on_time=0.5, off_time=0.5)
-        with CometToCevConverter(file_path, logger=logger) as writer:
+        with CometToCevConverter(measurements_file_path=file_path, output_dir="./cev", logger=logger) as writer:
             writer.process()
         green_led.off()
 
@@ -407,14 +411,14 @@ if __name__ == '__main__':
     dt_start = datetime.now()
     module_path = '/dev/ttyUSB2'
     logger = setup_logger(print_to_stdout=True)
-    logger.info("")
     logger.info("Starting COMET")
 
-    with (Button("GPIO17", pull_up=True, bounce_time=0.1, hold_time=2) as start_button,
-          LED("GPIO16") as green_led,
-          LED("GPIO26") as red_led,
-          CPUTemperature(min_temp=30, max_temp=100) as cpu
-          ):
+    with (
+        Button("GPIO17", pull_up=True, bounce_time=0.1, hold_time=2) as start_button,
+        LED("GPIO16") as green_led,
+        LED("GPIO26") as red_led,
+        CPUTemperature(min_temp=30, max_temp=100) as cpu
+    ):
         start_button.when_held = request_shutdown
         start_button.when_released = toggle_measurement_session
         cpu.when_activated = log_temperature_error
@@ -430,7 +434,7 @@ if __name__ == '__main__':
                 green_led.close()
                 red_led.close()
                 start_button.close()
-                logger.info("Shutting down now")
+                logger.info("Shutting down now\n\n")  # Empty line to separate different session on the same day
                 os.system("sudo shutdown -h now")
         logger.info("Module found")
 
@@ -444,7 +448,7 @@ if __name__ == '__main__':
                 green_led.close()
                 red_led.close()
                 start_button.close()
-                logger.info("Shutting down now")
+                logger.info("Shutting down now\n\n")  # Empty line to separate different session on the same day
                 os.system("sudo shutdown -h now")
 
         red_led.off()
@@ -454,12 +458,11 @@ if __name__ == '__main__':
         while not shutdown_requested:
             if measurements_started:
                 start_measurement_session()
+                logger.info("")  # Empty line to separate two measurements sessions
                 red_led.off()
                 if not shutdown_requested:
                     green_led.on()
             sleep(0.5)
 
-    # When shutdown is requested, wait the measurement session to end, reach end of context (close leds and buttons)
-    # and shutdown
-    logger.info("Shutting down now")
+    logger.info("Shutting down now\n\n")  # Empty lines to separate different session on the same day
     os.system("sudo shutdown -h now")

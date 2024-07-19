@@ -239,7 +239,7 @@ class CometToCevConverter:
             _output_dir += "/"
 
         now = datetime.now()
-        dir_date = now.strftime("%d-%m-%Y")
+        dir_date = now.strftime("%Y-%m-%d")
         file_date = now.strftime("%Y%m%d_%H%M")
 
         self.output_dir_path: str = os.path.abspath(_output_dir + dir_date) + "/"

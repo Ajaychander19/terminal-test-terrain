@@ -15,19 +15,24 @@ if [ $# -eq 1 ]
       ;;
       "update") # Only update python and shell scripts
         scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/src/*.py .
-        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/{*.sh,*.md,requirements.txt} .
+        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/requirements.txt .
+        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/comet.sh .
+        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/install.sh .
       ;;
       "update-full") # Update all including installing package requirements (requires internet connection)
         scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/src/*.py .
-        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/{*.sh,*.md,requirements.txt} .
+        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/requirements.txt .
+        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/comet.sh .
+        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/install.sh .
         pip install -r ./requirements.txt
       ;;
       "clean") # Removes tmp files
         rm -rf ./measurements/*/tmp_*
       ;;
-      "clean-full") # Removes tmp files
-        rm -rf ./measurements/*/tmp_*
-        sudo rm logs/*
+      "clean-full") # Removes all measurements and logs
+        rm -rf ./measurements/*
+        rm -rf ./cev/*
+        sudo rm ./logs/*
       ;;
       "transfer") # Transfer all measurements file to the dev computer
         scp -r ./measurements/* ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/measurements
