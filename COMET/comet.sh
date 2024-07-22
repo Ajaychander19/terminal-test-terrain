@@ -50,6 +50,11 @@ if [ $# -eq 1 ]
           no arguments to run the non-interactive version
           "
     esac
-  else # If no arguments given run automated measurements script. This is mostly for the systemd service.
+  else # If no arguments given run automated measurements script.
+    if ping -c 1 -W 1 google.com > /dev/null 2>&1; then # if connected to network, wait until clock is synchronized
+      while ! timedatectl status | grep -q 'System clock synchronized: yes'; do
+        sleep 1
+      done
+    fi
     python automatic.py
 fi
