@@ -64,6 +64,15 @@ if test -f "/usr/lib/python3.$PYTHON_VERSION/EXTERNALLY-MANAGED"; then
     sudo mv "/usr/lib/python3.$PYTHON_VERSION/EXTERNALLY-MANAGED" "/usr/lib/python3.$PYTHON_VERSION/EXTERNALLY-MANAGED.old"
 fi
 
+# Check if pip is installed, install it if not
+if ! command -v pip &> /dev/null
+then
+    echo "pip is not installed. Installing now..."
+    sudo apt update
+    sudo apt install -y python3-pip
+    echo "pip has been installed."
+fi
+
 # Install packages
 echo "Installing required python packages"
 echo "------------------------------"
