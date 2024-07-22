@@ -1,14 +1,17 @@
+#!/usr/bin/python
+
 """
 Requires Python 3.6 or newer (f-strings)
 """
 import logging
 import os
-import time
 from datetime import datetime
-from functools import wraps
 from io import TextIOWrapper
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
 
 OFFSET = 5  # actual column of the first earfcn column
+
 
 def syntax_error(line: int, msg: str, fatal: bool = False):
     """Reports a syntax error at given line. If fatal parameter is True, raises an exception.
@@ -193,7 +196,7 @@ def get_earfcns_pcis(measurements_file_path: str) -> dict[(int, int), int]:
 
 
 class CometToCevConverter:
-    def __init__(self, measurements_file_path: str, output_dir: str = "../cev/", filename: str = "M1",
+    def __init__(self, measurements_file_path: str, output_dir: str = "../cev/",
                  logger: logging.Logger = None):
         """
         Takes a COMET measurement file and creates a CORENTIN compatible cev.csv file with processed measurements.
@@ -225,14 +228,11 @@ class CometToCevConverter:
         """The dictionary containing the network measurements for each cell of the current measurement"""
         self.measurements_file_path = os.path.abspath(measurements_file_path)
         """Path to the COMET measurements file"""
-        self.operator_name = get_operator_from_measurements(self.measurements_file_path)
-        """Name of the mobile network operator extracted from the measurements file"""
+        self.operator_name = ""
+        """Name of the mobile network operator extracted from the measurements file. Is set in the open() method"""
         self.measurements_starting_timestamp: datetime = datetime(1970, 1, 1)
         """The starting datetime of the measurement session. 
         Must be extracted from the header or the first measurement"""
-
-        if self.operator_name == "":
-            raise RuntimeError("Couldn't find the operator name")
 
         _output_dir = output_dir
         if not _output_dir.endswith("/"):
@@ -240,15 +240,15 @@ class CometToCevConverter:
 
         now = datetime.now()
         dir_date = now.strftime("%Y-%m-%d")
-        file_date = now.strftime("%Y%m%d_%H%M")
+
+        self.output_file: TextIOWrapper | None = None
+        """Output file access"""
 
         self.output_dir_path: str = os.path.abspath(_output_dir + dir_date) + "/"
         """The absolute path to the output directory"""
-        self.output_filename: str = "cev" + self.operator_name + "_" + file_date + "-" + filename + ".csv"
-        """The output file name"""
 
-        self.file: TextIOWrapper | None = None
-        """Output file access"""
+        self.output_filename: str = ""
+        """The output file name. Is set in the open() method"""
 
     def __enter__(self):
         """
@@ -273,6 +273,18 @@ class CometToCevConverter:
         creating the file and intermediary directories if needed
         """
         before = datetime.now()
+        file_date = before.strftime("%Y%m%d_%H%M")
+        self.operator_name = get_operator_from_measurements(self.measurements_file_path)
+        if self.operator_name == "":
+            if self.logger is not None:
+                self.logger.critical("Couldn't find the operator name. This can mean that the selected file is not a "
+                                     "COMET measurements file or that the measurements went wrong")
+                return
+            else:
+                raise RuntimeError("Couldn't find the operator name. This can mean that the selected file is not a "
+                                   "COMET measurements file or that the measurements went wrong")
+
+        self.output_filename = "cev" + self.operator_name + "_" + file_date + "-M1.csv"
 
         # Parse measurements file to get earfcn and pci data
         self.earfcn_pci_couples_freq = get_earfcns_pcis(self.measurements_file_path)
@@ -287,17 +299,17 @@ class CometToCevConverter:
         if self.columns != {}:
             if not os.path.isdir(self.output_dir_path):
                 os.makedirs(self.output_dir_path)
-            self.file = open(self.output_dir_path + self.output_filename, "w")
+            self.output_file = open(self.output_dir_path + self.output_filename, "w")
         else:
             if self.logger is None:
-                raise RuntimeError("No valid cells found")
+                raise RuntimeError("Provided file does not contain any valid measurements")
             else:  # If the logger is provided, just log the error and exit normally
                 self.logger.error("No valid cells found, measurements will not be converted")
 
     def close(self):
         """Close the output file finishing writing to disc"""
-        if self.file:
-            self.file.close()
+        if self.output_file:
+            self.output_file.close()
 
     def write(self, text: str):
         """
@@ -305,7 +317,7 @@ class CometToCevConverter:
 
         :param text: Text to write to file
         """
-        self.file.write(text)
+        self.output_file.write(text)
 
     def process(self):
         """
@@ -532,10 +544,8 @@ class CometToCevConverter:
 
 
 if __name__ == '__main__':
-    # with CometToCevConverter("../measurements/11-06-2024/tmp_15-16_measurement.csv") as writer:
-    #     writer.process()
-    # with CometToCevConverter("../measurements/10-07-2024/tmp_14-35_measurement.csv") as writer:
-    #     writer.process()
+    Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
+    filename = askopenfilename()  # open the choose file dialogue window
 
-    with CometToCevConverter("../measurements/11-07-2024/tmp_16-27_measurement.csv") as writer:
+    with CometToCevConverter(filename) as writer:
         writer.process()
