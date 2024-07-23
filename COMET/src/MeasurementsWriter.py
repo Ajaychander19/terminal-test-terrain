@@ -135,6 +135,7 @@ class MeasurementsWriter:
                   f"DATE|{datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n"
                   f"OPERATOR|{operator_name}\n"
                   "GPS_LOST|\n"
+                  "COMMENT|\n"
                   "GPS|TIMESTAMP|LATITUDE|LONGITUDE\n"
                   "MEASURE_SERVING|TIMESTAMP|NETWORK_TYPE|TAC|CELLID|MCC|MNC|PCID|EARFCN|RSRQ|RSRP|RSSI|SINR|IS_EN_DC\n"
                   "MEASURE_NEIGHBOUR_INTRA|TIMESTAMP|NETWORK_TYPE|PCID|EARFCN|RSRQ|RSRP|RSSI\n"

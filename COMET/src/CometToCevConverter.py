@@ -7,25 +7,46 @@ import logging
 import os
 from datetime import datetime
 from io import TextIOWrapper
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename
 
+RESERVED_WORDS = ["HEADER", "VERSION", "DATE", "OPERATOR", "GPS_LOST", "COMMENT", "MEASUREMENTS", "GPS",
+                  "MEASURE_SERVING", "MEASURE_NEIGHBOUR_INTRA", "MEASURE_NEIGHBOUR_INTER"]
 OFFSET = 5  # actual column of the first earfcn column
 
 
-def syntax_error(line: int, msg: str, fatal: bool = False):
-    """Reports a syntax error at given line. If fatal parameter is True, raises an exception.
+def syntax_error(line: int, msg: str, fatal: bool = False, logger: logging.Logger = None):
+    """Reports a syntax error at given line. If fatal parameter is True, raises an exception, if the logger is None.
 
-    :param fatal: if True, will raise a SyntaxError. If false, will print the error message to standard output
+    :param logger: If not none, the error will be reported to the logger
+    :param fatal: Decides the severity of the error. If the logger was not given, will raise an exception
     :param line: line of the file where the error occurred
     :param msg: error message
 
     :raises RuntimeError: the corresponding syntax error
     """
     if fatal:
-        raise SyntaxError(f'Error: line {str(line)}, {msg}')
+        if logger is not None:
+            logger.critical(f"Line {str(line)}, {msg}")
+        else:
+            raise SyntaxError(f'Error: line {str(line)}, {msg}')
     else:
-        print(f'Error: line {str(line)}, {msg}')
+        if logger is not None:
+            logger.error(f"Line {str(line)}, {msg}")
+        else:
+            print(f'Error: line {str(line)}, {msg}')
+
+
+def is_comment(line: str):
+    """
+    Returns True if the line does not start with a reserved word. Any line not starting with a reserved word is
+    considered a comment.
+
+    :param line: A line of text, can be empty
+    :return: True line is a comment, false if it starts with a reserved word.
+    """
+    for word in RESERVED_WORDS:
+        if line.startswith(word):
+            return False
+    return True
 
 
 def should_omit(line: str, line_index: int = 0) -> bool:
@@ -90,7 +111,7 @@ def get_operator_from_measurements(measurements_file_path: str) -> str:
     with open(measurements_file_path, "r") as measurements_file:
         for i, line in enumerate(measurements_file):
             stripped_line = line.strip()
-            if stripped_line == "":  # Ignore empty lines
+            if is_comment(stripped_line):  # Ignore comments and empty lines
                 continue
             if stripped_line.startswith('MEASUREMENTS'):
                 syntax_error(i, "No 'OPERATOR' line found in header", fatal=True)
@@ -213,7 +234,6 @@ class CometToCevConverter:
 
         :param measurements_file_path: Path to the COMET measurements file
         :param output_dir: Path to the directory where output file will be stored
-        :param filename: an additional name to the file (will be prefixed with cev and date, can be empty)
         """
 
         self.logger = logger
@@ -406,7 +426,7 @@ class CometToCevConverter:
 
             for line in measurements_file:
                 stripped_line = line.strip()
-                if stripped_line == "":  # Ignore empty lines
+                if is_comment(stripped_line):  # Ignore comments and empty lines
                     continue
 
                 # Find the starting date in the header, ignore the rest of it
@@ -415,13 +435,17 @@ class CometToCevConverter:
                         values = [value.strip() for value in stripped_line.split('|')]
                         if len(values) != 2:
                             syntax_error(line=0, msg="No date found in the measurements file header "
-                                                     "or the date line has wrong format", fatal=True)
+                                                     "or the date line has wrong format",
+                                         fatal=True, logger=self.logger)
+                            return
                         self.measurements_starting_timestamp = datetime.strptime(values[1], '%d-%m-%Y %H:%M:%S')
 
                     if stripped_line.startswith('MEASUREMENTS'):
                         passed_header = True
                         if self.measurements_starting_timestamp == datetime(1970, 1, 1):
-                            syntax_error(line=0, msg="No date found in the measurements file header", fatal=True)
+                            syntax_error(line=0, msg="No date found in the measurements file header",
+                                         fatal=True, logger=self.logger)
+                            return
                     continue
 
                 # If the line must be omitted, ignore the entire measurement
@@ -544,8 +568,12 @@ class CometToCevConverter:
 
 
 if __name__ == '__main__':
-    Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
-    filename = askopenfilename()  # open the choose file dialogue window
+    from tkinter import Tk
+    from tkinter.filedialog import askopenfilename
 
-    with CometToCevConverter(filename) as writer:
-        writer.process()
+    Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
+    filename = askopenfilename(filetypes=(("CSV files", "*.csv"),
+                                          ("All files", "*.*")))  # open the choose file dialogue window
+    if filename:
+        with CometToCevConverter(filename) as writer:
+            writer.process()
