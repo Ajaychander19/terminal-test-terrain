@@ -762,20 +762,20 @@ class COPS:
             if len(self.operator_name) > 3:
                 mcc = self.operator_name[:3]  # First 3 digits is mcc
                 mnc = self.operator_name[3:]
-                operator_name = self.get_operator_name(mcc, mnc)
+                operator_name = self.get_operator_name_from_numeric(mcc, mnc)
 
         return f"OPERATOR|{operator_name}"
 
     @staticmethod
-    def get_operator_name(mcc: str, mnc: str) -> str:
+    def get_operator_name_from_numeric(mcc: str, mnc: str) -> str:
         """Give the name of the operator for a (mcc, mnc) couple
 
         Examples:
-            >>> COPS.get_operator_name("208","1")
+            >>> COPS.get_operator_name_from_numeric("208","1")
             'Orange'
-            >>> COPS.get_operator_name("208","10")
+            >>> COPS.get_operator_name_from_numeric("208","10")
             'SFR'
-            >>> COPS.get_operator_name("208","3")
+            >>> COPS.get_operator_name_from_numeric("208","3")
             'Unknown'
 
         :param mcc: Mobile Country Code

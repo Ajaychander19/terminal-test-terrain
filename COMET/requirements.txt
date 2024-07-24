@@ -1,6 +1,5 @@
 pause==0.3
 pyserial==3.5
 psutil~=5.9.8
-matplotlib~=3.9.0
 gpiozero~=2.0.1
 rpi.gpio

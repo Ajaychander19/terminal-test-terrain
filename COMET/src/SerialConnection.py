@@ -7,10 +7,11 @@ import serial
 class SerialConnection:
     def __init__(
             self,
-            port_path,
-            baudrate=115200,
-            timeout=5,  # Doesn't seem to be used in readline function
-            encoding="ISO-8859-1"
+            port_path: str,
+            baudrate: int = 115200,
+            timeout: float = 5,  # Doesn't seem to be used in readline function
+            encoding: str = "ISO-8859-1",
+            logger: logging.Logger = None
     ):
         """
         Opens a serial connection to a device and provides methods to send AT commands to it and receive responses
@@ -23,10 +24,11 @@ class SerialConnection:
         :param encoding: How the text going through the serial port is encoded and decoded,
             for example utf-8 or ISO-8859-1
         """
-        self.port: str = port_path
-        self.baudrate: int = baudrate
-        self.timeout: float = timeout
-        self.encoding: str = encoding
+        self.port = port_path
+        self.baudrate = baudrate
+        self.timeout = timeout
+        self.encoding = encoding
+        self.logger = logger
         self.module: serial.Serial | None = None
 
     def __enter__(self):
@@ -35,7 +37,6 @@ class SerialConnection:
         Sometimes it can take a dozen seconds on start up of the module, while the connection is still in the "busy"
         state. If the serial port is used by another process or wasn't closed properly, will loop until it's closed.
         """
-        logger = logging.getLogger("COMET")
         while True:
             try:  # Try to open a connection, if exception is raised because connection is not possible, retry.
                 self.module = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
@@ -46,8 +47,10 @@ class SerialConnection:
                 else:
                     raise ConnectionError("Couldn't open a connection to " + self.port)
             except serial.SerialException as e:
-                logger.debug(f"Failed to open connection: {e}. Retrying in 3 seconds...")
-                # print(f"Failed to open connection: {e}. Retrying in 3 seconds...")
+                if self.logger is not None:
+                    self.logger.debug(f"Failed to open connection: {e}. Retrying in 3 seconds...")
+                else:
+                    print(f"Failed to open connection: {e}. Retrying in 3 seconds...")
                 sleep(3)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -57,9 +60,10 @@ class SerialConnection:
         When exiting because of an exception, this will power down the module through AT+CPOF command.
         """
         if exc_tb:
-            logger = logging.getLogger("COMET")
-            logger.critical(f"Serial connection closed because of an error")
-            print("Serial connection closed because of an error")
+            if self.logger is not None:
+                self.logger.critical(f"Serial connection closed because of an error")
+            else:
+                print("Serial connection closed because of an error")
             # This must only be in the automatic mode when the RPI is powered down as well
             # print("Powering down the module")
             # self.send_command("AT+CPOF")

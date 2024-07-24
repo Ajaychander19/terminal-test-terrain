@@ -1,6 +1,6 @@
 #!/bin/bash
 DEFAULT_RPI_USER="rasp45g"
-DEFAULT_RPI_IP="10.51.0.185"
+DEFAULT_RPI_IP="10.51.0.185" #192.168.1.1
 
 # If IP and username were given as arguments, use them, else use default
 RPI_USER="${1:-$DEFAULT_RPI_USER}"

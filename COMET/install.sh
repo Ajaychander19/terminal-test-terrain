@@ -1,5 +1,8 @@
 #!/bin/bash
 
+WORKING_DIR=$(pwd)
+USERNAME=$(whoami)
+
 # Check for non-interactive mode
 INTERACTIVE=true
 if [[ "$1" == "--non-interactive" ]]; then
@@ -87,18 +90,23 @@ sudo chmod 744 ./automatic.py
 sudo chmod 744 ./manual.sh
 
 
+#### CREATE SUBDIRECTORIES
+# They are normally created in Python but just in case
+mkdir -p ./logs
+mkdir -p ./measurements
+mkdir -p ./cev
 
-#### CREATE SYSTEMD SERVICE
-WORKING_DIR=$(pwd)
-USERNAME=$(whoami)
+
+#### CREATE SYSTEMD SERVICES
+# SETUP MAIN MEASUREMENTS SERVICE
 SERVICE_FILE_CONTENT="[Unit]
 Description=COMET
 
 [Service]
 ExecStart=${WORKING_DIR}/comet.sh
 WorkingDirectory=${WORKING_DIR}
-StandardOutput=file:${WORKING_DIR}/logs/output.log
-StandardError=file:${WORKING_DIR}/logs/error.log
+StandardOutput=file:${WORKING_DIR}/logs/measurements_output.log
+StandardError=file:${WORKING_DIR}/logs/measurements_error.log
 User=${USERNAME}
 Group=${USERNAME}
 Restart=no
@@ -113,9 +121,34 @@ echo "${SERVICE_FILE_CONTENT}" | sudo tee "/etc/systemd/system/comet.service" > 
 # Set the correct permissions
 chmod 755 "/etc/systemd/system/comet.service"
 
+# SETUP NMEA LOGGER SERVICE
+NMEA_LOGGER_CONTENT="[Unit]
+Description=NMEA Output Logger
+
+[Service]
+ExecStart=/usr/bin/python3 ${WORKING_DIR}/NMEALogger.py
+WorkingDirectory=${WORKING_DIR}
+StandardError=file:${WORKING_DIR}/logs/nmea_logger.err
+User=${USERNAME}
+Group=${USERNAME}
+Restart=always
+
+[Install]
+WantedBy=multi-user.target"
+
+# Write the service file
+# Uses tee to have enough privileges to write so system file
+echo "${NMEA_LOGGER_CONTENT}" | sudo tee "/etc/systemd/system/nmea_logger.service" > /dev/null
+
+# Set the correct permissions
+chmod 755 "/etc/systemd/system/nmea_logger.service"
+
+
+
 # Enable service at boot
 sudo systemctl daemon-reload
 sudo systemctl enable comet
+sudo systemctl enable nmea_logger
 echo "The program will now automatically start at boot"
 echo "------------------------------"
 echo

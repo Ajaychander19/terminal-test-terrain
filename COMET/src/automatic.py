@@ -301,7 +301,8 @@ def start_measurement_session():
     # usually it's instant, but sometimes it can take a while if program starts right at boot or if it's restarted
     logger.info(f"Opening serial connection on {module_path}")
     before = datetime.now()
-    with SerialConnection(module_path) as connection, open(memory_log_path, "w", buffering=1) as memory_log:
+    with (SerialConnection(module_path, logger=logger) as connection,
+          open(memory_log_path, "w", buffering=1) as memory_log):
         logger.debug(f"Serial connection opened on {module_path}, took {(datetime.now() - before).total_seconds()}")
         logger.info("Starting a new measurement session")
         memory_log.write("timestamp,process_memory_usage_kb,process_memory_usage_percent,"

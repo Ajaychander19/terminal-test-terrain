@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USER_COMPUTER_IP=10.51.0.147
+USER_COMPUTER_IP=10.51.0.147 #192.168.1.1
 USER_COMPUTER_USERNAME=stepan-tyurin
 USER_DIR=/home/stepan-tyurin/Documents/terminal-test-terrain/COMET
 
@@ -32,7 +32,7 @@ if [ $# -eq 1 ]
       "clean-full") # Removes all measurements and logs
         rm -rf ./measurements/*
         rm -rf ./cev/*
-        sudo rm ./logs/*
+        sudo rm -rf ./logs/*
       ;;
       "transfer") # Transfer all measurements file to the dev computer
         scp -r ./measurements/* ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/measurements
