@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
             setup_gps = input("Do you want to setup the GPS and wait for a fix? (yes/no)\n").strip()
             if setup_gps.lower() == "yes" or setup_gps.lower() == "y":
-                ATCS.restart_gps()
+                ATCS.setup_gps()
                 check_for_gps(atcs=ATCS)
 
             print("Setup complete")

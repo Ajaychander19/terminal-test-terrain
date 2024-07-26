@@ -9,6 +9,21 @@ class PinException(Exception):
     pass
 
 
+def print_to_logger_or_stdout(msg: str, logger: logging.Logger = None, severity_level: int = logging.INFO):
+    """
+    Prints a message to standard output or to the logger if given. This exists mainly to avoid repeating if else
+    when logger existence is not known
+
+    :param msg: Message to print
+    :param logger: If not None, the message will be printed using the logger
+    :param severity_level: Decides the level of logged message
+    """
+    if logger is not None:
+        logger.log(msg=msg, level=severity_level)
+    else:
+        print(msg)
+
+
 class ATCommandSender:
     """
     Class for sending AT commands to a device and receiving responses
@@ -35,10 +50,8 @@ class ATCommandSender:
         :returns: a multiline string with all lines of the response
         """
         if not cmd.strip().upper().startswith("AT"):
-            if logger is not None:
-                logger.error(f"{cmd} was sent to the module, which is not an AT command")
-            else:
-                print(f"{cmd} isn't an AT command")
+            print_to_logger_or_stdout(f"{cmd} was sent to the module, which is not an AT command",
+                                      logger=logger, severity_level=logging.ERROR)
             return ""
         self.module.send_command(cmd)
 
@@ -92,10 +105,7 @@ class ATCommandSender:
             return ""
 
         self.module.send_command("AT+CPIN=" + pin.strip())
-        if logger is not None:
-            logger.info(f"Sent: AT+CPIN={pin.strip()}")
-        else:
-            print(f"Sent: AT+CPIN={pin.strip()}")
+        print_to_logger_or_stdout(f"Sent: AT+CPIN={pin.strip()}", logger=logger)
 
         result = ""
         lines = self.module.read_pin_response()
@@ -105,44 +115,34 @@ class ATCommandSender:
                 return ""
         return result
 
-    def restart_gps(self, logger: logging.Logger = None):
+    def setup_gps(self, logger: logging.Logger = None):
         """
         Restart a GPS session in standalone mode.
 
         :param logger: If not None, will log GPS restarting.
         """
-        self.module.send_command("AT+CGPS?")
-        lines = self.module.read_response()
-        current_gps = ""
-        for line in lines:
-            current_gps += line
-        if "+CGPS: 1,1" in current_gps.strip():
-            if logger is not None:
-                logger.info("GPS already ON in standalone mode")
-            else:
-                print("GPS already ON in standalone mode")
+        if "+CGPS: 1,1" in self.send_command("AT+CGPS?").strip():
+            print_to_logger_or_stdout("GPS already ON in standalone mode", logger=logger)
         else:
-            if logger is not None:
-                logger.info("Restarting GPS")
-            else:
-                print("Restarting GPS")
-            self.module.send_command("AT+CGPS=0")
-            self.module.read_response()
+            print_to_logger_or_stdout("GPS session in wrong mode, restarting GPS", logger=logger)
 
-            if logger is not None:
-                logger.debug("GPS session OFF")
-            else:
-                print("GPS session OFF")
-            self.module.send_command("AT+CGPS=1,1")
+            self.send_command("AT+CGPS=0")
+            print_to_logger_or_stdout("GPS session OFF", logger, severity_level=logging.DEBUG)
 
-            lines = self.module.read_response()
-            for line in lines:
-                print(line)
+            self.send_command("AT+CGPS=1,1")
+            print_to_logger_or_stdout("GPS ON in standalone mode", logger=logger)
 
-            if logger is not None:
-                logger.debug("GPS ON in standalone mode")
-            else:
-                print("GPS ON in standalone mode")
+        if "+CGPSAUTO: 1" not in self.send_command("AT+CGPSAUTO?").strip():
+            print_to_logger_or_stdout("Setting GPS to start automatically in standalone mode", logger=logger)
+            self.send_command("AT+CGPSAUTO=1")
+
+        if "31,1" not in self.send_command("AT+CGNSSMODE?").strip():
+            if "+CGPS: 0" not in self.send_command("AT+CGPS?").strip():
+                print_to_logger_or_stdout("Setting GNSS mode to all types and dpo (31,1)", logger=logger)
+                self.send_command("AT+CGPS=0")
+                self.send_command("AT+CGNSSMODE=31,1")
+                self.send_command("AT+CGPS=1,1")
+        print_to_logger_or_stdout("GPS set up", logger=logger)
 
     def get_serving_cell(self, timestamp: datetime = None) -> list[QENGServing]:
         """

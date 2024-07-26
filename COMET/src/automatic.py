@@ -258,7 +258,7 @@ def setup_module(atcs: ATCommandSender, log_file: TextIO = None):
         return
     red_led.off()
 
-    atcs.restart_gps(logger)
+    atcs.setup_gps(logger)
     red_led.blink(on_time=0.5, off_time=3)
     if not check_for_gps(atcs):
         return
