@@ -6,6 +6,7 @@ from io import TextIOWrapper
 from ATResponses import COPS, CGPSINFO, QENGServing, QENGNeighbour
 
 
+# TODO: Remove is_tmp
 class MeasurementsWriter:
     def __init__(self, dir_path: str = "./measurements/", filename_suffix: str = "measurement", is_tmp: bool = False,
                  operator_info: COPS = None):

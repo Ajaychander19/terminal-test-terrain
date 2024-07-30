@@ -3,7 +3,7 @@ from datetime import datetime
 
 from ATResponses import QENGServing, QENGNeighbour, CGPSINFO, COPS
 from SerialConnection import SerialConnection
-from Utils import print_to_logger_or_stdout
+from utils import print_to_logger_or_stdout
 
 
 class PinException(Exception):

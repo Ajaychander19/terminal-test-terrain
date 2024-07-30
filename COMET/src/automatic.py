@@ -38,6 +38,7 @@ def setup_comet_logger(print_to_stdout: bool = False):
     if not os.path.isdir(log_dir_path):
         os.makedirs(log_dir_path)
 
+    # Must be named COMET so that other modules could access it without passing the instance
     res = logging.getLogger("COMET")
 
     formatter = logging.Formatter(fmt='[%(asctime)s] %(levelname)s: %(message)s', datefmt='%d-%m-%Y %H:%M:%S')
@@ -254,6 +255,7 @@ def setup_module(atcs: ATCommandSender, metrics_log_file: TextIO = None):
     setup_start_time = datetime.now()
 
     red_led.blink(on_time=1, off_time=1)
+    # TODO: make the pin code a command argument so that it could be changed outside of the code
     if not check_for_sim(atcs, "0000"):
         return
     red_led.off()
@@ -406,7 +408,7 @@ def start_measurement_session():
 
         # Once the measurement file is done, make a converted cev file from it
         green_led.off()
-        green_led.blink(on_time=0.5, off_time=0.5)
+        green_led.blink(on_time=0.1, off_time=0.1)
         with CometToCevConverter(measurements_file_path=file_path, output_dir="./cev", logger=logger) as writer:
             writer.process()
         green_led.off()

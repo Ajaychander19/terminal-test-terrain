@@ -3,6 +3,8 @@ from time import sleep
 
 import serial
 
+from utils import print_to_logger_or_stdout
+
 
 class SerialConnection:
     def __init__(
@@ -35,7 +37,7 @@ class SerialConnection:
         """
         Open a serial connection. Will loop until a connection can be established.
         Sometimes it can take a dozen seconds on start up of the module, while the connection is still in the "busy"
-        state. If the serial port is used by another process or wasn't closed properly, will loop until it's closed.
+        state. If the serial port is used by another process or wasn't closed properly, will loop until it's open.
         """
         while True:
             try:  # Try to open a connection, if exception is raised because connection is not possible, retry.
@@ -47,10 +49,8 @@ class SerialConnection:
                 else:
                     raise ConnectionError("Couldn't open a connection to " + self.port)
             except serial.SerialException as e:
-                if self.logger is not None:
-                    self.logger.debug(f"Failed to open connection: {e}. Retrying in 3 seconds...")
-                else:
-                    print(f"Failed to open connection: {e}. Retrying in 3 seconds...")
+                print_to_logger_or_stdout(f"Failed to open connection: {e}. Retrying in 3 seconds...",
+                                          logger=self.logger)
                 sleep(3)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -60,13 +60,11 @@ class SerialConnection:
         When exiting because of an exception, this will power down the module through AT+CPOF command.
         """
         if exc_tb:
-            if self.logger is not None:
-                self.logger.critical(f"Serial connection closed because of an error")
-            else:
-                print("Serial connection closed because of an error")
+            print_to_logger_or_stdout("Serial connection closed because of an error",
+                                      logger=self.logger, severity_level=logging.CRITICAL)
             # This must only be in the automatic mode when the RPI is powered down as well
-            # print("Powering down the module")
-            # self.send_command("AT+CPOF")
+            print_to_logger_or_stdout("Powering down the module", logger=self.logger)
+            self.send_command("AT+CPOF")
 
         # Close the serial connection
         if self.module:

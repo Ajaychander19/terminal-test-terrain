@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 from io import TextIOWrapper
 
-from Utils import print_to_logger_or_stdout, error_to_logger_or_raise
+from utils import print_to_logger_or_stdout, error_to_logger_or_raise
 
 RESERVED_WORDS = ["HEADER", "VERSION", "DATE", "OPERATOR", "GPS_LOST", "COMMENT", "MEASUREMENTS", "GPS",
                   "MEASURE_SERVING", "MEASURE_NEIGHBOUR_INTRA", "MEASURE_NEIGHBOUR_INTER"]
@@ -368,6 +368,11 @@ class CometToCevConverter:
 
         This method also updates the columns attribute used in print_measurements() method.
         """
+        if self.columns == {}:
+            error_to_logger_or_raise("No (earfcn, pci) couples found in print_header()",
+                                     logger=self.logger, severity_level=logging.ERROR)
+            return
+
         nb_couples = len(self.earfcn_pci_couples_freq)
 
         self.write("DEFINE\nVERSION|Version\nDATE|Date\nTECHNO|Techno\n")
@@ -418,7 +423,9 @@ class CometToCevConverter:
         This method must be called after print_header() updates the columns attribute
         """
         if self.columns == {}:
-            raise RuntimeError("print_measurements() method can only be called after print_header()")
+            error_to_logger_or_raise("No (earfcn, pci) couples found in print_measurements()",
+                                     logger=self.logger, severity_level=logging.ERROR)
+            return
 
         with open(self.measurements_file_path, "r") as measurements_file:
             # Since coordinates are copied directly to output file with no change they can be kept as str
@@ -530,9 +537,11 @@ class CometToCevConverter:
         elif meas_type == "RSSI":
             i = 2
         else:
+            # In theory this can only happen if introduced manually,
+            # so fully stopping the execution shouldn't be an issue
             raise RuntimeError("MEASUREMENT line doesn't accept " + meas_type)
 
-        # couples must be ordered in the same way as the header couples
+        # Couples must be ordered in the same way as the header couples
         sorted_index_meas = list()
         for couple, meas in self.current_measure.items():
             sorted_index_meas.append((self.columns[couple], meas))

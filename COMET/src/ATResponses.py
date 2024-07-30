@@ -191,6 +191,7 @@ class QENGServing:
             The line must be in the following format: '+QENG: "servingcell",<state>'
         :return: The UE_State enum corresponding to the UE state or None if response_line is in wrong format
         """
+        # TODO: add the logger as class attribute instead of hard-coding it in every method
         logger = logging.getLogger("COMET")
 
         line = response_line.strip()

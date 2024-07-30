@@ -32,7 +32,12 @@ def error_to_logger_or_raise(msg: str, logger: logging.Logger = None,
         raise RuntimeError(msg)
 
 
-def check_no_gps_periods(file_path: str = "../measurements/11-07-2024/tmp_16-27_measurement.csv"):
+def check_no_gps_periods(file_path: str):
+    """
+    Parse a COMET measurements file and print each period of measurements where no GPS was available
+
+    :param file_path: Path to the measurements file
+    """
     with open(file_path, "r") as file:
         lines = file.readlines()
 
@@ -72,4 +77,4 @@ def check_no_gps_periods(file_path: str = "../measurements/11-07-2024/tmp_16-27_
 
 
 if __name__ == "__main__":
-    pass
+    check_no_gps_periods("../measurements/2024-07-30/tmp_09-31_measurement.csv")
