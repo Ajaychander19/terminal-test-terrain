@@ -8,6 +8,8 @@ import os
 from datetime import datetime
 from io import TextIOWrapper
 
+from Utils import print_to_logger_or_stdout, error_to_logger_or_raise
+
 RESERVED_WORDS = ["HEADER", "VERSION", "DATE", "OPERATOR", "GPS_LOST", "COMMENT", "MEASUREMENTS", "GPS",
                   "MEASURE_SERVING", "MEASURE_NEIGHBOUR_INTRA", "MEASURE_NEIGHBOUR_INTER"]
 OFFSET = 5  # actual column of the first earfcn column
@@ -99,42 +101,6 @@ def should_omit(line: str, line_index: int = 0) -> bool:
         return False
 
     return True
-
-
-def get_operator_from_measurements(measurements_file_path: str) -> str:
-    """Parse the beginning of the COMET measurements file to retrieve operator name
-    and transform it into a usable format ("F SFR" becomes "SFR")
-
-    :param measurements_file_path: Path to a measurements file produced by COMET
-    :return: operator name or empty string if the operator name is not found or is not recognized
-    """
-    with open(measurements_file_path, "r") as measurements_file:
-        for i, line in enumerate(measurements_file):
-            stripped_line = line.strip()
-            if is_comment(stripped_line):  # Ignore comments and empty lines
-                continue
-            if stripped_line.startswith('MEASUREMENTS'):
-                syntax_error(i, "No 'OPERATOR' line found in header", fatal=True)
-                break
-            if stripped_line.startswith('OPERATOR'):
-                values = stripped_line.split('|')
-                if len(values) < 2:
-                    syntax_error(i, "No 'OPERATOR' was given in the measurement file", fatal=True)
-                    return ""
-
-                if "SFR" in values[1].upper():
-                    return "SFR"
-                elif "ORANGE" in values[1].upper():
-                    return "ORANGE"
-                elif "FREE" in values[1].upper():
-                    return "FREE"
-                elif "BOUYGUES" in values[1].upper():
-                    return "BOUYGUES"
-                else:
-                    syntax_error(i, "Operator '" + values[1] + "' is not recognized in "
-                                                               "current version of the converter", fatal=True)
-                return ""
-    return ""
 
 
 def get_earfcns_pcis(measurements_file_path: str) -> dict[(int, int), int]:
@@ -254,17 +220,13 @@ class CometToCevConverter:
         """The starting datetime of the measurement session. 
         Must be extracted from the header or the first measurement"""
 
-        _output_dir = output_dir
-        if not _output_dir.endswith("/"):
-            _output_dir += "/"
-
-        now = datetime.now()
-        dir_date = now.strftime("%Y-%m-%d")
+        if not output_dir.endswith("/"):
+            output_dir += "/"
 
         self.output_file: TextIOWrapper | None = None
         """Output file access"""
 
-        self.output_dir_path: str = os.path.abspath(_output_dir + dir_date) + "/"
+        self.output_dir_path: str = output_dir
         """The absolute path to the output directory"""
 
         self.output_filename: str = ""
@@ -293,38 +255,35 @@ class CometToCevConverter:
         creating the file and intermediary directories if needed
         """
         before = datetime.now()
-        file_date = before.strftime("%Y%m%d_%H%M")
-        self.operator_name = get_operator_from_measurements(self.measurements_file_path)
-        if self.operator_name == "":
-            if self.logger is not None:
-                self.logger.critical("Couldn't find the operator name. This can mean that the selected file is not a "
-                                     "COMET measurements file or that the measurements went wrong")
-                return
-            else:
-                raise RuntimeError("Couldn't find the operator name. This can mean that the selected file is not a "
-                                   "COMET measurements file or that the measurements went wrong")
 
-        self.output_filename = "cev" + self.operator_name + "_" + file_date + "-M1.csv"
+        self.parse_measurements_header()
+        if self.operator_name == "" or self.measurements_starting_timestamp == datetime(1970, 1, 1):
+            error_to_logger_or_raise("Couldn't find the operator name. This can mean that the selected "
+                                     "file is not a COMET measurements file or that the measurements went wrong",
+                                     logger=self.logger)
+
+        # Choose file and directory names based on the measurements date
+        filename_date = self.measurements_starting_timestamp.strftime("%Y%m%d_%H%M")
+        dir_date = self.measurements_starting_timestamp.strftime("%Y-%m-%d")
+        self.output_dir_path = os.path.abspath(self.output_dir_path + dir_date)
+        self.output_filename = f"cev{self.operator_name}_{filename_date}-M1.csv"
 
         # Parse measurements file to get earfcn and pci data
         self.earfcn_pci_couples_freq = get_earfcns_pcis(self.measurements_file_path)
         self.columns = {couple: OFFSET + index for index, couple in enumerate(self.earfcn_pci_couples_freq)}
 
-        if self.logger is not None:
-            self.logger.debug(f"It took {(datetime.now() - before).total_seconds()} to process the cells (pci, earfcn)")
-        else:
-            print(f"It took {(datetime.now() - before).total_seconds()} to process the cells (pci, earfcn)")
+        print_to_logger_or_stdout(msg=f"It took {(datetime.now() - before).total_seconds()} "
+                                      f"to process the cells (pci, earfcn)",
+                                  logger=self.logger, severity_level=logging.DEBUG)
 
         # Only create the file if there were something to convert
         if self.columns != {}:
             if not os.path.isdir(self.output_dir_path):
                 os.makedirs(self.output_dir_path)
-            self.output_file = open(self.output_dir_path + self.output_filename, "w")
+            self.output_file = open(f"{self.output_dir_path}/{self.output_filename}", "w")
         else:
-            if self.logger is None:
-                raise RuntimeError("Provided file does not contain any valid measurements")
-            else:  # If the logger is provided, just log the error and exit normally
-                self.logger.error("No valid cells found, measurements will not be converted")
+            error_to_logger_or_raise("No valid cells found in the measurements file, measurements "
+                                     "will not be converted", logger=self.logger, severity_level=logging.ERROR)
 
     def close(self):
         """Close the output file finishing writing to disc"""
@@ -339,6 +298,54 @@ class CometToCevConverter:
         """
         self.output_file.write(text)
 
+    def parse_measurements_header(self):
+        """
+        Parse the beginning of the COMET measurements file to set the operator name
+        and transform it into a usable format ("F SFR" becomes "SFR") as well as set the measurements date.
+
+        This will read the measurements file given at `self.measurements_file_path`
+        """
+        with open(self.measurements_file_path, "r") as measurements_file:
+            for i, line in enumerate(measurements_file):
+                stripped_line = line.strip()
+                if is_comment(stripped_line):  # Ignore comments and empty lines
+                    continue
+
+                # MEASUREMENTS line indicates end of header
+                if stripped_line.startswith('MEASUREMENTS'):
+                    if self.operator_name == "":
+                        syntax_error(i, "No 'OPERATOR' line found in header", fatal=True, logger=self.logger)
+                    elif self.measurements_starting_timestamp == datetime(1970, 1, 1):
+                        syntax_error(i, "No 'DATE' line found in header", fatal=True, logger=self.logger)
+                    break
+
+                if stripped_line.startswith('OPERATOR'):
+                    values = [value.strip() for value in stripped_line.split('|')]
+                    if len(values) < 2:
+                        syntax_error(i, "No 'OPERATOR' was given in the measurement file",
+                                     fatal=True, logger=self.logger)
+                        break
+
+                    if "SFR" in values[1].upper():
+                        self.operator_name = "SFR"
+                    elif "ORANGE" in values[1].upper():
+                        self.operator_name = "ORANGE"
+                    elif "FREE" in values[1].upper():
+                        self.operator_name = "FREE"
+                    elif "BOUYGUES" in values[1].upper():
+                        self.operator_name = "BOUYGUES"
+                    else:
+                        syntax_error(i, f"Operator '{values[1]}' is not recognized in current "
+                                        f"version of the converter", fatal=True, logger=self.logger)
+
+                if stripped_line.startswith('DATE'):
+                    values = [value.strip() for value in stripped_line.split('|')]
+                    if len(values) != 2:
+                        syntax_error(line=i, msg="No date found in the measurements file header "
+                                                 "or the date line has wrong format",
+                                     fatal=True, logger=self.logger)
+                    self.measurements_starting_timestamp = datetime.strptime(values[1], '%d-%m-%Y %H:%M:%S')
+
     def process(self):
         """
         Convert the COMET measurement file to a CORENTIN compatible cev.csv file.
@@ -352,10 +359,8 @@ class CometToCevConverter:
             self.print_header()
             self.print_measurements()
 
-            if self.logger is not None:
-                self.logger.debug(f"It took {(datetime.now() - before).total_seconds()} to print the file")
-            else:
-                print(f"It took {(datetime.now() - before).total_seconds()} to print the file")
+            print_to_logger_or_stdout(f"It took {(datetime.now() - before).total_seconds()} to print the file",
+                                      logger=self.logger)
 
     def print_header(self):
         """
@@ -379,14 +384,13 @@ class CometToCevConverter:
         meas_nb_header_line = "|".join(f"nb_meas_{i}" for i in range(nb_couples))
         self.write(f"MEAS_NB|NA|NA|NA|NA|{meas_nb_header_line}\n")
 
-        # TODO: decide if it's better to use to date of measurement or the date of conversion
         self.write("CELLINFO|Timestamp|Lat|Lng|EARFCN|PCI|TAC|CID|MCC|MNC\n"
                    "MEASURE_SERVING|Timestamp|Lat|Lng|Serving_EARFCN|Serving_PCI|Serving_RSRP|Serving_RSRQ"
                    "|Serving_RSSI|Serving_CINR\n"
                    "MEASUREMENT|Timestamp|Lat|Lng|Measurement_Name|Values\n"
                    "CONTENT\n"
                    "VERSION|2.0\n"
-                   f"DATE|{datetime.now().strftime('%d-%m-%Y %H:%M')}\n"
+                   f"DATE|{self.measurements_starting_timestamp.strftime('%d-%m-%Y %H:%M')}\n"
                    "TECHNO|4G\n",  # Only 4G measurements in COMET as it can't see neighbour cells in 5G mode
                    )
 
@@ -431,21 +435,8 @@ class CometToCevConverter:
 
                 # Find the starting date in the header, ignore the rest of it
                 if not passed_header:
-                    if stripped_line.startswith("DATE"):
-                        values = [value.strip() for value in stripped_line.split('|')]
-                        if len(values) != 2:
-                            syntax_error(line=0, msg="No date found in the measurements file header "
-                                                     "or the date line has wrong format",
-                                         fatal=True, logger=self.logger)
-                            return
-                        self.measurements_starting_timestamp = datetime.strptime(values[1], '%d-%m-%Y %H:%M:%S')
-
                     if stripped_line.startswith('MEASUREMENTS'):
                         passed_header = True
-                        if self.measurements_starting_timestamp == datetime(1970, 1, 1):
-                            syntax_error(line=0, msg="No date found in the measurements file header",
-                                         fatal=True, logger=self.logger)
-                            return
                     continue
 
                 # If the line must be omitted, ignore the entire measurement

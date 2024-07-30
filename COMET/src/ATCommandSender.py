@@ -3,25 +3,11 @@ from datetime import datetime
 
 from ATResponses import QENGServing, QENGNeighbour, CGPSINFO, COPS
 from SerialConnection import SerialConnection
+from Utils import print_to_logger_or_stdout
 
 
 class PinException(Exception):
     pass
-
-
-def print_to_logger_or_stdout(msg: str, logger: logging.Logger = None, severity_level: int = logging.INFO):
-    """
-    Prints a message to standard output or to the logger if given. This exists mainly to avoid repeating if else
-    when logger existence is not known
-
-    :param msg: Message to print
-    :param logger: If not None, the message will be printed using the logger
-    :param severity_level: Decides the level of logged message
-    """
-    if logger is not None:
-        logger.log(msg=msg, level=severity_level)
-    else:
-        print(msg)
 
 
 class ATCommandSender:
