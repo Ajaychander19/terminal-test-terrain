@@ -27,17 +27,26 @@ gps_error = False
 network_error = False
 
 
-def setup_logger(print_to_stdout: bool = False):
-    res = logging.getLogger("COMET")
+def setup_comet_logger(print_to_stdout: bool = False):
+    """
+    Set up and return the "COMET" logger.
 
-    log_dir_path = os.path.abspath("./logs")
+    :param print_to_stdout: If True, all logged messages will be printed to the terminal as well
+    :return: Set up logger
+    """
+    log_dir_path = os.path.abspath(f'./logs/{datetime.now().strftime("%Y-%m-%d")}')
     if not os.path.isdir(log_dir_path):
         os.makedirs(log_dir_path)
 
-    logging.basicConfig(filename=f'./logs/comet_{datetime.now().strftime("%d-%m-%Y")}.log',
-                        format='[%(asctime)s] %(levelname)s: %(message)s',
-                        datefmt='%d-%m-%Y %H:%M:%S',
-                        level=logging.DEBUG)
+    res = logging.getLogger("COMET")
+
+    formatter = logging.Formatter(fmt='[%(asctime)s] %(levelname)s: %(message)s', datefmt='%d-%m-%Y %H:%M:%S')
+    handler = logging.FileHandler(f'{log_dir_path}/comet_{datetime.now().strftime("%Y-%m-%d")}.log')
+    handler.setFormatter(formatter)
+
+    res.setLevel(logging.DEBUG)
+    res.addHandler(handler)
+
     if print_to_stdout:
         res.addHandler(logging.StreamHandler(sys.stdout))  # print the messages to console too
     return res
@@ -200,7 +209,6 @@ def check_for_gps(atcs: ATCommandSender) -> bool:
     :return: True when the GPS signal has been received, False if the check was stopped externally
         (by requesting shutdown or measurements end by holding/pressing the push button)
     """
-
     global measurements_started
     global shutdown_requested
 
@@ -228,7 +236,7 @@ def check_for_gps(atcs: ATCommandSender) -> bool:
     return True
 
 
-def setup_module(atcs: ATCommandSender, log_file: TextIO = None):
+def setup_module(atcs: ATCommandSender, metrics_log_file: TextIO = None):
     """
     Setups the module activating the SIM card, setting the network mode (LTE only by default), waiting for network
     and GPS signal.
@@ -237,13 +245,13 @@ def setup_module(atcs: ATCommandSender, log_file: TextIO = None):
     (for example within the "with" block).
 
     :param atcs: An instance of an initialized ATCommandSender
-    :param log_file: file access open in write mode for memory logging. If None, no logging will be done
+    :param metrics_log_file: file access open in write mode for memory logging. If None, no logging will be done
     :return: Doesn't return any value but can return before it's finished if shutdown/measurements end was requested
     """
     global measurements_started
     global shutdown_requested
 
-    init_start_time = datetime.now()
+    setup_start_time = datetime.now()
 
     red_led.blink(on_time=1, off_time=1)
     if not check_for_sim(atcs, "0000"):
@@ -264,11 +272,13 @@ def setup_module(atcs: ATCommandSender, log_file: TextIO = None):
         return
     red_led.off()
 
-    if log_file is not None:
-        log_system_metrics(log_file)
-    logger.info(f"It took {str((datetime.now() - init_start_time).total_seconds())} seconds to initialize")
+    # Only write logs if the function didn't finish prematurely because of a shutdown/session end request
+    if metrics_log_file is not None:
+        log_system_metrics(metrics_log_file)
+    logger.info(f"It took {str((datetime.now() - setup_start_time).total_seconds())} seconds to initialize")
 
 
+# TODO: Try to refactor this function
 def start_measurement_session():
     """
     Starts a new measurement session. This function opens a serial connection and sets up the module.
@@ -284,14 +294,13 @@ def start_measurement_session():
     :return: Doesn't return any value but can return before measurements start
         if shutdown/measurements end was requested
     """
-    # TODO: Try to refactor this function
     global shutdown_requested
     global measurements_started
     global network_error
     global gps_error
 
     logs_dir = f"./logs/{datetime.now().strftime('%Y-%m-%d')}/"
-    memory_log_path = f"{logs_dir}{datetime.now().strftime('%H-%M')}_memory_usage.csv"
+    metrics_log_filename = f"{logs_dir}{datetime.now().strftime('%H-%M')}_memory_usage.csv"
     if not os.path.isdir(logs_dir):
         os.makedirs(logs_dir)
 
@@ -301,16 +310,18 @@ def start_measurement_session():
     # usually it's instant, but sometimes it can take a while if program starts right at boot or if it's restarted
     logger.info(f"Opening serial connection on {module_path}")
     before = datetime.now()
+    # TODO: Use a logger for the system metrics log file
     with (SerialConnection(module_path, logger=logger) as connection,
-          open(memory_log_path, "w", buffering=1) as memory_log):
+          open(metrics_log_filename, "w", buffering=1) as metrics_log):
         logger.debug(f"Serial connection opened on {module_path}, took {(datetime.now() - before).total_seconds()}")
         logger.info("Starting a new measurement session")
-        memory_log.write("timestamp,process_memory_usage_kb,process_memory_usage_percent,"
-                         "total_memory_usage_percent,total_cpu_percent,cpu_temperature\n")
+        metrics_log.write("timestamp,process_memory_usage_kb,process_memory_usage_percent,"
+                          "total_memory_usage_percent,total_cpu_percent,cpu_temperature\n")
+        log_system_metrics(metrics_log)
         atcs = ATCommandSender(connection)
 
         red_led.off()
-        setup_module(atcs, memory_log)
+        setup_module(atcs, metrics_log)
         if shutdown_requested:
             logger.info("Powering down the module")
             atcs.send_command("AT+CPOF", logger)
@@ -383,7 +394,7 @@ def start_measurement_session():
                 pause.until(starting_time)
 
                 if log_counter >= 30:  # Save memory readings every 30 measurements
-                    log_system_metrics(memory_log)
+                    log_system_metrics(metrics_log)
                     log_counter = 0
                 log_counter += 1
 
@@ -411,14 +422,14 @@ def start_measurement_session():
 if __name__ == '__main__':
     dt_start = datetime.now()
     module_path = '/dev/ttyUSB2'
-    logger = setup_logger(print_to_stdout=True)
+    logger = setup_comet_logger(print_to_stdout=True)
     logger.info("Starting COMET")
 
     with (
         Button("GPIO17", pull_up=True, bounce_time=0.1, hold_time=2) as start_button,
         LED("GPIO16") as green_led,
         LED("GPIO26") as red_led,
-        CPUTemperature(min_temp=30, max_temp=100) as cpu
+        CPUTemperature(min_temp=20, max_temp=100) as cpu
     ):
         start_button.when_held = request_shutdown
         start_button.when_released = toggle_measurement_session

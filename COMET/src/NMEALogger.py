@@ -3,6 +3,7 @@ import os
 import logging
 import sys
 import time
+from datetime import datetime
 
 from SerialConnection import SerialConnection
 
@@ -27,10 +28,14 @@ def setup_logger(name: str, log_file_path: str):
     return logger
 
 
+logs_dir = f'./logs/{datetime.now().strftime("%Y-%m-%d")}'
+if not os.path.isdir(logs_dir):
+    os.makedirs(logs_dir)
+
 # Configure logger for processed output
-nmea_logger = setup_logger('nmea_logger', './logs/nmea_logger.log')
+nmea_logger = setup_logger('nmea_logger', f'{logs_dir}/nmea_logger.log')
 # Configure logger for raw output
-raw_logger = setup_logger('raw_nmea_logger', './logs/raw_nmea.log')
+raw_logger = setup_logger('raw_nmea_logger', f'{logs_dir}/raw_nmea.log')
 raw_logger.addHandler(logging.StreamHandler(sys.stdout))
 
 
@@ -94,6 +99,8 @@ def log_gnss_data(port='/dev/ttyUSB1'):
         time.sleep(0.5)
 
     with SerialConnection(port_path=port, baudrate=9600, timeout=1, logger=nmea_logger, encoding="ascii") as ser:
+        nmea_logger.info("")  # Empty line to separate the logs of the same day
+        nmea_logger.info("Module booted, starting collecting satellite information")
         nmea_logger.info("Total satellites: N, Satellite info: List[Tuple(sat_id, sat_type, "
                          "elevation, azimuth, snr)]")
         while True:
