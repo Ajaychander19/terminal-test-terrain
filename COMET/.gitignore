@@ -1,4 +1,5 @@
 measurements/*
+saved_measurements/*
 data/*
 *.aof
 cev*.csv
