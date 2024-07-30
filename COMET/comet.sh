@@ -26,10 +26,7 @@ if [ $# -eq 1 ]
         scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/install.sh .
         pip install -r ./requirements.txt
       ;;
-      "clean") # Removes tmp files
-        rm -rf ./measurements/*/tmp_*
-      ;;
-      "clean-full") # Removes all measurements and logs
+      "clean") # Removes all measurements and logs
         rm -rf ./measurements/*
         rm -rf ./cev/*
         sudo rm -rf ./logs/*
@@ -44,8 +41,7 @@ if [ $# -eq 1 ]
           run-interactive (run the interactive version)
           update (update python and shell scripts without running)
           update-full (update all files including .venv)
-          clean (removes all temporary files)
-          clean-full (removes all temporary files and logs)
+          clean (removes all measurements files and logs)
           transfer (transfer logs and all measurements file to the dev computer)
           no arguments to run the non-interactive version
           "
