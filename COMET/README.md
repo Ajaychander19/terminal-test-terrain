@@ -6,41 +6,92 @@ For more details on COMET, refer to
 [its full documentation](../Documentation/doc_COMET_2024-07-30.pdf).
 
 ## Installation
-COMET software can be installed on the Raspberry Pi using installation scripts provided
-with the source code: [deploy.sh](./deploy.sh) and [install.sh](./install.sh). They use
-the SSH connection between your computer and the Raspberry Pi to transfer, configure and
-create the necessary files.
+While COMET source code provides relatively easy to use installation scripts
+they heavily depend on correctly following all assembly steps of COMET beforehand.
 
-Before using the installation scripts, a few steps need to be done:
-
-* Modify USER_COMPUTER_IP with the IP address of your computer in the [comet.sh](./comet.sh)
-script. This allows for future use of its utility functions such as easy transfer of measurements
-and logs from the Raspberry Pi to your computer.
-* Generate an SSH key using `ssh-keygen` command in the terminal. You will be prompted to choose
-the name of the key (if left empty, id_rsa will used as name) and a password (can be left empty if
-security is not a concern). 
-* Copy the SSH key to the RPI: `ssh-copy-id -i ~/.ssh/id_rsa user@ip` (where `user` is the username
-on the RPI and `ip` the RPI's IP address). You will be prompted to enter the password of the RPI
-to do that but from that point on all SSH connections to the RPI from this computer can be done
-without entering the password.
-* Do the same in the other direction by generating a key on the RPI and copying it to your computer.
-This allows to avoid entering the password each time a utility function is used.
-
-Once this is done, execute the deployment script with username and IP address of the RPI in arguments:
-`deploy.sh rpi 192.168.1.2`. This will transfer the necessary files to RPI and start the
-[install.sh](./install.sh) script. Make sure that the RPI has access to the Internet. This script
-will install and configure all the necessary services. It will also install Python 3.11 and
-the required packages if they are not present (this requires an Internet connection). Once the
-installation is finished, COMET software will start, indicated by the LEDs if they are installed.
-
-Alternatively, it is possible to install the software in an interactive mode using
-the [install.sh](./install.sh) script on the RPI manually. For details, refer to the
-"Interactive installation" section of the 
+To learn how to install the COMET software, please refer to the "Assembling 
+COMET" section of the 
 [COMET documentation](../Documentation/doc_COMET_2024-07-30.pdf).
+
+## Requirements
+The measurements program requires Python 3.9 to function as well as a few external packages described
+in the [requirements.txt](./requirements.txt) file. These requirements as well as the necessary
+Python version will be installed automatically when using the installation scripts. A more detailed
+description of each package can be found in the [documentation](../Documentation/doc_COMET_2024-07-30.pdf).
+
+## Usage
+This section assumes that COMET is fully assembled and its software installed and configured
+following the [documentation](../Documentation/doc_COMET_2024-07-30.pdf).
+
+Before doing measurements, connect the Raspberry Pi to the Internet with an Ethernet cable and plug in
+the power supply to both the RPI and the 5G HAT with two USB-C cables. After some time,
+the **red LED** will turn on for at least 30 seconds. If both LEDs stay off for more than 1 minute,
+unplug the power supply, wait for a few seconds a plug it back again. Wait until the **green LED**
+lights up and stays on. Once it is, shutdown COMET by holding the control button 
+(the one installed during assembly) for 2 seconds, then unplug the power supply. 
+This step is optional but is required to update the internal clock and to use correct dates.
+
+Bring the kit outside and place the GPS antenna at 30-50 centimeters away from the kit, black side up.
+The antenna must have a large part of the sky visible, don't be too close to high building, don't
+or block the antenna in any way.
+
+Plug in the power supply. Wait until the **red LED** is off and the **green LED** is continuously on.
+If the red LED stays on for more than a minute, check if the 5G HAT has power supply plugged in and
+if it is properly connected to the RPI through USB-A ports. Once the green LED is on, press the
+control button once. This will start a measurements session.
+
+At first, the green LED will turn off and the red LED will start blinking. This indicates the initial
+setup of the module. Usually it takes between 30 and 200 seconds, most of that time is waiting
+for a GPS signal, indicated by slow blinking (see the Control Interface section below or in the documentation).
+
+Once the setup is complete, the red LED will stop blinking and the green LED will start flashing
+shortly every second. This indicates that measurements are ongoing. At that point you can move with
+the kit anywhere outside to perform measurements.
+
+When you want to stop the measurements session, press the control button once. The green LED will
+blink fast for a short period of time, then stay on continuously, indicating that the session is finished
+and a new one is ready to start.
+
+Plug in an Ethernet cable and connect to the RPI through SSH with your computer. Execute 
+`comet.sh transfer` to retrieve measurements.
+
+
+## Control Interface
+### Control button
+The button allows the user to start and stop a measurement session as well as gracefully
+shutdown COMET. 
+
+| Action             | Meaning                                                                 |
+|--------------------|-------------------------------------------------------------------------|
+| Single press       | Start a new measurement session or stop the current measurement session |
+| Hold for 2 seconds | Shut down COMET                                                         |
+
+### Red LED
+The red LED indicates when COMET is not yet ready to start measurements (at start-up,
+during setup of a measurements session) and lack of signal (during measurements).
+
+| Duration                                              | Meaning                                |
+|-------------------------------------------------------|----------------------------------------|
+| Always on                                             | Initialization or no module connection |
+| On for 500ms, off for 3,000ms                         | Absence of GPS signal                  |
+| On for 3,000ms, off for 500ms                         | Absence of network signal              |
+| On for 500ms, off for 500ms                           | Absence of both network and GPS signal |
+| On for 1,000ms, off for 1,000ms                       | SIM card is still locked               |
+| On for 100ms, off for 100ms, for a total of 5 seconds | Wrong pin code format                  |
+
+### Green LED
+The green LED is used to indicate readiness and normal execution of measurements.
+
+| Duration                                                                   | Meaning                                  |
+|----------------------------------------------------------------------------|------------------------------------------|
+| Always on                                                                  | Ready to start                           |
+| Short flash every second (on for less than 100ms, off for more than 900ms) | A measurement session is ongoing         |
+| On for 100ms, off for 100ms                                                | The measurements file is being converted |
 
 ## comet.sh script
 The [comet.sh](./comet.sh) is used by COMET to start the main program, but it also provides multiple
-utility functions which can be invoked using different arguments:
+utility functions which can be invoked using different arguments. To use, connect to the RPI
+(through SSH or with a screen) and run the script with chosen argument:
 
 * `comet.sh run` runs the main non-interactive program. Only works if the COMET 
 service was stopped using `sudo systemctl stop comet` command.
@@ -60,12 +111,6 @@ the RPI.
 to your computer, to the installation directory indicated by the `USER_DIR` variable.
 * Using no arguments is generally reserved for the program start at boot, but can also be used
 as alternative to the `run` argument.
-
-## Requirements
-The measurements program requires Python 3.9 to function as well as a few external packages described
-in the [requirements.txt](./requirements.txt) file. These requirements as well as the necessary
-Python version will be installed automatically when using the installation scripts. A more detailed
-description of each package can be found in the [documentation](../Documentation/doc_COMET_2024-07-30.pdf).
 
 ## COMET measurements converter
 COMET software provides a Python script that allows to convert the COMET measurements files to
