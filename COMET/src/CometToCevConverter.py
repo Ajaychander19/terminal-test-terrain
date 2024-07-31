@@ -575,5 +575,5 @@ if __name__ == '__main__':
     filename = askopenfilename(filetypes=(("CSV files", "*.csv"),
                                           ("All files", "*.*")))  # open the choose file dialogue window
     if filename:
-        with CometToCevConverter(filename) as writer:
-            writer.process()
+        with CometToCevConverter(filename) as converter:
+            converter.process()
