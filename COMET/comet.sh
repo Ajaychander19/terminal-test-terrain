@@ -3,12 +3,13 @@
 USER_COMPUTER_IP=10.51.0.147 #192.168.1.1
 USER_COMPUTER_USERNAME=stepan-tyurin
 USER_DIR=/home/stepan-tyurin/Documents/terminal-test-terrain/COMET
+PIN_CODE=0000
 
 if [ $# -eq 1 ]
   then
     case "$1" in
       "run")
-        python automatic.py
+        python automatic.py --pin $PIN_CODE
       ;;
       "run-interactive")
         python interactive.py
@@ -39,18 +40,20 @@ if [ $# -eq 1 ]
       *) echo "Accepted arguments:
           run (run the non-interactive version)
           run-interactive (run the interactive version)
-          update (update python and shell scripts without running)
-          update-full (update all files including .venv)
+          update (update project files)
+          update-full (update project files and update/install required Python packages)
           clean (removes all measurements files and logs)
-          transfer (transfer logs and all measurements file to the dev computer)
+          transfer (transfer logs and all measurements file to the user computer)
           no arguments to run the non-interactive version
           "
     esac
+    # Should probably check that no arguments are given and not more than 1
   else # If no arguments given run automated measurements script.
     if ping -c 1 -W 1 google.com > /dev/null 2>&1; then # if connected to network, wait until clock is synchronized
+    # But I think that when this runs network is not yet available anyway...
       while ! timedatectl status | grep -q 'System clock synchronized: yes'; do
         sleep 1
       done
     fi
-    python automatic.py
+    python automatic.py --pin $PIN_CODE
 fi

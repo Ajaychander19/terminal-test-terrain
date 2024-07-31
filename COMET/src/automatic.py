@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+import argparse
 import logging
 import os
 import sys
@@ -25,6 +25,7 @@ measurements_started = False
 shutdown_requested = False
 gps_error = False
 network_error = False
+pin_code = "0000"
 
 
 def setup_comet_logger(print_to_stdout: bool = False):
@@ -121,7 +122,7 @@ def update_error_led():
         red_led.off()
 
 
-def check_for_sim(atcs: ATCommandSender, pin_code: str = "0000") -> bool:
+def check_for_sim(atcs: ATCommandSender, pin: str = "0000") -> bool:
     """
     Checks if the SIM card is activated, if it isn't tries to unlock using `pin_code` in a loop until it is activated
     or shutdown/measurements end was requested.
@@ -132,7 +133,7 @@ def check_for_sim(atcs: ATCommandSender, pin_code: str = "0000") -> bool:
     On average, this function takes 3 to 13 seconds to finish on start up and is nearly instant if the SIM card has
     already been activated
 
-    :param pin_code: the pin code of the SIM card inserted in the module. Must be a numeric string in XXXX format.
+    :param pin: the pin code of the SIM card inserted in the module. Must be a numeric string in XXXX format.
     :param atcs: An instance of an initialized `ATCommandSender`
     :return: True when the SIM card is ready, False if the check was stopped externally
         (by requesting shutdown or measurements end by holding/pressing the push button)
@@ -149,7 +150,7 @@ def check_for_sim(atcs: ATCommandSender, pin_code: str = "0000") -> bool:
 
         if cpt == 10:
             logger.info("SIM not ready, trying to unlock...")
-            atcs.enter_pin(pin_code, logger)
+            atcs.enter_pin(pin, logger)
             cpt = 0
 
         sleep(1)
@@ -251,12 +252,13 @@ def setup_module(atcs: ATCommandSender, metrics_log_file: TextIO = None):
     """
     global measurements_started
     global shutdown_requested
+    global pin_code
 
     setup_start_time = datetime.now()
 
     red_led.blink(on_time=1, off_time=1)
-    # TODO: make the pin code a command argument so that it could be changed outside of the code
-    if not check_for_sim(atcs, "0000"):
+
+    if not check_for_sim(atcs, pin_code):
         return
     red_led.off()
 
@@ -421,6 +423,28 @@ def start_measurement_session():
         red_led.off()
 
 
+def set_pin_from_args():
+    """
+    Parse the command line arguments for pin code and set the global `pin_code` variable.
+    If was not given, defaults to '0000'.
+
+    If given in wrong format (not numeric and 4 character long), blink red for 5 seconds and raise an exception.
+    """
+    global pin_code
+    parser = argparse.ArgumentParser("python automatic.py")
+    parser.add_argument("--pin", help="A 4 number long pin code. 0000 if not given", type=str)
+    args = parser.parse_args()
+    if args.pin is None:
+        args.pin = "0000"
+    else:
+        pin_code = args.pin.strip()
+
+    if not pin_code.isnumeric() or not len(pin_code) == 4:
+        red_led.blink(on_time=0.1, off_time=0.1)
+        sleep(5)
+        raise ValueError(f"Pin code must be 4 numeric characters long, '{args.pin}' was given")
+
+
 if __name__ == '__main__':
     dt_start = datetime.now()
     module_path = '/dev/ttyUSB2'
@@ -436,6 +460,9 @@ if __name__ == '__main__':
         start_button.when_held = request_shutdown
         start_button.when_released = toggle_measurement_session
         cpu.when_activated = log_temperature_error
+
+        # Doing this after getting LEDs to be able to blink red
+        set_pin_from_args()
 
         # red led continuously
         red_led.on()
