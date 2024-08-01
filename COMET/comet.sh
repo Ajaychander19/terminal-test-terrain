@@ -3,13 +3,15 @@
 USER_COMPUTER_IP=10.51.0.147 #192.168.1.1
 USER_COMPUTER_USERNAME=stepan-tyurin
 USER_DIR=/home/stepan-tyurin/Documents/terminal-test-terrain/COMET
+# The PIN code must 4 numeric characters long.
 PIN_CODE=0000
+
 
 if [ $# -eq 1 ]
   then
     case "$1" in
       "run")
-        python automatic.py --pin $PIN_CODE
+        python automatic.py $PIN_CODE
       ;;
       "run-interactive")
         python interactive.py
@@ -55,5 +57,5 @@ if [ $# -eq 1 ]
         sleep 1
       done
     fi
-    python automatic.py --pin $PIN_CODE
+    python automatic.py $PIN_CODE
 fi

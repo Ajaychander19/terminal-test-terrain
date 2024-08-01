@@ -66,14 +66,14 @@ class ATCommandSender:
                 result += line
         return result
 
-    def enter_pin(self, pin: str, logger: logging.Logger = None) -> str:
+    def enter_pin(self, pin: str, logger: logging.Logger = None) -> bool:
         """
         Send AT+CPIN=pin command. Will return the entire response on success and empty string on error.
 
         :param logger: Logs the command sent.
         :param pin: The pin code of the SIM card. Must be 4 characters long, with numeric characters only,
             for example "0000".
-        :return: A multiline string containing the lines of the response.
+        :return: True if PIN code was accepted, False on error (for example wrong pin).
         """
         self.module.send_command("AT+CPIN=" + pin.strip())
         print_to_logger_or_stdout(f"Sent: AT+CPIN={pin.strip()}", logger=logger)
@@ -82,9 +82,25 @@ class ATCommandSender:
         lines = self.module.read_pin_response()
         for line in lines:
             result += line
-            if line.endswith("ERROR"):
-                return ""
-        return result
+            if "ERROR" in line:
+                return False
+        return True
+
+    def get_pin_times(self) -> int | None:
+        """
+        Use the AT+SPIC to retrieve the number of times left to enter the PIN code
+
+        :return: number of times left to enter the PIN code. None if in case of error.
+        """
+        self.module.send_command("AT+SPIC")
+        lines = self.module.read_response()
+        for line in lines:
+            line = line.strip()
+            if line.startswith("+SPIC"):
+                values: list[str] = line.removeprefix('+SPIC:').split(',')
+                values = [value.strip() for value in values]
+                return int(values[0])
+        return None
 
     def setup_gps(self, logger: logging.Logger = None):
         """

@@ -25,30 +25,30 @@ measurements_started = False
 shutdown_requested = False
 gps_error = False
 network_error = False
-pin_code = "0000"  # Must be numeric in XXXX format
+pin_code = ""  # Must be set from argument with set_pin_from_args function
 
 
 def set_pin_from_args():
     """
     Parse the command line arguments for pin code and set the global `pin_code` variable.
-    If was not given, defaults to '0000'.
 
-    If given in wrong format (not numeric and 4 character long), blink red for 5 seconds and raise an exception.
+    If given in wrong format (not numeric and 4 character long), blink red until a shutdown is requested.
     """
     global pin_code
     parser = argparse.ArgumentParser("python automatic.py")
-    parser.add_argument("--pin", help="A 4 number long pin code. 0000 if not given", type=str)
+    parser.add_argument("pin", help="A 4 number long pin code. 0000 if not given", type=str)
     args = parser.parse_args()
-    if args.pin is None:
-        logger.info("No PIN code is given, defaulting to 0000")
-        args.pin = "0000"
-    else:
-        pin_code = args.pin.strip()
 
-    if not pin_code.isnumeric() or not len(pin_code) == 4:
-        red_led.blink(on_time=0.1, off_time=0.1)
-        sleep(5)
-        raise ValueError(f"Pin code must be 4 numeric characters long, '{args.pin}' was given")
+    if not args.pin or not args.pin.strip().isnumeric() or not len(args.pin.strip()) == 4:
+        logger.critical(f"Incorrect PIN code was given: '{args.pin}'. Must be 4 numeric characters long. "
+                        f"The program will not continue.")
+        red_led.blink(on_time=1, off_time=1)
+        while True:
+            sleep(0.5)
+            if shutdown_requested:
+                return
+
+    pin_code = args.pin.strip()
 
 
 def setup_comet_logger(print_to_stdout: bool = False):
@@ -168,6 +168,17 @@ def check_for_sim(atcs: ATCommandSender) -> bool:
     cpt = 10  # try to unlock sim every 10 iterations of the loop
     sim_ready = "READY" in atcs.send_command("AT+CPIN?", logger)
     while not sim_ready:
+        nb_left = atcs.get_pin_times()
+        if nb_left < 3:
+            logger.critical(f"Only {nb_left} times remain to input the PIN code meaning that the PIN code used "
+                            f"({pin_code}) is likely wrong. The program will not continue. Please correct the "
+                            f"PIN code in the 'comet.sh' script and unlock the SIM card manually using the interactive"
+                            f"version of the software.)")
+            while True:  # Wait until shutdown continuing blinking
+                sleep(0.5)
+                if shutdown_requested:
+                    return False
+
         if shutdown_requested or not measurements_started:
             return False
 
@@ -280,7 +291,6 @@ def setup_module(atcs: ATCommandSender, metrics_log_file: TextIO = None):
     setup_start_time = datetime.now()
 
     red_led.blink(on_time=1, off_time=1)
-
     if not check_for_sim(atcs):
         return
     red_led.off()
@@ -305,7 +315,7 @@ def setup_module(atcs: ATCommandSender, metrics_log_file: TextIO = None):
     logger.info(f"It took {str((datetime.now() - setup_start_time).total_seconds())} seconds to initialize")
 
 
-# TODO: Try to refactor this function
+# This function feels too long, but I'm not sure how to refactor it properly
 def start_measurement_session():
     """
     Starts a new measurement session. This function opens a serial connection and sets up the module.
@@ -359,7 +369,7 @@ def start_measurement_session():
         logger.info("Commencing measurements")
         green_led.on()
         file_path: str
-        with MeasurementsWriter(is_tmp=True, operator_info=atcs.get_operator()) as writer:
+        with MeasurementsWriter(operator_info=atcs.get_operator()) as writer:
             file_path = writer.get_file_path()
             writer.print_header()
 
@@ -446,6 +456,17 @@ def start_measurement_session():
         red_led.off()
 
 
+def shutdown_with_leds():
+    """
+    Close the GPIO pins and shut down the computer
+    """
+    green_led.close()
+    red_led.close()
+    start_button.close()
+    logger.info("Shutting down now\n\n")  # Empty line to separate different session on the same day
+    os.system("sudo shutdown -h now")
+
+
 if __name__ == '__main__':
     dt_start = datetime.now()
     module_path = '/dev/ttyUSB2'
@@ -464,6 +485,8 @@ if __name__ == '__main__':
 
         # Doing this after getting LEDs to be able to blink red
         set_pin_from_args()
+        if shutdown_requested:
+            shutdown_with_leds()
 
         # red led continuously
         red_led.on()
@@ -473,11 +496,7 @@ if __name__ == '__main__':
         while not os.path.exists(module_path):
             sleep(0.5)
             if shutdown_requested:
-                green_led.close()
-                red_led.close()
-                start_button.close()
-                logger.info("Shutting down now\n\n")  # Empty line to separate different session on the same day
-                os.system("sudo shutdown -h now")
+                shutdown_with_leds()
         logger.info("Module found")
 
         # Waiting for at least 30 seconds is very important because after it is connected, the module sends a bunch
@@ -487,11 +506,7 @@ if __name__ == '__main__':
         for i in range(30):
             sleep(1)
             if shutdown_requested:
-                green_led.close()
-                red_led.close()
-                start_button.close()
-                logger.info("Shutting down now\n\n")  # Empty line to separate different session on the same day
-                os.system("sudo shutdown -h now")
+                shutdown_with_leds()
 
         red_led.off()
 
@@ -506,5 +521,4 @@ if __name__ == '__main__':
                     green_led.on()
             sleep(0.5)
 
-    logger.info("Shutting down now\n\n")  # Empty lines to separate different session on the same day
-    os.system("sudo shutdown -h now")
+    shutdown_with_leds()

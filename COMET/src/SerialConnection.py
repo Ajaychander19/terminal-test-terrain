@@ -93,7 +93,7 @@ class SerialConnection:
         result = list()
 
         line: str = ""
-        while not (line.endswith("OK") or line.endswith("ERROR")):
+        while not (line.endswith("OK") or line.endswith("ERROR") or "CME ERROR" in line):
             line = self.readline().strip()
             if line not in ['\n', '\r\n', '']:
                 result.append(line + "\n")

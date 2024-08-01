@@ -16,34 +16,6 @@ from MeasurementsWriter import MeasurementsWriter
 import time
 
 
-def check_for_sim(atcs: ATCommandSender, pin: str = "0000"):
-    """
-    Checks if the SIM card is activated, if it isn't tries to unlock using `_pin_code` in a loop until it is activated.
-
-    The function tries to unlock the SIM card every 10 seconds and checks for its readiness every second because
-    it cas take some time before the SIM card is activated after the PIN code has been sent.
-
-    On average, this function takes 3 to 13 seconds to finish on start up and is nearly instant if the SIM card has
-    already been activated
-
-    :param pin: the pin code of the SIM card inserted in the module. Must be a numeric string in XXXX format.
-    :param atcs: An instance of an initialized `ATCommandSender`
-    """
-    cpt = 10  # try to unlock sim every 10 iterations of the loop
-    sim_ready = "READY" in atcs.send_command("AT+CPIN?")
-    while not sim_ready:
-        if cpt == 10:
-            print("SIM not ready, trying to unlock...")
-            atcs.enter_pin(pin)
-            cpt = 0
-
-        time.sleep(1)
-        cpt += 1
-        sim_ready = "READY" in atcs.send_command("AT+CPIN?")
-
-    print("SIM card ready")
-
-
 def check_for_network(atcs: ATCommandSender):
     """
     Checks for network signal, looping until it is found.
@@ -81,6 +53,44 @@ def check_for_gps(atcs: ATCommandSender):
     print("GPS OK")
 
 
+def unlock_sim():
+    """
+    Checks if the SIM card is unlocked, if not ask user for PIN code and try to unlock it.
+
+    Alerts if the PIN was wrong and shows how many attempts are left.
+
+    With given pin code, tries to unlock the SIM card every 10 seconds and checks for its readiness every second because
+    it cas take some time before the SIM card is activated after the PIN code has been sent. If the PIN code was wrong,
+    shows the attempts left and asks again.
+
+    On average, this function takes 3 seconds to finish on start up and is nearly instant if the SIM card has
+    already been activated
+    """
+    sim_ready = "READY" in ATCS.send_command("AT+CPIN?")
+    while not sim_ready:
+        nb_left = ATCS.get_pin_times()
+        pin_code = input(f"Enter the PIN code (you have {nb_left} attempts left): \n").strip()
+        if len(pin_code) != 4 or not pin_code.isnumeric():  # Retry if incorrect format
+            print("Incorrect PIN code format! Must be 4 numeric characters long, for example 0000)")
+            continue
+
+        cpt = 10  # Try to unlock sim every 10 seconds. Not sure if it's necessary.
+        while not sim_ready:
+            if cpt == 10:
+                cpt = 0
+                print("Trying to unlock...")
+                pin_accepted = ATCS.enter_pin(pin_code)
+                # If nb attempts decreased, pin was wrong, re-ask pin
+                if not pin_accepted:
+                    print("Wrong PIN code!")
+                    break
+
+            time.sleep(1)
+            cpt += 1
+            sim_state = ATCS.send_command("AT+CPIN?")
+            sim_ready = "READY" in sim_state
+
+
 if __name__ == '__main__':
     dt = datetime.now()
     print("Starting date and time is: ", dt)
@@ -88,14 +98,14 @@ if __name__ == '__main__':
     with SerialConnection('/dev/ttyUSB2') as connection:
         ATCS = ATCommandSender(connection)
 
+        print("Waiting 30 seconds to let module finish initializations...")
+        for i in range(30):
+            time.sleep(1)
+
         first_time = input("Do you want to setup the module? (yes/no)\n").strip()
         if first_time.lower() == "yes" or first_time.lower() == "y":
-            pin_code = input("Enter the PIN code: \n").strip()
-            while len(pin_code) != 4 or not pin_code.isnumeric():
-                pin_code = input("Incorrect PIN code format! Must be 4 numeric characters long, for example 0000.\n"
-                                 "Enter the PIN code: \n").strip()
-
-            check_for_sim(atcs=ATCS, pin=pin_code)
+            unlock_sim()
+            print("SIM card ready")
 
             mode = input("type the network mode to use "
                          "(\n"
@@ -130,11 +140,15 @@ if __name__ == '__main__':
             command = input("type the command to send "
                             "(\n"
                             "* 'stop' to end the program execution\n"
+                            "* 'powerdown' to end the program execution and power down the module\n"
                             "* 'measurements n' to start measurements for n second. "
                             "If no GPS signal, will wait for it\n"
                             "* 'gps' to wait until a GPS signal is found\n"
                             "* any AT command to get a response\n"
                             "): \n").strip()
+            if command == "powerdown":
+                powerdown = True
+                break
             if command == "stop":
                 break
             if "measurement" in command:
@@ -147,7 +161,7 @@ if __name__ == '__main__':
                 check_for_gps(atcs=ATCS)
 
                 print("Starting measurements")
-                with MeasurementsWriter(is_tmp=True, operator_info=ATCS.get_operator()) as writer:
+                with MeasurementsWriter(operator_info=ATCS.get_operator()) as writer:
                     writer.print_header()
 
                     timeout = int(arguments[1])  # in seconds
@@ -204,4 +218,5 @@ if __name__ == '__main__':
             print(command + " done at: ", dt_after)
             print("It took ", (dt_after - dt_before).microseconds, " microseconds\n")
 
-        ATCS.send_command("AT+CPOF")
+        if powerdown:
+            ATCS.send_command("AT+CPOF")

@@ -63,8 +63,7 @@ class MeasurementsWriter:
         
         The exception parameters are ignored, exceptions will be reported in a normal way.
         """
-        if self.file:
-            self.file.close()
+        self.close()
 
     def open(self):
         """
