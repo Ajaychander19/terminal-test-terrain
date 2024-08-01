@@ -92,7 +92,8 @@ if __name__ == '__main__':
         if first_time.lower() == "yes" or first_time.lower() == "y":
             pin_code = input("Enter the PIN code: \n").strip()
             while len(pin_code) != 4 or not pin_code.isnumeric():
-                pin_code = input("Incorrect PIN code format! Enter the PIN code: \n").strip()
+                pin_code = input("Incorrect PIN code format! Must be 4 numeric characters long, for example 0000.\n"
+                                 "Enter the PIN code: \n").strip()
 
             check_for_sim(atcs=ATCS, pin=pin_code)
 

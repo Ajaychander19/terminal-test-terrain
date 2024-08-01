@@ -70,26 +70,11 @@ class ATCommandSender:
         """
         Send AT+CPIN=pin command. Will return the entire response on success and empty string on error.
 
-        :param logger: If not None, will log errors and will raise an exception (to be used in automatic mode).
+        :param logger: Logs the command sent.
         :param pin: The pin code of the SIM card. Must be 4 characters long, with numeric characters only,
             for example "0000".
         :return: A multiline string containing the lines of the response.
         """
-        if not pin.isnumeric():
-            if logger is not None:
-                logger.error(f"Incorrect pin ({pin.strip()}) was used, must be numeric")
-                raise PinException
-            else:
-                print(f"{pin} isn't a PIN code (must be numbers)")
-            return ""
-        if not len(pin.strip()) == 4:
-            if logger is not None:
-                logger.error(f"Incorrect pin ({pin.strip()}) was used, must 4 characters long")
-                raise PinException
-            else:
-                print(f"A PIN code must be 4 numbers long (got {str(len(pin.strip()))})")
-            return ""
-
         self.module.send_command("AT+CPIN=" + pin.strip())
         print_to_logger_or_stdout(f"Sent: AT+CPIN={pin.strip()}", logger=logger)
 
