@@ -6,9 +6,8 @@ from io import TextIOWrapper
 from ATResponses import COPS, CGPSINFO, QENGServing, QENGNeighbour
 
 
-# TODO: Remove is_tmp
 class MeasurementsWriter:
-    def __init__(self, dir_path: str = "./measurements/", filename_suffix: str = "measurement", is_tmp: bool = False,
+    def __init__(self, dir_path: str = "./measurements/", filename_suffix: str = "measurement",
                  operator_info: COPS = None):
         """
         Class for writing measurements to a COMET measurements file.
@@ -31,7 +30,6 @@ class MeasurementsWriter:
             (Files will be ordered in directories of the date they were created at, inside this path)
         :param filename_suffix: A suffix added to the filename to distinguish the measurements files.
             Actual file name will have the following format: "hour-minute_suffix.csv".
-        :param is_tmp: If True, filename will be prefixed with "tmp_".
         :param operator_info: An instance of COPS class containing the information about the mobile operator.
         """
         now = datetime.now()
@@ -45,7 +43,6 @@ class MeasurementsWriter:
 
         self.dir_path: str = os.path.abspath(dir_path + date_dir + "/") + "/"
         self.filename: str = file_prefix + filename_suffix + ".csv"
-        self.is_tmp: bool = is_tmp
 
         self.file: TextIOWrapper | None = None
         self.measurements_counter: int = 0
@@ -80,10 +77,7 @@ class MeasurementsWriter:
         if not os.path.isdir(self.dir_path):
             os.makedirs(self.dir_path)
 
-        if self.is_tmp:
-            self.file = open(self.dir_path + "tmp_" + self.filename, "w", buffering=1)
-        else:
-            self.file = open(self.dir_path + self.filename, "w", buffering=1)
+        self.file = open(self.dir_path + self.filename, "w", buffering=1)
 
     def close(self):
         """
@@ -118,10 +112,7 @@ class MeasurementsWriter:
         """
         Returns path to the measurements file
         """
-        if self.is_tmp:
-            return self.dir_path + "tmp_" + self.filename
-        else:
-            return self.dir_path + self.filename
+        return self.dir_path + self.filename
 
     def print_header(self):
         """
