@@ -153,10 +153,10 @@ the measurements at the end of each session.
 
 The converter can also be used independently of COMET. It requires no external
 packages and can be used on any computer with Python 3.6 or above. Its only dependency
-is the [utils.py](./src/utils.py) module.
+is the [utils.py](shared/utils.py) module.
 
 A measurements file can be converted either through code or by executing the 
-[CometToCevConverter.py](./src/CometToCevConverter.py) module. When executing the module with
+[CometToCevConverter.py](shared/CometToCevConverter.py) module. When executing the module with
 `python ./src/CometToCevConverter.py`, you will be prompted to choose a COMET measurements file.
 After that, the converted file will be stored under the `cev` directory, in a folder with current
 date as name.
@@ -171,5 +171,5 @@ with CometToCevConverter("/path/to/measurements/file") as converter:
     converter.process()
 ```
 
-In both cases, make sure that [CometToCevConverter.py](./src/CometToCevConverter.py) has access 
-to the [utils.py](./src/utils.py) module, for example by placing both of them in the same directory.
+In both cases, make sure that [CometToCevConverter.py](shared/CometToCevConverter.py) has access 
+to the [utils.py](shared/utils.py) module, for example by placing both of them in the same directory.

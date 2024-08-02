@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 from io import TextIOWrapper
 
-from utils import print_to_logger_or_stdout, error_to_logger_or_raise
+from COMET.shared.utils import print_to_logger_or_stdout, error_to_logger_or_raise
 
 RESERVED_WORDS = ["HEADER", "VERSION", "DATE", "OPERATOR", "GPS_LOST", "COMMENT", "MEASUREMENTS", "GPS",
                   "MEASURE_SERVING", "MEASURE_NEIGHBOUR_INTRA", "MEASURE_NEIGHBOUR_INTER"]
@@ -183,7 +183,7 @@ def get_earfcns_pcis(measurements_file_path: str) -> dict[(int, int), int]:
 
 
 class CometToCevConverter:
-    def __init__(self, measurements_file_path: str, output_dir: str = "../cev/",
+    def __init__(self, measurements_file_path: str, output_dir: str = "../cev/", create_date_dir: bool = True,
                  logger: logging.Logger = None):
         """
         Takes a COMET measurement file and creates a CORENTIN compatible cev.csv file with processed measurements.
@@ -219,6 +219,8 @@ class CometToCevConverter:
         self.measurements_starting_timestamp: datetime = datetime(1970, 1, 1)
         """The starting datetime of the measurement session. 
         Must be extracted from the header or the first measurement"""
+        self.create_date_dir = create_date_dir
+        """If True, the output file will be created in a directory with current date inside of output_dir"""
 
         if not output_dir.endswith("/"):
             output_dir += "/"
@@ -264,8 +266,9 @@ class CometToCevConverter:
 
         # Choose file and directory names based on the measurements date
         filename_date = self.measurements_starting_timestamp.strftime("%Y%m%d_%H%M")
-        dir_date = self.measurements_starting_timestamp.strftime("%Y-%m-%d")
-        self.output_dir_path = os.path.abspath(self.output_dir_path + dir_date)
+        if self.create_date_dir:
+            dir_date = self.measurements_starting_timestamp.strftime("%Y-%m-%d")
+            self.output_dir_path = os.path.abspath(self.output_dir_path + dir_date)
         self.output_filename = f"cev{self.operator_name}_{filename_date}-M1.csv"
 
         # Parse measurements file to get earfcn and pci data

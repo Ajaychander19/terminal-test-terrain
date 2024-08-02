@@ -10,7 +10,7 @@ from time import sleep
 from datetime import datetime, timedelta
 import pause
 
-from CometToCevConverter import CometToCevConverter
+from COMET.shared.CometToCevConverter import CometToCevConverter
 from MeasurementsWriter import MeasurementsWriter
 from SerialConnection import SerialConnection
 from ATCommandSender import ATCommandSender

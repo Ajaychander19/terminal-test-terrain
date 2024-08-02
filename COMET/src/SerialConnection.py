@@ -3,7 +3,7 @@ from time import sleep
 
 import serial
 
-from utils import print_to_logger_or_stdout
+from COMET.shared.utils import print_to_logger_or_stdout
 
 
 class SerialConnection:

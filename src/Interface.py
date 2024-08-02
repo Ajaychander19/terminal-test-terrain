@@ -12,6 +12,8 @@ import cartoradio
 import association
 from viavianalyzer import Viavilyzer
 
+from COMET.shared.CometToCevConverter import CometToCevConverter
+
 
 class CreateToolTip(object):
     """Creates a tooltip for a given widget."""
@@ -66,8 +68,8 @@ class GUI(tkinter.Frame):
         self.defaultPath.pack(padx=5, pady=5)
 
         self.viavi_conversion = tkinter.Button(self, command=lambda: self.button_click(5),
-                                              text="viavi *.csv conversion",
-                                              font=boldFont, background='light green')
+                                               text="viavi *.csv conversion",
+                                               font=boldFont, background='light green')
         self.viavi_conversion.configure(height=2, width=25)
         self.viavi_conversion.pack(padx=5, pady=5)
 
@@ -82,6 +84,16 @@ class GUI(tkinter.Frame):
                                                  "to produce a measurement file that can be used by the Association "
                                                  " process, produce a pcap file if only 1 file is selected")
 
+        # Comet converter button
+        self.comet_converter = tkinter.Button(self, command=lambda: self.button_click(8),
+                                              text="COMET conversion", font=boldFont,
+                                              background='light green')
+        self.comet_converter.configure(height=2, width=25)
+        self.comet_converter.pack(padx=5, pady=5)
+        CreateToolTip(self.comet_converter,
+                      "Choose a COMET measurements file to convert it to a 'cev' measurement file that can be "
+                      "used by the Association process")
+
         self.cartoradio_files = tkinter.Button(self, command=lambda: self.button_click(3),
                                                text="Cartoradio conversion", font=boldFont,
                                                background='light green')
@@ -90,7 +102,7 @@ class GUI(tkinter.Frame):
         self.cartoradio_files_ttp = CreateToolTip(
             self.cartoradio_files,
             "Convert Antennes_Emetteurs_Bandes_Cartoradio and"
-                                                    " Sites_Cartoradio.csv in one tractable site file")
+            " Sites_Cartoradio.csv in one tractable site file")
 
         self.association = tkinter.Button(self, command=lambda: self.button_click(4),
                                           text="Cell Association Processing", font=boldFont, background='light green')
@@ -129,16 +141,18 @@ class GUI(tkinter.Frame):
             if number == 1:  # Selecting output directory.
 
                 self.change_color('red')
-                self.working_directory = filedialog.askdirectory(title="Select data directory (not tmp)", initialdir=self.working_directory)
+                self.working_directory = filedialog.askdirectory(title="Select data directory (not tmp)",
+                                                                 initialdir=self.working_directory)
                 self.change_color('green')
             elif number == 2:  # Field-testing trace file.
 
                 self.change_color('red')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file', filetypes = (("AOF file","*.aof"),("all files","*.*")))
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',
+                                                    filetypes=(("AOF file", "*.aof"), ("all files", "*.*")))
                 nbfiles = len(files)
                 if nbfiles > 1:
                     XcalMerged = xcalyzer.XcalMerger()
-                    f = XcalMerged.merge(self.working_directory,files)
+                    f = XcalMerged.merge(self.working_directory, files)
                     conv = xcalyzer.XcalConverter(f)
                     conv.process_nopcap(self.working_directory)
 
@@ -162,7 +176,8 @@ class GUI(tkinter.Frame):
             elif number == 3:  # Cartoradio conversion, producing site and zone files.
 
                 self.change_color('red')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file', filetypes = (("CSV file","*.csv"),("all files","*.*")))
+                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',
+                                                    filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
                 if len(files) != 2:
                     messagebox.showerror("Error", "Two files are expected.")
                 else:
@@ -170,15 +185,17 @@ class GUI(tkinter.Frame):
                     site_file = files[0] if 'Sites' in files[0] else files[1]
                     ant_file = files[0] if 'Antennes' in files[0] else files[1]
 
-                    cartoradio.process_cartoradio(site_file, ant_file, self.working_directory,'LTE')
-                    cartoradio.process_cartoradio(site_file, ant_file, self.working_directory,'5G')
+                    cartoradio.process_cartoradio(site_file, ant_file, self.working_directory, 'LTE')
+                    cartoradio.process_cartoradio(site_file, ant_file, self.working_directory, '5G')
 
                 self.change_color('green')
 
             elif number == 4:  # association
 
                 self.change_color('red')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose measurement file and operator sites file',filetypes = (("cev CSV file","cev*.csv"),("all files","*.*")))
+                files = filedialog.askopenfilenames(initialdir=self.working_directory,
+                                                    title='Choose measurement file and operator sites file',
+                                                    filetypes=(("cev CSV file", "cev*.csv"), ("all files", "*.*")))
 
                 if len(files) != 2:
                     messagebox.showerror("Error", "Two files expected.")
@@ -192,7 +209,7 @@ class GUI(tkinter.Frame):
                         meas_file,
                         site_file,
                         self.working_directory
-                    ).calculate_association(1,"")
+                    ).calculate_association(1, "")
 
                 self.change_color('green')
 
@@ -251,11 +268,10 @@ class GUI(tkinter.Frame):
                         meas_file,
                         site_file,
                         self.working_directory
-                    ).calculate_association(0,assoc_file)
+                    ).calculate_association(0, assoc_file)
                     self.change_color('green')
 
-
-            else:
+            elif number == 7:
                 self.change_color('red')
                 url = "file://" + getLeaflet('index.html')
                 try:
@@ -263,6 +279,18 @@ class GUI(tkinter.Frame):
                     webbrowser.open_new_tab(url)
                 except webbrowser.Error as e:
                     print("Error: {}", str(e))
+
+                self.change_color('green')
+
+            elif number == 8:  # Comet measurements conversion
+                self.change_color('red')
+
+                file_path = filedialog.askopenfilename(initialdir=self.working_directory, title='Choose a file',
+                                                       filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
+                if file_path:  # Don't display error on cancel
+                    with (CometToCevConverter(file_path, output_dir=self.working_directory, create_date_dir=False)
+                          as converter):
+                        converter.process()
 
                 self.change_color('green')
 
