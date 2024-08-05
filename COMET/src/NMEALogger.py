@@ -1,6 +1,7 @@
 import os
 
 import logging
+import re
 import sys
 import time
 from datetime import datetime
@@ -37,6 +38,21 @@ nmea_logger = setup_logger('nmea_logger', f'{logs_dir}/nmea_logger.log')
 # Configure logger for raw output
 raw_logger = setup_logger('raw_nmea_logger', f'{logs_dir}/raw_nmea.log')
 raw_logger.addHandler(logging.StreamHandler(sys.stdout))
+
+
+def get_gsv_sentence(nmea_line: str) -> str | None:
+    """
+    Return the GSV sentence in a nmea line. It separates the line at the $ sign (or end of line) and returns the part
+    with "GSV" in it. This is used to ba able to extract the GSV sentence from a line with multiple sentences in it.
+    It can happen for the NMEA output to forget the end of line character, concatenating two sentences in one line.
+
+    :returns: The GSV part of the line or None if no GSV sentence is found in line
+    """
+    sentences = re.findall(r'\$.*?(?=\$|$)', nmea_line)
+    for sentence in sentences:
+        if "GSV" in sentence:
+            return sentence
+    return None
 
 
 def parse_gsv(line: str) -> tuple[int, str, list[tuple[str, str, str, str, str]]]:
@@ -98,7 +114,7 @@ def log_gnss_data(port='/dev/ttyUSB1'):
     while not os.path.exists(port):
         time.sleep(0.5)
 
-    with SerialConnection(port_path=port, baudrate=9600, timeout=1, logger=nmea_logger, encoding="ascii") as ser:
+    with SerialConnection(port_path=port, baudrate=9600, timeout=1, error_logger=nmea_logger, encoding="ascii") as ser:
         nmea_logger.info("")  # Empty line to separate the logs of the same day
         nmea_logger.info("Module booted, starting collecting satellite information")
         nmea_logger.info("Total satellites: N, Satellite info: List[Tuple(sat_id, sat_type, "
@@ -108,8 +124,9 @@ def log_gnss_data(port='/dev/ttyUSB1'):
                 line = ser.readline().strip()
                 raw_logger.info(line)  # Log the raw NMEA message
                 if line.startswith('$') and 'GSV' in line:
-                    result = parse_gsv(line)
-                    if result is not None:
+                    gsv_sentence = get_gsv_sentence(line)
+                    if gsv_sentence is not None:
+                        result = parse_gsv(line)
                         nb_satellites, satellites_type, satellites = result
                         log_message = (f"Total satellites: {nb_satellites}, Type: {satellites_type}, "
                                        f"Satellite info: {satellites}")
