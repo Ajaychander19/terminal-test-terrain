@@ -48,32 +48,49 @@ class ATCommandSender:
 
     def setup_gps(self, logger: logging.Logger = None):
         """
-        Set up various GNSS modes if needed (auto start at boot, GPS only, standalone mode)
+        Set up various GNSS modes if needed (auto start at boot, GPS only, NMEA output sentence type and rate,
+         standalone mode)
 
         :param logger: If given, will log messages.
         """
-        if "+CGPSAUTO: 1" not in self.send_command("AT+CGPSAUTO?").strip():
+        # Setting up GPS session auto start at boot
+        if "+CGPSAUTO: 1" not in self.send_command("AT+CGPSAUTO?"):
             print_to_logger_or_stdout("Setting GPS to start automatically in standalone mode", logger=logger)
             self.send_command("AT+CGPSAUTO=1")
 
-        if "8,1" not in self.send_command("AT+CGNSSMODE?").strip():
-            if "+CGPS: 0" not in self.send_command("AT+CGPS?").strip():
+        # Setting up satellite systems used (GPS only)
+        if "8,1" not in self.send_command("AT+CGNSSMODE?"):
+            if "+CGPS: 0" not in self.send_command("AT+CGPS?"):
+                print_to_logger_or_stdout("Stopping GPS session for configuration", logger=logger)
                 self.send_command("AT+CGPS=0")
 
             print_to_logger_or_stdout("Setting GNSS mode to GPS only with DPO (8,1)", logger=logger)
             self.send_command("AT+CGNSSMODE=8,1")
 
-            if "+CGPS: 1,1" not in self.send_command("AT+CGPS?").strip():
-                self.send_command("AT+CGPS=1,1")
+        # Setting up NMEA output sentences type
+        if "134655" not in self.send_command("AT+CGPSNMEA?"):
+            if "+CGPS: 0" not in self.send_command("AT+CGPS?"):
+                print_to_logger_or_stdout("Stopping GPS session for configuration", logger=logger)
+                self.send_command("AT+CGPS=0")
 
-        if "+CGPS: 1,1" in self.send_command("AT+CGPS?").strip():
-            print_to_logger_or_stdout("GPS ON in standalone mode", logger=logger)
-        else:
+            self.send_command("AT+CGPSNMEA=134655")
+            print_to_logger_or_stdout("Setting NMEA output sentences to 134655", logger=logger)
+
+        # Setting up NMEA output rate
+        if "0" not in self.send_command("AT+CGPSNMEARATE?"):
+            # No need to stop session for the output rate
+            self.send_command("AT+CGPSNMEARATE=0")
+            print_to_logger_or_stdout("Setting NMEA output rate to 1Hz", logger=logger)
+
+        # Starting GPS session in correct mode
+        gps_session_state = self.send_command("AT+CGPS?")
+        if "+CGPS: 0" in gps_session_state:  # Start GPS if it's off
+            self.send_command("AT+CGPS=1,1")
+            print_to_logger_or_stdout("Starting GPS session in standalone mode", logger=logger)
+        elif "+CGPS: 1,1" not in gps_session_state:  # Restart GPS if it's in wrong mode
             print_to_logger_or_stdout("GPS session in wrong mode, restarting GPS", logger=logger)
-
             self.send_command("AT+CGPS=0")
             print_to_logger_or_stdout("GPS session OFF", logger, severity_level=logging.DEBUG)
-
             self.send_command("AT+CGPS=1,1")
             print_to_logger_or_stdout("GPS ON in standalone mode", logger=logger)
 
