@@ -100,7 +100,7 @@ mkdir -p ./cev
 #### CREATE SYSTEMD SERVICES
 # SETUP MAIN MEASUREMENTS SERVICE
 SERVICE_FILE_CONTENT="[Unit]
-Description=COMET
+Description=systemd service to start COMET software in background
 
 [Service]
 ExecStart=${WORKING_DIR}/comet.sh
@@ -126,7 +126,7 @@ NMEA_LOGGER_CONTENT="[Unit]
 Description=NMEA Output Logger
 
 [Service]
-ExecStart=/usr/bin/python3 ${WORKING_DIR}/NMEALogger.py
+ExecStart=/usr/bin/python3 ${WORKING_DIR}/src/NMEALogger.py
 WorkingDirectory=${WORKING_DIR}
 StandardError=file:${WORKING_DIR}/logs/nmea_logger.err
 User=${USERNAME}

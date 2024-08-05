@@ -1,14 +1,16 @@
 #!/usr/bin/python
-
 """
-Requires Python 3.6 or newer (f-strings)
+Requires Python 3.6 or newer
 """
 import logging
 import os
 from datetime import datetime
 from io import TextIOWrapper
 
-from COMET.shared.utils import print_to_logger_or_stdout, error_to_logger_or_raise
+try:  # When used inside CORENTIN an absolute import is needed
+    from COMET.src.shared.utils import print_to_logger_or_stdout, error_to_logger_or_raise
+except ImportError:  # When used inside COMET it doesn't know about the 'COMET' package so path is different
+    from shared.utils import print_to_logger_or_stdout, error_to_logger_or_raise
 
 RESERVED_WORDS = ["HEADER", "VERSION", "DATE", "OPERATOR", "GPS_LOST", "COMMENT", "MEASUREMENTS", "GPS",
                   "MEASURE_SERVING", "MEASURE_NEIGHBOUR_INTRA", "MEASURE_NEIGHBOUR_INTER"]

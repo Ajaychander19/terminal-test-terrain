@@ -3,7 +3,7 @@ from datetime import datetime
 
 from ATResponses import QENGServing, QENGNeighbour, CGPSINFO, COPS
 from SerialConnection import SerialConnection
-from COMET.shared.utils import print_to_logger_or_stdout
+from shared.utils import print_to_logger_or_stdout
 
 
 class PinException(Exception):
@@ -23,7 +23,6 @@ class ATCommandSender:
         :param SerialConnection connection: An open serial connection to the module.
         """
         self.module = connection
-        ""
 
     def send_command(self, cmd: str, logger: logging.Logger = None) -> str:
         """
@@ -46,6 +45,39 @@ class ATCommandSender:
         for line in lines:
             result += line
         return result
+
+    def setup_gps(self, logger: logging.Logger = None):
+        """
+        Set up various GNSS modes if needed (auto start at boot, GPS only, standalone mode)
+
+        :param logger: If given, will log messages.
+        """
+        if "+CGPSAUTO: 1" not in self.send_command("AT+CGPSAUTO?").strip():
+            print_to_logger_or_stdout("Setting GPS to start automatically in standalone mode", logger=logger)
+            self.send_command("AT+CGPSAUTO=1")
+
+        if "8,1" not in self.send_command("AT+CGNSSMODE?").strip():
+            if "+CGPS: 0" not in self.send_command("AT+CGPS?").strip():
+                self.send_command("AT+CGPS=0")
+
+            print_to_logger_or_stdout("Setting GNSS mode to GPS only with DPO (8,1)", logger=logger)
+            self.send_command("AT+CGNSSMODE=8,1")
+
+            if "+CGPS: 1,1" not in self.send_command("AT+CGPS?").strip():
+                self.send_command("AT+CGPS=1,1")
+
+        if "+CGPS: 1,1" in self.send_command("AT+CGPS?").strip():
+            print_to_logger_or_stdout("GPS ON in standalone mode", logger=logger)
+        else:
+            print_to_logger_or_stdout("GPS session in wrong mode, restarting GPS", logger=logger)
+
+            self.send_command("AT+CGPS=0")
+            print_to_logger_or_stdout("GPS session OFF", logger, severity_level=logging.DEBUG)
+
+            self.send_command("AT+CGPS=1,1")
+            print_to_logger_or_stdout("GPS ON in standalone mode", logger=logger)
+
+        print_to_logger_or_stdout("GPS set up", logger=logger)
 
     def get_gps_info(self) -> str:
         """
@@ -101,35 +133,6 @@ class ATCommandSender:
                 values = [value.strip() for value in values]
                 return int(values[0])
         return None
-
-    def setup_gps(self, logger: logging.Logger = None):
-        """
-        Restart a GPS session in standalone mode.
-
-        :param logger: If not None, will log GPS restarting.
-        """
-        if "+CGPS: 1,1" in self.send_command("AT+CGPS?").strip():
-            print_to_logger_or_stdout("GPS already ON in standalone mode", logger=logger)
-        else:
-            print_to_logger_or_stdout("GPS session in wrong mode, restarting GPS", logger=logger)
-
-            self.send_command("AT+CGPS=0")
-            print_to_logger_or_stdout("GPS session OFF", logger, severity_level=logging.DEBUG)
-
-            self.send_command("AT+CGPS=1,1")
-            print_to_logger_or_stdout("GPS ON in standalone mode", logger=logger)
-
-        if "+CGPSAUTO: 1" not in self.send_command("AT+CGPSAUTO?").strip():
-            print_to_logger_or_stdout("Setting GPS to start automatically in standalone mode", logger=logger)
-            self.send_command("AT+CGPSAUTO=1")
-
-        if "31,1" not in self.send_command("AT+CGNSSMODE?").strip():
-            if "+CGPS: 0" not in self.send_command("AT+CGPS?").strip():
-                print_to_logger_or_stdout("Setting GNSS mode to all types and dpo (31,1)", logger=logger)
-                self.send_command("AT+CGPS=0")
-                self.send_command("AT+CGNSSMODE=31,1")
-                self.send_command("AT+CGPS=1,1")
-        print_to_logger_or_stdout("GPS set up", logger=logger)
 
     def get_serving_cell(self, timestamp: datetime = None) -> list[QENGServing]:
         """

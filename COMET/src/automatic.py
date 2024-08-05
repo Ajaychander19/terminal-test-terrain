@@ -10,7 +10,7 @@ from time import sleep
 from datetime import datetime, timedelta
 import pause
 
-from COMET.shared.CometToCevConverter import CometToCevConverter
+from shared.CometToCevConverter import CometToCevConverter
 from MeasurementsWriter import MeasurementsWriter
 from SerialConnection import SerialConnection
 from ATCommandSender import ATCommandSender
@@ -26,29 +26,6 @@ shutdown_requested = False
 gps_error = False
 network_error = False
 pin_code = ""  # Must be set from argument with set_pin_from_args function
-
-
-def set_pin_from_args():
-    """
-    Parse the command line arguments for pin code and set the global `pin_code` variable.
-
-    If given in wrong format (not numeric and 4 character long), blink red until a shutdown is requested.
-    """
-    global pin_code
-    parser = argparse.ArgumentParser("python automatic.py")
-    parser.add_argument("pin", help="A 4 number long pin code. 0000 if not given", type=str)
-    args = parser.parse_args()
-
-    if not args.pin or not args.pin.strip().isnumeric() or not len(args.pin.strip()) == 4:
-        logger.critical(f"Incorrect PIN code was given: '{args.pin}'. Must be 4 numeric characters long. "
-                        f"The program will not continue.")
-        red_led.blink(on_time=1, off_time=1)
-        while True:
-            sleep(0.5)
-            if shutdown_requested:
-                return
-
-    pin_code = args.pin.strip()
 
 
 def setup_comet_logger(print_to_stdout: bool = False):
@@ -77,6 +54,27 @@ def setup_comet_logger(print_to_stdout: bool = False):
     return res
 
 
+def log_system_metrics(log_file: TextIO):
+    """
+    Log current time and memory usage to `log_file`. Time is given as float in seconds since epoch,
+    The memory usage is given in KB, the temperature is given in degrees Celsius.
+
+    The line is written in the following format:
+    time_in_epoch,memory_in_KB,process_memory_consumption_percent,total_memory_consumption_percent,cpu_use_percent,
+    cpu_temperature_in_degrees
+
+    :param log_file: file access open in write mode when the log line will be written
+    """
+    process = psutil.Process(os.getpid())
+    log_file.write(f"{str(datetime.now())},{process.memory_info().rss / 1024},{process.memory_percent()},"
+                   f"{psutil.virtual_memory().percent},{psutil.cpu_percent()},{cpu.temperature}\n")
+
+
+def log_temperature_error():
+    """Prints a critical error if the temperature exceeded 80 degrees"""
+    logger.critical("CPU temperature exceeded 80 degrees Celsius! ")
+
+
 def toggle_measurement_session():
     """
     Toggle the global variable `measurements_started` indicating if a measurement session must start or stop
@@ -92,27 +90,6 @@ def request_shutdown():
     """
     global shutdown_requested
     shutdown_requested = True
-
-
-def log_temperature_error():
-    """Prints a critical error if the temperature exceeded 80 degrees"""
-    logger.critical("CPU temperature exceeded 80 degrees Celsius! ")
-
-
-def log_system_metrics(log_file: TextIO):
-    """
-    Log current time and memory usage to `log_file`. Time is given as float in seconds since epoch,
-    The memory usage is given in KB, the temperature is given in degrees Celsius.
-
-    The line is written in the following format:
-    time_in_epoch,memory_in_KB,process_memory_consumption_percent,total_memory_consumption_percent,cpu_use_percent,
-    cpu_temperature_in_degrees
-
-    :param log_file: file access open in write mode when the log line will be written
-    """
-    process = psutil.Process(os.getpid())
-    log_file.write(f"{str(datetime.now())},{process.memory_info().rss / 1024},{process.memory_percent()},"
-                   f"{psutil.virtual_memory().percent},{psutil.cpu_percent()},{cpu.temperature}\n")
 
 
 def update_error_led():
@@ -143,6 +120,29 @@ def update_error_led():
     else:
         # No errors
         red_led.off()
+
+
+def set_pin_from_args():
+    """
+    Parse the command line arguments for pin code and set the global `pin_code` variable.
+
+    If given in wrong format (not numeric and 4 character long), blink red until a shutdown is requested.
+    """
+    global pin_code
+    parser = argparse.ArgumentParser("python automatic.py")
+    parser.add_argument("pin", help="A 4 number long pin code. 0000 if not given", type=str)
+    args = parser.parse_args()
+
+    if not args.pin or not args.pin.strip().isnumeric() or not len(args.pin.strip()) == 4:
+        logger.critical(f"Incorrect PIN code was given: '{args.pin}'. Must be 4 numeric characters long. "
+                        f"The program will not continue.")
+        red_led.blink(on_time=1, off_time=1)
+        while True:
+            sleep(0.5)
+            if shutdown_requested:
+                return
+
+    pin_code = args.pin.strip()
 
 
 def check_for_sim(atcs: ATCommandSender) -> bool:
@@ -342,15 +342,14 @@ def start_measurement_session():
         os.makedirs(logs_dir)
 
     green_led.off()
-    red_led.on()
-    # red led will be continuously on until the connection is established
-    # usually it's instant, but sometimes it can take a while if program starts right at boot or if it's restarted
+    red_led.on()  # red led will be continuously on until the connection is established
     logger.info(f"Opening serial connection on {module_path}")
     before = datetime.now()
     # TODO: Use a logger for the system metrics log file
-    with (SerialConnection(module_path, logger=logger) as connection,
+    with (SerialConnection(module_path, error_logger=logger, setup_raw_logger=True) as connection,
           open(metrics_log_filename, "w", buffering=1) as metrics_log):
         logger.debug(f"Serial connection opened on {module_path}, took {(datetime.now() - before).total_seconds()}")
+
         logger.info("Starting a new measurement session")
         metrics_log.write("timestamp,process_memory_usage_kb,process_memory_usage_percent,"
                           "total_memory_usage_percent,total_cpu_percent,cpu_temperature\n")

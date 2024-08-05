@@ -11,19 +11,21 @@ if [ $# -eq 1 ]
   then
     case "$1" in
       "run")
-        python automatic.py $PIN_CODE
+        python src/automatic.py $PIN_CODE
       ;;
       "run-interactive")
-        python interactive.py
+        python src/interactive.py
       ;;
       "update") # Only update python and shell scripts
-        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/src/*.py .
+        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/src/*.py ./src/
+        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/src/shared/*.py ./src/shared/
         scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/requirements.txt .
         scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/comet.sh .
         scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/install.sh .
       ;;
       "update-full") # Update all including installing package requirements (requires internet connection)
-        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/src/*.py .
+        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/src/*.py ./src/
+        scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/src/shared/*.py ./src/shared/
         scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/requirements.txt .
         scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/comet.sh .
         scp -r ${USER_COMPUTER_USERNAME}@${USER_COMPUTER_IP}:${USER_DIR}/install.sh .
@@ -57,5 +59,5 @@ if [ $# -eq 1 ]
         sleep 1
       done
     fi
-    python automatic.py $PIN_CODE
+    python src/automatic.py $PIN_CODE
 fi

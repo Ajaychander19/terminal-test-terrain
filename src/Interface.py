@@ -12,7 +12,7 @@ import cartoradio
 import association
 from viavianalyzer import Viavilyzer
 
-from COMET.shared.CometToCevConverter import CometToCevConverter
+from COMET.src.shared.CometToCevConverter import CometToCevConverter
 
 
 class CreateToolTip(object):
