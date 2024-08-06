@@ -17,8 +17,8 @@ COMET" section of the
 
 ## Requirements
 The measurements program requires Python 3.9 to function as well as a few external packages described
-in the [requirements.txt](./requirements.txt) file. These requirements as well as the necessary
-Python version will be installed automatically when using the installation scripts. A more detailed
+in the [requirements.txt](./requirements.txt) file. These requirements as well as the required Python 
+version will be installed automatically when using the installation scripts. A more detailed
 description of each package can be found in the [documentation](../Documentation/doc_COMET_2024-07-30.pdf).
 
 ## Usage
@@ -28,15 +28,15 @@ following the [documentation](../Documentation/doc_COMET_2024-07-30.pdf)._
 Before doing measurements, connect the Raspberry Pi to the Internet with an Ethernet cable and plug in
 the power supply to both the RPI and the 5G HAT with two USB-C cables. After some time,
 the **red LED** will turn on for at least 30 seconds. If both LEDs stay off for more than 1 minute,
-unplug the power supply, wait for a few seconds a plug it back again. Wait until the **green LED**
+unplug the power supply, wait for a few seconds and plug it back again. Wait until the **green LED**
 lights up and stays on. Once it is, shutdown COMET by holding the control button 
 (the one installed during assembly) for 2-3 seconds (until the LEDs are off), 
 then unplug the power supply. This step is optional but is required to update the 
 internal clock and to use correct dates.
 
 Bring the kit outside and place the GPS antenna at 30-50 centimeters away from the kit, black side up.
-The antenna must have a large part of the sky visible, don't be too close to high building, don't
-or block the antenna in any way.
+The antenna must have a large part of the sky visible, don't be too close to high building, don't 
+block the antenna in any way.
 
 Plug in the power supply. Wait until the **red LED** is off and the **green LED** is continuously on.
 If the **red LED** stays on for more than a minute, check if the 5G HAT has power supply 
@@ -59,9 +59,9 @@ indicating that the session is finished and a new one is ready to start.
 Plug in an Ethernet cable and connect to the RPI through SSH with your computer. Execute 
 `comet.sh transfer` to retrieve measurements.
 
-Hold the control button until both LEDs turn off (normally about 3-4 seconds) to shut down the device. Unplug the power supply from
-the 5G HAT. Wait until the **green LED** of the RPI (visible through the ventilation holes in the
-standard case) turns off. This might take 5-10 seconds. Unplug the power supply from the RPI. 
+Hold the control button until both LEDs turn off (normally about 3-4 seconds) to shut down the device. 
+Unplug the power supply from the 5G HAT. Wait until the **green LED** of the RPI (visible through the ventilation 
+holes in the standard case) turns off. This might take 5-10 seconds. Unplug the power supply from the RPI. 
 
 
 ## Control Interface
@@ -122,18 +122,24 @@ as alternative to the `run` argument.
 
 ## FAQ
 
-I accidentally entered wrong PIN code and now COMET blocks on setup blinking with the SIM card signal
+I accidentally entered wrong PIN code and now COMET blocks on setup blinking with the SIM card signal.
 : When the wrong PIN code is given, COMET will log an error to its log file and block
 the execution, blinking (1 second on, 1 second off) until the kit is shut down. This is done
 to avoid blocking the SIM card. In this case first of all correct the PIN code in 
-the [comet.sh](./comet.sh) script. Then, to unlock the SIM card, boot COMET and enter the 
+the [comet.sh](./comet.sh) script (`PIN_CODE` variable). Then, to unlock the SIM card, boot COMET and enter the 
 interactive mode by executing `comet.sh run-interactive`. You will be prompted if you want 
 to initialize the module, type yes. Then you will be prompted to enter the PIN code. Enter it.
-If wasn't correct, the number of tries remaining will be shown. If you are prompted to choose
+If it wasn't correct, the number of tries remaining will be shown. If you are prompted to choose
 the network mode the PIN code was accepted, you can skip the rest of initialization by pressing
 enter. Exit the interactive mode by typing stop or with CTRL+C. If you changed the PIN code in 
 the [comet.sh](./comet.sh) script to the correct one, you can now safely reboot the kit.
 
+I accidentally used the wrong PIN 3 times and now my SIM card is blocked.
+: In this situation it is better to use a mobile phone rather than COMET to unlock the SIM.
+Put the locked SIM card in a powered off phone. After turning it on, you will be prompted to
+enter the PUK code twice (it can be found on the piece of plastic in which the SIM card comes).
+Then you will be prompted to choose a new SIM code. Enter it and remember to change the `PIN_CODE`
+variable in the [comet.sh](./comet.sh) script with the new PIN code.
 
 Where can I find the logs if something went wrong?
 : All the logs are located in the [logs](./logs) directory. If COMET doesn't respond to any
@@ -143,33 +149,12 @@ file to check if any Python exception happened. In other cases, look for the
 the error is likely linked to GPS, look for the `nmea_logger.log` in the same folder to see
 if any satellites were detected.
 
-Question
-: Answer
+Can't get a GPS signal, or it takes too long to acquire.
+: The biggest factor in acquiring a GPS signal is physical obstructions of the sky and environmental conditions.
+If the antenna is pointing to the sky (black side up for the antenna supplied with the 5G HAT) and it is situated
+in favorable environmental conditions, check the NMEA logs (nmea_logger.log file in the logs directory) to see how 
+many satellites are detected. At least 4 (but more often 5-6) satellites are required to acquire a position.
+If no satellites are detected or the module stays at 3-4 satellites for a very long time (more than 5 minutes) it may
+indicate a hardware issue. Check if the antenna is well-connected to the jack that leads to the `ANT3` slot on the 
+module. You can also try to replace the internal RF cable as they can be fairly fragile. 
 
-## COMET measurements converter
-COMET software provides a Python script that allows to convert the COMET measurements files to
-CORENTIN-compatible "cev" files. It is integrated in the main measurements program to convert
-the measurements at the end of each session.
-
-The converter can also be used independently of COMET. It requires no external
-packages and can be used on any computer with Python 3.6 or above. Its only dependency
-is the [utils.py](shared/utils.py) module.
-
-A measurements file can be converted either through code or by executing the 
-[CometToCevConverter.py](shared/CometToCevConverter.py) module. When executing the module with
-`python ./src/CometToCevConverter.py`, you will be prompted to choose a COMET measurements file.
-After that, the converted file will be stored under the `cev` directory, in a folder with current
-date as name.
-
-To convert a measurements file from code, import the CometToCevConverter class from the CometToCevConverter.py
-module and create an instance of it using a `with` statement and the path to the measurements file.
-Then call the `process()` method of that instance. See example below:
-
-```python
-from CometToCevConverter import CometToCevConverter
-with CometToCevConverter("/path/to/measurements/file") as converter:
-    converter.process()
-```
-
-In both cases, make sure that [CometToCevConverter.py](shared/CometToCevConverter.py) has access 
-to the [utils.py](shared/utils.py) module, for example by placing both of them in the same directory.
