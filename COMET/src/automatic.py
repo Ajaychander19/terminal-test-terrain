@@ -337,7 +337,7 @@ def start_measurement_session():
     global gps_error
 
     logs_dir = f"./logs/{datetime.now().strftime('%Y-%m-%d')}/"
-    metrics_log_filename = f"{logs_dir}{datetime.now().strftime('%H-%M')}_memory_usage.csv"
+    metrics_log_filename = f"{logs_dir}{datetime.now().strftime('%H-%M')}_system_metrics.csv"
     if not os.path.isdir(logs_dir):
         os.makedirs(logs_dir)
 

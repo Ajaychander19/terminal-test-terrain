@@ -53,34 +53,40 @@ class ATCommandSender:
 
         :param logger: If given, will log messages.
         """
+        autostart = "1"  # for AT+CGPSAUTO, 0 to deactivate, 1 to deactivate
+        gnss_mode = "8,1"  # for AT+CGNSSMODE, 8,1 is gps only, dpo active
+        nmea_sentences = "134655"  # See AT+CGPSNMEA command in the AT command manual
+        nmea_rate = "0"  # for AT+CGPSNMEARATE, 0 is 1Hz, 1 is 10Hz
+
         # Setting up GPS session auto start at boot
-        if "+CGPSAUTO: 1" not in self.send_command("AT+CGPSAUTO?"):
+        if f"+CGPSAUTO: {autostart}" not in self.send_command("AT+CGPSAUTO?"):
             print_to_logger_or_stdout("Setting GPS to start automatically in standalone mode", logger=logger)
-            self.send_command("AT+CGPSAUTO=1")
+            self.send_command(f"AT+CGPSAUTO={autostart}")
 
         # Setting up satellite systems used (GPS only)
-        if "8,1" not in self.send_command("AT+CGNSSMODE?"):
+        if gnss_mode not in self.send_command("AT+CGNSSMODE?"):
             if "+CGPS: 0" not in self.send_command("AT+CGPS?"):
                 print_to_logger_or_stdout("Stopping GPS session for configuration", logger=logger)
                 self.send_command("AT+CGPS=0")
 
-            print_to_logger_or_stdout("Setting GNSS mode to GPS only with DPO (8,1)", logger=logger)
-            self.send_command("AT+CGNSSMODE=8,1")
+            print_to_logger_or_stdout(f"Setting GNSS mode to GPS only with DPO {gnss_mode}", logger=logger)
+            self.send_command(f"AT+CGNSSMODE={gnss_mode}")
 
         # Setting up NMEA output sentences type
-        if "134655" not in self.send_command("AT+CGPSNMEA?"):
+        if nmea_sentences not in self.send_command("AT+CGPSNMEA?"):
             if "+CGPS: 0" not in self.send_command("AT+CGPS?"):
                 print_to_logger_or_stdout("Stopping GPS session for configuration", logger=logger)
                 self.send_command("AT+CGPS=0")
 
-            self.send_command("AT+CGPSNMEA=134655")
-            print_to_logger_or_stdout("Setting NMEA output sentences to 134655", logger=logger)
+            self.send_command(f"AT+CGPSNMEA={nmea_sentences}")
+            print_to_logger_or_stdout(f"Setting NMEA output sentences to {nmea_sentences}", logger=logger)
 
         # Setting up NMEA output rate
-        if "0" not in self.send_command("AT+CGPSNMEARATE?"):
+        if nmea_rate not in self.send_command("AT+CGPSNMEARATE?"):
             # No need to stop session for the output rate
-            self.send_command("AT+CGPSNMEARATE=0")
-            print_to_logger_or_stdout("Setting NMEA output rate to 1Hz", logger=logger)
+            self.send_command(f"AT+CGPSNMEARATE={nmea_rate}")
+            print_to_logger_or_stdout(f"Setting NMEA output rate to "
+                                      f"{'1' if nmea_rate == '0' else '10'} Hz", logger=logger)
 
         # Starting GPS session in correct mode
         gps_session_state = self.send_command("AT+CGPS?")
@@ -115,17 +121,15 @@ class ATCommandSender:
                 result += line
         return result
 
-    def enter_pin(self, pin: str, logger: logging.Logger = None) -> bool:
+    def enter_pin(self, pin: str) -> bool:
         """
         Send AT+CPIN=pin command. Will return the entire response on success and empty string on error.
 
-        :param logger: Logs the command sent.
         :param pin: The pin code of the SIM card. Must be 4 characters long, with numeric characters only,
             for example "0000".
         :return: True if PIN code was accepted, False on error (for example wrong pin).
         """
         self.module.send_command("AT+CPIN=" + pin.strip())
-        print_to_logger_or_stdout(f"Sent: AT+CPIN={pin.strip()}", logger=logger)
 
         result = ""
         lines = self.module.read_pin_response()

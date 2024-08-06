@@ -109,6 +109,8 @@ def parse_gsv(line: str) -> tuple[int, str, list[tuple[str, str, str, str, str]]
     return nb_satellites, satellites_type, satellites
 
 
+# TODO: it's better to add the message ID to the line since if there are more than 4 satellites they
+#  will be on multiple lines
 def log_gnss_data(port='/dev/ttyUSB1'):
     # Wait until the NMEA output port is open
     while not os.path.exists(port):

@@ -1,6 +1,19 @@
 #!/usr/bin/python
 """
 Requires Python 3.6 or newer
+
+A measurements file can be converted either through code or by executing the CometToCevConverter.py module.
+When executing the module with `python ./src/CometToCevConverter.py`, you will be prompted to choose a COMET
+measurements file. After that, the converted file will be stored under the `cev` directory, in a folder with current
+date as name.
+
+To convert a measurements file from code, import the CometToCevConverter class from the CometToCevConverter.py
+module and create an instance of it using a `with` statement and the path to the measurements file.
+Then call the `process()` method of that instance. See example below:
+
+>>> from shared.CometToCevConverter import CometToCevConverter
+>>> with CometToCevConverter("/path/to/measurements/file") as converter:
+>>>     converter.process()
 """
 import logging
 import os
@@ -195,7 +208,7 @@ class CometToCevConverter:
         valid measurement, an exception will be raised if it's not the case.
 
         Example:
-            >>> with CometToCevConverter("../measurements/11-06-2024/tmp_15-16_measurement.csv") as converter:
+            >>> with CometToCevConverter("../measurements/11-06-2024/06-11_bike_15-16.csv") as converter:
             >>>     converter.process()
             >>> with open("../cev/05-07-2024/cevSFR_20240705_1457-M1.csv") as file:
             >>>     print(file.read())
