@@ -1,8 +1,8 @@
 #!/bin/bash
 DEFAULT_RPI_USER="pi"
-# pi.local is the default name that can be resolved to RPI's IP address. Use a proper IP address like 192.168.1.2. if
-# anything was changed from default on the RPI.
-DEFAULT_RPI_IP="pi.local"
+# raspberrypi.local is the default name that can be resolved to RPI's IP address. Use a proper IP address like
+# 192.168.1.2. if your computer doesn't supports multicast DNS or if network settings or hostname were changed
+DEFAULT_RPI_IP="raspberrypi.local"
 
 # If IP and username were given as arguments, use them, else use default
 RPI_USER="${1:-$DEFAULT_RPI_USER}"

@@ -185,7 +185,7 @@ def check_for_sim(atcs: ATCommandSender) -> bool:
         if cpt == 10:
             logger.info("SIM not ready, trying to unlock...")
             # TODO: Check if it really can be necessary to do it more than once if the pin is good
-            atcs.enter_pin(pin_code, logger)
+            atcs.enter_pin(pin_code)
             cpt = 0
 
         sleep(1)
