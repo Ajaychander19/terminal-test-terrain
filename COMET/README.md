@@ -11,6 +11,21 @@ without going much into the details. For more information on COMET, refer to
 While COMET source code provides relatively easy to use installation scripts
 they heavily depend on correctly following all assembly steps of COMET beforehand.
 
+This README won't go into the details of the COMET software installation but generally
+speaking these are the steps to follow for a typical installation, assuming the
+RPI with the hostname `raspberrypi` has a user named `pi`:
+1. Connect the RPI to the local network with an ethernet cable.
+2. Generate an SSH key on your computer with `ssh-keygen`. When prompted, you can leave all values as default
+3. Copy the SSH key to the RPI with `ssh-copy-id -i ~/.ssh/id_rsa pi@raspberrypi.local`.
+4. Connect to the RPI with `ssh pi@raspberrypi.local`, generate an SSH key and copy it to your computer
+using the same commands but with the IP address and username of your computer.
+5. Give execute permissions to the `deploy.sh` script: `chmod +x ./deploy.sh`.
+6. Execute the `deploy.sh` script. When it finishes, the red LED on the kit should turn on
+indicating the start of COMET software.
+7. Connect to the RPI whenever to use COMET's utility script with `ssh pi@raspberrypi.local`.
+
+If your computer can't resolve `raspberrypi.local` try using the RPI's IP address directly.
+
 To learn how to install the COMET software, please refer to the "Assembling 
 COMET" section of the 
 [COMET documentation](../Documentation/doc_COMET_2024-07-30.pdf).
