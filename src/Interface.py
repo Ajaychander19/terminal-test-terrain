@@ -292,8 +292,7 @@ class GUI(tkinter.Frame):
                 file_path = filedialog.askopenfilename(initialdir=self.working_directory, title='Choose a file',
                                                        filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
                 if file_path:  # Don't display error on cancel
-                    with (CometToCevConverter(file_path, output_dir=self.working_directory, create_date_dir=False)
-                          as converter):
+                    with CometToCevConverter(file_path, output_dir=self.working_directory, create_date_dir=False) as converter:
                         converter.process()
 
                 self.change_color('green')
