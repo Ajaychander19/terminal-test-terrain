@@ -17,13 +17,13 @@ Then call the `process()` method of that instance. See example below:
 """
 import logging
 import os
+import sys
 from datetime import datetime
 from io import TextIOWrapper
 
-try:  # When used inside CORENTIN an absolute import is needed
-    from COMET.src.shared.utils import print_to_logger_or_stdout, error_to_logger_or_raise
-except ImportError:  # When used inside COMET it doesn't know about the 'COMET' package so path is different
-    from shared.utils import print_to_logger_or_stdout, error_to_logger_or_raise
+# Add path to the parent src dir to be able to find the shared package from anywhere
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from shared.utils import print_to_logger_or_stdout, error_to_logger_or_raise
 
 RESERVED_WORDS = ["HEADER", "VERSION", "DATE", "OPERATOR", "GPS_LOST", "COMMENT", "MEASUREMENTS", "GPS",
                   "MEASURE_SERVING", "MEASURE_NEIGHBOUR_INTRA", "MEASURE_NEIGHBOUR_INTER"]

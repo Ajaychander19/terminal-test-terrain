@@ -63,7 +63,7 @@ class SerialConnection:
         self.raw_logger: logging.Logger | None = None
         if setup_raw_logger:
             self.raw_logger = setup_raw_at_logger()
-            self.raw_logger.info("")  # Empty line for separation
+            self.raw_logger.info("\n\n\n")  # A few empty lines for separation
 
     def __enter__(self):
         """

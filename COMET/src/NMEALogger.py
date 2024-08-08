@@ -29,17 +29,6 @@ def setup_logger(name: str, log_file_path: str):
     return logger
 
 
-logs_dir = f'./logs/{datetime.now().strftime("%Y-%m-%d")}'
-if not os.path.isdir(logs_dir):
-    os.makedirs(logs_dir)
-
-# Configure logger for processed output
-nmea_logger = setup_logger('nmea_logger', f'{logs_dir}/nmea_logger.log')
-# Configure logger for raw output
-raw_logger = setup_logger('raw_nmea_logger', f'{logs_dir}/raw_nmea.log')
-raw_logger.addHandler(logging.StreamHandler(sys.stdout))
-
-
 def get_gsv_sentence(nmea_line: str) -> str | None:
     """
     Return the GSV sentence in a nmea line. It separates the line at the $ sign (or end of line) and returns the part
@@ -139,4 +128,15 @@ def log_gnss_data(port='/dev/ttyUSB1'):
 
 
 if __name__ == "__main__":
+    logs_dir = f'./logs/{datetime.now().strftime("%Y-%m-%d")}'
+    if not os.path.isdir(logs_dir):
+        os.makedirs(logs_dir)
+
+    # Configure logger for processed output
+    nmea_logger = setup_logger('nmea_logger', f'{logs_dir}/nmea_logger.log')
+    # Configure logger for raw output
+    raw_logger = setup_logger('raw_nmea_logger', f'{logs_dir}/raw_nmea.log')
+    # TODO: add a command line argument to use
+    # raw_logger.addHandler(logging.StreamHandler(sys.stdout))
+
     log_gnss_data()

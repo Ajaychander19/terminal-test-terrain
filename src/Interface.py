@@ -1,3 +1,4 @@
+import sys
 import tkinter
 from tkinter import filedialog
 
@@ -12,7 +13,10 @@ import cartoradio
 import association
 from viavianalyzer import Viavilyzer
 
-from COMET.src.shared.CometToCevConverter import CometToCevConverter
+
+# Add path to COMET source dir to be able to find its modules
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../COMET/src')))
+from shared.CometToCevConverter import CometToCevConverter
 
 
 class CreateToolTip(object):
