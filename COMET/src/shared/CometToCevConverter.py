@@ -20,6 +20,7 @@ import os
 import sys
 from datetime import datetime
 from io import TextIOWrapper
+from typing import Dict, Tuple, List
 
 # Add path to the parent src dir to be able to find the shared package from anywhere
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -118,7 +119,7 @@ def should_omit(line: str, line_index: int = 0) -> bool:
     return True
 
 
-def get_earfcns_pcis(measurements_file_path: str) -> dict[(int, int), int]:
+def get_earfcns_pcis(measurements_file_path: str) -> Dict[Tuple[int, int], int]:
     """Parse the COMET measurement file and retrieve a dictionary of sorted couples (earfcn, pci) associated to their
     frequency in measurements.
 
@@ -126,8 +127,8 @@ def get_earfcns_pcis(measurements_file_path: str) -> dict[(int, int), int]:
     :return: dictionary of unique ordered couples of (earfcn, pci) associated to the number of their appearance
         in measurements format: {(earfcn: int, pci: int): frequency: int}
     """
-    earfcns: dict[int, list[int]] = dict()
-    sorted_earfcns_pcis: list[(int, int)] = list()
+    earfcns: Dict[int, List[int]] = dict()
+    sorted_earfcns_pcis: List[Tuple[int, int]] = list()
     with open(measurements_file_path, "r") as measurements_file:
         passed_header = False
         ignore_measurement = False
@@ -187,7 +188,7 @@ def get_earfcns_pcis(measurements_file_path: str) -> dict[(int, int), int]:
                 sorted_earfcns_pcis.append((earfcn, pci))
 
         # Remove duplicates and associate a frequency to each couple
-        frequencies: dict[(int, int), int] = dict()
+        frequencies: Dict[Tuple[int, int], int] = dict()
         for couple in sorted_earfcns_pcis:
             if couple not in frequencies:
                 frequencies[couple] = 1
