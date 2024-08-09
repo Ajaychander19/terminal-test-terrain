@@ -17,6 +17,24 @@ install_python () {
   sudo apt install python3.11;
 }
 
+### BLOCK MODULE'S ETHERNET OVER USB INTERFACE
+# Delete route through the module to allow Internet access if module is already connected
+# Check for routes associated with usb0
+if ip route | grep -q 'dev usb0'; then
+  echo "Removing usb0 routes to allow Internet access"
+  # Delete routes associated with usb0
+  ip route | grep 'usb0' | while read -r line ; do
+    ROUTE=$(echo "$line" | awk '{print $1}')
+    sudo ip route del "$ROUTE" dev usb0
+  done
+fi
+
+# Set module's interface handling to manual, the usb0 interface will not create routes and won't have an IP address
+ETHERNET_INTERFACE_FILE_CONTENT="auto usb0
+iface usb0 inet manual"
+echo "Setting usb0 interface handling to manual to stop it from creating routes at boot"
+echo "${ETHERNET_INTERFACE_FILE_CONTENT}" | sudo tee "/etc/network/interfaces.d/usb0_manual.conf" > /dev/null
+echo
 
 #### INSTALL PYTHON AND REQUIRED PACKAGES
 PYTHON_VERSION=$(python3 -c 'import sys; print(sys.version_info.minor)')
@@ -63,7 +81,7 @@ alias python='/usr/bin/python3.$PYTHON_VERSION'
 
 # Remove external package management
 if test -f "/usr/lib/python3.$PYTHON_VERSION/EXTERNALLY-MANAGED"; then
-    echo "Enable installing python packages with pip"
+    echo "Enable installing Python packages with pip"
     sudo mv "/usr/lib/python3.$PYTHON_VERSION/EXTERNALLY-MANAGED" "/usr/lib/python3.$PYTHON_VERSION/EXTERNALLY-MANAGED.old"
 fi
 
@@ -81,13 +99,10 @@ echo "Installing required python packages"
 echo "------------------------------"
 pip install -r ./requirements.txt
 
-
-
 #### GIVE PERMISSIONS TO THE EXECUTABLES
-# just in case
 sudo chmod 744 ./comet.sh
-sudo chmod 744 ./automatic.py
-sudo chmod 744 ./manual.sh
+sudo chmod 744 ./src/automatic.py
+sudo chmod 744 ./src/interactive.py
 
 
 #### CREATE SUBDIRECTORIES
@@ -105,7 +120,6 @@ Description=systemd service to start COMET software in background
 [Service]
 ExecStart=${WORKING_DIR}/comet.sh
 WorkingDirectory=${WORKING_DIR}
-StandardOutput=file:${WORKING_DIR}/logs/measurements_output.log
 StandardError=file:${WORKING_DIR}/logs/measurements_error.log
 User=${USERNAME}
 Group=${USERNAME}
@@ -119,7 +133,7 @@ WantedBy=multi-user.target"
 echo "${SERVICE_FILE_CONTENT}" | sudo tee "/etc/systemd/system/comet.service" > /dev/null
 
 # Set the correct permissions
-chmod 755 "/etc/systemd/system/comet.service"
+sudo chmod 755 "/etc/systemd/system/comet.service"
 
 # SETUP NMEA LOGGER SERVICE
 NMEA_LOGGER_CONTENT="[Unit]
@@ -141,17 +155,16 @@ WantedBy=multi-user.target"
 echo "${NMEA_LOGGER_CONTENT}" | sudo tee "/etc/systemd/system/nmea_logger.service" > /dev/null
 
 # Set the correct permissions
-chmod 755 "/etc/systemd/system/nmea_logger.service"
-
+sudo chmod 755 "/etc/systemd/system/nmea_logger.service"
 
 
 # Enable service at boot
 sudo systemctl daemon-reload
 sudo systemctl enable comet
 sudo systemctl enable nmea_logger
+echo
 echo "The program will now automatically start at boot"
 echo "------------------------------"
-echo
 
 
 #### START COMET

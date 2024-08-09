@@ -1,8 +1,10 @@
 measurements/*
-saved_measurements/*
+cev/*
+saved_measurements
 data/*
 *.aof
 cev*.csv
 logs
 testScripts
 .idea/csv-editor.xml
+__pycache__
