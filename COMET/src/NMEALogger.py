@@ -16,9 +16,9 @@ def setup_logger(name: str, log_file_path: str):
 
     :param name: Name of the logger
     :param log_file_path: Path to the log file (logger will create it if it doesn't exist)
-    :return:
+    :return: the logger
     """
-    formatter = logging.Formatter('%(asctime)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(message)s', datefmt='%d-%m-%Y %H:%M:%S')
 
     handler = logging.FileHandler(log_file_path)
     handler.setFormatter(formatter)
