@@ -84,23 +84,22 @@ holes in the standard case) turns off. This might take 5-10 seconds. Unplug the 
 The button allows the user to start and stop a measurement session as well as gracefully
 shutdown COMET. 
 
-| Action             | Meaning                                                                 |
-|--------------------|-------------------------------------------------------------------------|
-| Single press       | Start a new measurement session or stop the current measurement session |
-| Hold for 2 seconds | Shut down COMET. Might take a second or more before actual shutdown     |
+| Action             | Meaning                                                                         |
+|--------------------|---------------------------------------------------------------------------------|
+| Single press       | Start a new measurement session or stop the current measurement session         |
+| Hold for 2 seconds | Shut down COMET. Might take an additional second or more before actual shutdown |
 
 ### Red LED
 The red LED indicates when COMET is not yet ready to start measurements (at start-up,
 during setup of a measurements session) and lack of signal (during measurements).
 
-| Duration                                              | Meaning                                |
-|-------------------------------------------------------|----------------------------------------|
-| Always on                                             | Initialization or no module connection |
-| On for 500ms, off for 3,000ms                         | Absence of GPS signal                  |
-| On for 3,000ms, off for 500ms                         | Absence of network signal              |
-| On for 500ms, off for 500ms                           | Absence of both network and GPS signal |
-| On for 1,000ms, off for 1,000ms                       | SIM card is still locked               |
-| On for 100ms, off for 100ms, for a total of 5 seconds | Wrong pin code format                  |
+| Duration                        | Meaning                                |
+|---------------------------------|----------------------------------------|
+| Always on                       | Initialization or no module connection |
+| On for 500ms, off for 3,000ms   | Absence of GPS signal                  |
+| On for 3,000ms, off for 500ms   | Absence of network signal              |
+| On for 500ms, off for 500ms     | Absence of both network and GPS signal |
+| On for 1,000ms, off for 1,000ms | SIM card is locked                     |
 
 ### Green LED
 The green LED is used to indicate readiness and normal execution of measurements.

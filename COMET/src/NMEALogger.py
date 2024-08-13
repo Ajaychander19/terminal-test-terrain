@@ -1,3 +1,4 @@
+import argparse
 import os
 
 import logging
@@ -128,6 +129,11 @@ def log_gnss_data(port='/dev/ttyUSB1'):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser("python NMEALogger.py", description='Read NMEA output and log satellites')
+    parser.add_argument('-c', '--console', action='store_true', help="If given, will print raw NMEA output"
+                                                                     "to console")
+    args = parser.parse_args()
+
     logs_dir = f'./logs/{datetime.now().strftime("%Y-%m-%d")}'
     if not os.path.isdir(logs_dir):
         os.makedirs(logs_dir)
@@ -136,7 +142,8 @@ if __name__ == "__main__":
     nmea_logger = setup_logger('nmea_logger', f'{logs_dir}/nmea_logger.log')
     # Configure logger for raw output
     raw_logger = setup_logger('raw_nmea_logger', f'{logs_dir}/raw_nmea.log')
-    # TODO: add a command line argument to use
-    # raw_logger.addHandler(logging.StreamHandler(sys.stdout))
+
+    if args.console:
+        raw_logger.addHandler(logging.StreamHandler(sys.stdout))
 
     log_gnss_data()
