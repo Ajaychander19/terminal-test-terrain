@@ -173,3 +173,19 @@ If no satellites are detected or the module stays at 3-4 satellites for a very l
 indicate a hardware issue. Check if the antenna is well-connected to the jack that leads to the `ANT3` slot on the 
 module. You can also try to replace the internal RF cable as they can be fairly fragile. 
 
+I plugged in the power supply but the LEDs don't turn on.
+: In some cases the RPI might fail to start after a bad shutdown. Reapplying
+the power supply a second time usually resolves this. If the LEDs don't turn
+a minute after that (the time may vary depending on the RPI and the SD card used),
+but the RPI itself booted, check the `measurements_error.log` log to check if there
+were any anomalies.
+
+The date and hour in measurements and logs is wrong.
+: Raspberry Pi don't have a Real-Time Clock meaning that they don't track time
+when they are shut down. To adjust the date, boot COMET with an Ethernet cable
+plugged in and wait for at least 30 seconds (or until the green LED turns on).
+This should be enough for the RPI to synchronise its time with the Internet. Note
+that if it's the first measurements of the day, some of the logs will be created
+in the wrong location (using the previous date) but the measurements will still
+use the correct date. To make sure that the logs are located correctly, just reboot
+the device once after synchronising the clock.
