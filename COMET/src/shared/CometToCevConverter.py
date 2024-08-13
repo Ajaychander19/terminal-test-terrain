@@ -100,6 +100,9 @@ def should_omit(line: str, line_index: int = 0) -> bool:
         if nb_values < 12:
             syntax_error(line_index, "MEASURE_SERVING is in wrong format, measurement will be omitted", fatal=False)
             return True
+        if values[7] == '':  # No network
+            return True
+
         pcid = int(values[7])
         earfcn = int(values[8])
         # Ignore the non-LTE measurements in current version
@@ -110,6 +113,9 @@ def should_omit(line: str, line_index: int = 0) -> bool:
         if nb_values < 7:
             syntax_error(line_index, "MEASURE_NEIGHBOUR is in wrong format, measurement will be omitted", fatal=False)
             return True
+        if values[3] == '':  # No network
+            return True
+
         pcid = int(values[3])
         earfcn = int(values[4])
         if values[2].strip() != "LTE" or pcid == 0 or earfcn >= 4294967295:
