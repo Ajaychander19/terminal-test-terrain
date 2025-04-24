@@ -74,7 +74,7 @@ class CSVWriter:
         """Opens the CSV file to write in.
         If the CSV file doesn't exist, it will be created.
         """
-        self._file = open(self._fname, 'w')
+        self._file = open(self._fname, 'w', encoding="utf-8")
 
         self._file.write('DEFINE\n')
 
