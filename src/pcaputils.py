@@ -3,7 +3,6 @@
 from constantPath import getPathText, getWireshark, getfileName
 
 import subprocess
-import platform
 
 def reorder_pcap(fname: str, dest: str):
     """Reorders a given PCAP temporary file with reordercap. Produces the resulting
@@ -74,22 +73,13 @@ def produce_pcap(path: str, dest: str, diss_num: int):
     output_pcap = getPathText(dest)
 
     # Preparing text2pcap call.
-    if platform.system() == "Windows":
-      t2p_argc = [
-          getWireshark('text2pcap'),  # Wireshark command path.
-          '-t', '%F %H:%M:%S.%f',  # Time format to use in the pcap file.
-          input_txt,  # Input .txt file.
-          output_pcap,  # Output .pcap file.
-          '-l', str(diss_num)  # Number of the dissector to be called.
-      ]
-    else :
-      t2p_argc = [
-          getWireshark('text2pcap'),  # Wireshark command path.
-          '-t', '%F %H:%M:%S.',  # Time format to use in the pcap file.
-          input_txt,  # Input .txt file.
-          output_pcap,  # Output .pcap file.
-          '-l', str(diss_num)  # Number of the dissector to be called.
-      ]
+    t2p_argc = [
+        getWireshark('text2pcap'),  # Wireshark command path.
+        '-t', '%F %H:%M:%S.%f',  # Time format to use in the pcap file.
+        input_txt,  # Input .txt file.
+        output_pcap,  # Output .pcap file.
+        '-l', str(diss_num)  # Number of the dissector to be called.
+    ]
 
     # Calling text2pcap
     subprocess.check_call(t2p_argc)
