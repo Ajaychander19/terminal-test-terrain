@@ -129,6 +129,12 @@ class GUI(tkinter.Frame):
         self.visualizaion.configure(height=2, width=25)
         self.visualizaion.pack(padx=5, pady=5)
 
+        self.cellinfolite_conversion = tkinter.Button(self, command=lambda: self.button_click(9),
+                                               text="cell info lite conversion",
+                                               font=boldFont, background='light green')
+        self.cellinfolite_conversion.configure(height=2, width=25)
+        self.cellinfolite_conversion.pack(padx=5, pady=5)
+
         self.canvas = Canvas(self, height=20)
         self.canvas.pack()
         self.color = 'green'
@@ -295,6 +301,11 @@ class GUI(tkinter.Frame):
                     with CometToCevConverter(file_path, output_dir=self.working_directory, create_date_dir=False) as converter:
                         converter.process()
 
+                self.change_color('green')
+            
+            elif number == 9:
+                self.change_color('red')
+                
                 self.change_color('green')
 
         except Exception as e:

@@ -258,34 +258,6 @@ class XcalConverter:
         self.produce_csv_file()
         print('CSV file produced.')
 
-    def parse_aof(self):
-        """Parses the associated AOF file.
-
-        The parsing produce temporary files .txt files, one for each Wireshark
-        dissector. These files can be used by text2pcap.
-
-        The first output CSV file is also produced by this function ; firstly, the AOF file syntax is checked.
-        The lengths of messages and the structure of the different sections of the file are checked. EARFCN / PCIs
-        couples are also referenced during this step. Then, during the second step, the file is re-read, and all
-        data inside it are processed, to make the EARFCNs and PCIs / Measurements tables.
-
-        The output file produced is written in CSV, with a syntax based on the AOF format.
-
-        Raises:
-            RuntimeError: if an error occurred during the analysis of the AOF file.
-        """
-
-        print('Parsing AOF file...')
-        self.first_read()
-        print('AOF file parsing done.')
-
-        print('Data processing...')
-        self.second_read()
-        print('Data processing done.')
-
-        print('Producing CSV file...')
-        self.produce_csv_file()
-        print('CSV file produced.')
 
     def first_read(self):
         """Does the first reading of the AOF file.
