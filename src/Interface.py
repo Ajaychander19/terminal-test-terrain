@@ -12,6 +12,7 @@ import xcalyzer
 import cartoradio
 import association
 from viavianalyzer import Viavilyzer
+import gmonyzer
 
 
 # Add path to COMET source dir to be able to find its modules
@@ -129,11 +130,14 @@ class GUI(tkinter.Frame):
         self.visualizaion.configure(height=2, width=25)
         self.visualizaion.pack(padx=5, pady=5)
 
-        self.cellinfolite_conversion = tkinter.Button(self, command=lambda: self.button_click(9),
-                                               text="cell info lite conversion",
+        self.cellgmonpro_conversion = tkinter.Button(self, command=lambda: self.button_click(9),
+                                               text="GMon Pro conversion",
                                                font=boldFont, background='light green')
-        self.cellinfolite_conversion.configure(height=2, width=25)
-        self.cellinfolite_conversion.pack(padx=5, pady=5)
+        CreateToolTip(self.cellgmonpro_conversion,
+                      "Choose a GMoN-Pro measurements file to convert it to a 'csv' measurement file that can be "
+                      "used by the Association process")
+        self.cellgmonpro_conversion.configure(height=2, width=25)
+        self.cellgmonpro_conversion.pack(padx=5, pady=5)
 
         self.canvas = Canvas(self, height=20)
         self.canvas.pack()
@@ -305,7 +309,15 @@ class GUI(tkinter.Frame):
             
             elif number == 9:
                 self.change_color('red')
-                
+                file_path = filedialog.askopenfilename(initialdir=self.working_directory, title='Choose a file',
+                                                    filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
+                if not file_path:
+                    messagebox.showerror("Error", "Choose one file.")
+                else:
+                    try:
+                        gmonyzer.GMonProConverter(file_path, self.working_directory).process()
+                    except Exception as e:
+                        messagebox.showerror("Processing Error", str(e))
                 self.change_color('green')
 
         except Exception as e:
