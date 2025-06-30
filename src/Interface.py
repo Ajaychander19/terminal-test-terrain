@@ -307,7 +307,7 @@ class GUI(tkinter.Frame):
 
                 self.change_color('green')
             
-            elif number == 9:
+            elif number == 9: # GMon Pro measurements conversion
                 self.change_color('red')
                 file_path = filedialog.askopenfilename(initialdir=self.working_directory, title='Choose a file',
                                                     filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
