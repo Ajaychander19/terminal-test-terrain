@@ -88,6 +88,15 @@ class GUI(tkinter.Frame):
                                                  "Choose the Field-test Accuver Xcal files "
                                                  "to produce a measurement file that can be used by the Association "
                                                  " process, produce a pcap file if only 1 file is selected")
+        
+        self.cellgmonpro_conversion = tkinter.Button(self, command=lambda: self.button_click(9),
+                                               text="GMon Pro file Processing",
+                                               font=boldFont, background='light green')
+        CreateToolTip(self.cellgmonpro_conversion,
+                      "Choose a GMoN-Pro measurements file to convert it to a 'csv' measurement file that can be "
+                      "used by the Association process")
+        self.cellgmonpro_conversion.configure(height=2, width=25)
+        self.cellgmonpro_conversion.pack(padx=5, pady=5)
 
         # Comet converter button
         self.comet_converter = tkinter.Button(self, command=lambda: self.button_click(8),
@@ -129,15 +138,6 @@ class GUI(tkinter.Frame):
                                            text="Visualisation", font=boldFont, background='light green')
         self.visualizaion.configure(height=2, width=25)
         self.visualizaion.pack(padx=5, pady=5)
-
-        self.cellgmonpro_conversion = tkinter.Button(self, command=lambda: self.button_click(9),
-                                               text="GMon Pro conversion",
-                                               font=boldFont, background='light green')
-        CreateToolTip(self.cellgmonpro_conversion,
-                      "Choose a GMoN-Pro measurements file to convert it to a 'csv' measurement file that can be "
-                      "used by the Association process")
-        self.cellgmonpro_conversion.configure(height=2, width=25)
-        self.cellgmonpro_conversion.pack(padx=5, pady=5)
 
         self.canvas = Canvas(self, height=20)
         self.canvas.pack()
@@ -238,6 +238,19 @@ class GUI(tkinter.Frame):
                     messagebox.showinfo("Warning", "Select at least one file")
 
                 self.change_color('green')
+            
+            elif number == 9: # GMon Pro measurements conversion
+                self.change_color('red')
+                file_path = filedialog.askopenfilename(initialdir=self.working_directory, title='Choose a file',
+                                                    filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
+                if not file_path:
+                    messagebox.showerror("Error", "Choose one file.")
+                else:
+                    try:
+                        gmonyzer.GMonProConverter(file_path, self.working_directory).process()
+                    except Exception as e:
+                        messagebox.showerror("Processing Error", str(e))
+                self.change_color('green')
 
             elif number == 6:  # use an existing association
                 self.change_color('red')
@@ -305,19 +318,6 @@ class GUI(tkinter.Frame):
                     with CometToCevConverter(file_path, output_dir=self.working_directory, create_date_dir=False) as converter:
                         converter.process()
 
-                self.change_color('green')
-            
-            elif number == 9: # GMon Pro measurements conversion
-                self.change_color('red')
-                file_path = filedialog.askopenfilename(initialdir=self.working_directory, title='Choose a file',
-                                                    filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
-                if not file_path:
-                    messagebox.showerror("Error", "Choose one file.")
-                else:
-                    try:
-                        gmonyzer.GMonProConverter(file_path, self.working_directory).process()
-                    except Exception as e:
-                        messagebox.showerror("Processing Error", str(e))
                 self.change_color('green')
 
         except Exception as e:
