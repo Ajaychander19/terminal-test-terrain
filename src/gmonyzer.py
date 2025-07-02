@@ -2,7 +2,7 @@ import csv
 import os
 import ntpath
 from collections import defaultdict
-from constantPath import getPathText, getfileName, getOperatorname
+from constantPath import getfileName, getOperatorname
 
 class GMonProConverter:
     """This class is used to analyze and convert GMon Pro CSV export files into a structured CSV format.
@@ -15,6 +15,7 @@ class GMonProConverter:
     The output is structured for compatibility with further processing or visualization.
     """
 
+    # Mapping of CSV columns to expected names in the output
     COLUMNS = {
         'timestamp': 'TIME',
         'latitude': 'LAT',
@@ -28,6 +29,8 @@ class GMonProConverter:
         'tac': 'LAC/TAC',
         'cid': 'XCI',
         'plmn': 'PLMN',
+        'ta': 'TA',
+        'date': 'DATE'
     }
 
     def __init__(self, path, output_directory):
@@ -40,7 +43,8 @@ class GMonProConverter:
         self._path = path
         self.output_directory = output_directory
         self.rows = []
-        self.count_by_tuple = defaultdict(int)
+        self.row_date= [] 
+        self.count_by_tuple = defaultdict(int) # Dictionary to count occurrences of (EARFCN, PCI) tuples
         self.index_map = {}
         self.mcc = None
         self.mnc = None
@@ -59,8 +63,8 @@ class GMonProConverter:
           - Detects cell changes to write CELLINFO rows
           - Creates MEASURE_SERVING and inline MEASUREMENT rows with RSRP/RSRQ/RSSI values
         """
-        unique_tuples = sorted(set((row[self.COLUMNS['earfcn']], row[self.COLUMNS['pci']]) for row in data))
-        self.index_map = {t: i for i, t in enumerate(unique_tuples)}
+        unique_tuples = sorted(set((row[self.COLUMNS['earfcn']], row[self.COLUMNS['pci']]) for row in data)) # Get unique (EARFCN, PCI) tuples
+        self.index_map = {t: i for i, t in enumerate(unique_tuples)} # Create a mapping from (EARFCN, PCI) tuples to their index, it will be used to fill the MEASUREMENT rows
         last_tuple = None
 
         for idx, row in enumerate(data):
@@ -78,7 +82,9 @@ class GMonProConverter:
                 cid = row[self.COLUMNS['cid']]
                 plmn = row[self.COLUMNS['plmn']]
                 mcc, mnc = plmn[:3], plmn[3:]
+                ta = row[self.COLUMNS['ta']]
                 self.mcc, self.mnc = mcc, mnc
+                date = row[self.COLUMNS['date']]
 
                 current_tuple = (earfcn, pci)
                 self.count_by_tuple[current_tuple] += 1
@@ -89,7 +95,7 @@ class GMonProConverter:
                     last_tuple = (earfcn, pci, tac, cid)
 
                 # Insert MEASURE_SERVING
-                self.rows.append(["MEASURE_SERVING", f"{timestamp:.1f}", lat, lon, earfcn, pci, rsrp, rsrq, rssi, cinr])
+                self.rows.append(["MEASURE_SERVING", f"{timestamp:.1f}", lat, lon, earfcn, pci, rsrp, rsrq, rssi, cinr, ta])
 
                 # Immediately insert 3 MEASUREMENT rows for the current sample
                 for metric, value in zip(["RSRP", "RSRQ", "RSSI"], [rsrp, rsrq, rssi]):
@@ -98,6 +104,8 @@ class GMonProConverter:
                     col_index = self.index_map[current_tuple]
                     col_values[col_index] = value
                     self.rows.append(row_measurement + col_values)
+                
+                self.row_date.append(date)  # Store the date for later use
 
             except Exception as e:
                 print(f"Skipping line {idx} due to error: {e}")
@@ -109,15 +117,15 @@ class GMonProConverter:
         """
         operator = getOperatorname(self.mcc, self.mnc)
         filename = getfileName(self._path)
-        output_file = os.path.join(self.output_directory, f"cev{operator}_{filename}.csv")
+        output_file = os.path.join(self.output_directory, f"cev{operator}_{filename}.csv") # Construct output filename with operator and original filename
 
-        tuples = sorted(self.index_map.keys())
+        tuples = sorted(self.index_map.keys())  # Sort tuples for consistent order
         earfcns = [t[0] for t in tuples]
         pcis = [t[1] for t in tuples]
         beams = ['0'] * len(tuples)
-        nb_meas = [str(self.count_by_tuple[t]) for t in tuples]
-        n = len(tuples)
-
+        nb_meas = [str(self.count_by_tuple[t]) for t in tuples] # Count of measurements for each (EARFCN, PCI) tuple
+        n = len(tuples) # Number of unique (EARFCN, PCI) tuples
+        
         with open(output_file, 'w', newline='', encoding='utf-8') as out:
             writer = csv.writer(out, delimiter='|')
 
@@ -132,12 +140,12 @@ class GMonProConverter:
             writer.writerow(['MEAS_NB', 'NA', 'NA', 'NA', 'NA'] + [f'nb_meas_{i}' for i in range(n)])
 
             writer.writerow(['CELLINFO', 'Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'])
-            writer.writerow(['MEASURE_SERVING', 'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI', 'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR'])
-            writer.writerow(['MEASUREMENT','Timestamp','Lat','Lng','Measurement_Name'] + [''] * len(self.index_map))
+            writer.writerow(['MEASURE_SERVING', 'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI', 'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR', 'Serving_TA'])
+            writer.writerow(['MEASUREMENT','Timestamp','Lat','Lng','Measurement_Name', 'Values'])
 
             writer.writerow(['CONTENT'])
             writer.writerow(['VERSION', '2.0'])
-            writer.writerow(['DATE', 'NULL'])
+            writer.writerow(['DATE', self.row_date[0]])
             writer.writerow(['TECHNO', '4G'])
 
             writer.writerow(['MEAS_EARFCNS', '', '', '', ''] + earfcns)
