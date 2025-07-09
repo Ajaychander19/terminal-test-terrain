@@ -175,14 +175,15 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str, t
                     freq_unit = station_group_dict['Unité'][i]
                     beg_freq = calculate_freq(station_group_dict['Début'][i], freq_unit)
                     end_freq = calculate_freq(station_group_dict['Fin'][i], freq_unit)
+                    delta_coords = calculate_delimiters(lat, lng, ant_az,0.001)
 
                     # Writing BS_ANTENNA entry...
                     out.write_row([
                         'BS_ANTENNA', supp_num, carto_num,
                         lat, lng, station_group_dict['Hauteur / sol'][i], station_group_dict['Adresse'][i],
                         station_group_dict['Commune'][i], station_group_dict["Numéro d'antenne"][i],
-                        lat + 0.0005 * math.cos(ant_az * np.pi / 180),
-                        lng + 0.0005 * math.sin(ant_az * np.pi / 180),
+                        delta_coords[0],
+                        delta_coords[1],
                         ant_az, ant_az_min, ant_az_max, beg_freq, end_freq
                     ])
 
@@ -191,22 +192,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str, t
 
                     if ant_az_min % 360 not in az_delimited:
                         az_delimited.append(ant_az_min % 360)
-                        del_coords = calculate_delimiters(lat, lng, ant_az_min)
-                        insert_data(
-                            delimiters,
-                            {
-                                'carto_num': [carto_num],
-                                'lat': [lat],
-                                'lng': [lng],
-                                'del_lat': [del_coords[0]],
-                                'del_lng': [del_coords[1]]
-                            },
-                            1
-                        )
-
-                    if ant_az_max % 360 not in az_delimited:
-                        az_delimited.append(ant_az_max % 360)
-                        del_coords = calculate_delimiters(lat, lng, ant_az_max)
+                        del_coords = calculate_delimiters(lat, lng, ant_az_min,0.4)
                         insert_data(
                             delimiters,
                             {
@@ -239,10 +225,10 @@ def is_system_valid(ser: pd.Series, targetSystem: str) -> pd.Series:
     return pd.Series(res)
 
 
-def calculate_delimiters(lat: float, lng: float, azimuth: float) -> (float, float):
+def calculate_delimiters(lat: float, lng: float, azimuth: float, size: float) -> (float, float):
     return (
-        lat + 0.3 * math.cos(azimuth * np.pi / 180),
-        lng + 0.3 * math.sin(azimuth * np.pi / 180)
+        lat + size * math.cos(azimuth * np.pi / 180),
+        lng + size * math.sin(azimuth * np.pi / 180)/math.cos(lat*np.pi/180)
     )
 
 
