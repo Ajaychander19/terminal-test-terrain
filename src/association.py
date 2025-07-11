@@ -249,152 +249,164 @@ class CellAssociator:
         with csvt.CSVReader(self._in_meas) as meas:
 
             line = meas.read_line()     # Current line.
+            last_valid_line = None
 
             while line != ['']:
 
                 # Registering base stations.
+                try:
+                    if line[0] == 'CELLINFO':
 
-                if line[0] == 'CELLINFO':
-
-                    if len(line) < 10:
-
-                        raise RuntimeError('error: CELLINFO line must contain at least 10 fields')
-
-                    insert_data(
-
-                        cellinfo_dict,
-
-                        {'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'TAC': [int(line[6])], 'CID': [int(line[7])]},
-
-                        1
-
-                    )
-
-                elif line[0] == 'VERSION':
-                    self.version = 2.0
-
-                    out_wr.write_row(line)
-
-                elif line[0] == 'TECHNO':
-
-                    out_wr.write_row(line)
-
-                # Registering measurements...
-
-                elif line[0] == 'MEASURE_SERVING':
-
-                    if self.techno == "5G NR":
+                        if len(line) < 10:
+                            raise RuntimeError('error: CELLINFO line must contain at least 10 fields')
 
                         insert_data(
 
-                            serving_dict,
+                            cellinfo_dict,
 
-                            {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
-
-                             'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'BEAM': [int(line[6])],
-
-                             'RSRP': [float(line[7])], 'RSRQ': [float(line[8])], 'RSSI': [float(line[9])],
-
-                             'CINR': [float(line[10])]},
+                            {'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'TAC': [int(line[6])], 'CID': [int(line[7])]},
 
                             1
 
                         )
 
-                    else:
-                        insert_data(
-
-                            serving_dict,
-
-                            {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
-
-                             'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])],
-                             'BEAM': [0],
-
-                             'RSRP': [float(line[6])], 'RSRQ': [float(line[7])], 'RSSI': [float(line[8])],
-
-                             'CINR': [float(line[9])]},
-
-                            1
-
-                        )
-
-                # Registering EARFCN / PCI / BEAM (if V2) tuples...
-
-                elif line[0] == 'MEAS_EARFCNS':
-
-                    if len(line) < 6:
-
-                        raise RuntimeError('error: MEAS_EARFCNS line must contain at least 6 fields')
-
-                    lineb = meas.read_line()
-
-                    if lineb[0] != 'MEAS_PCIS':
-
-                        raise RuntimeError('error: MEAS_EARFCNS line must be followed by MEAS_PCIS line.')
-
-                    if len(lineb) < 6:
-
-                        raise RuntimeError('error: MEAS_PCIS line must contain at least 6 fields')
-
-                    if len(line) != len(lineb):
-
-                        raise RuntimeError('error: MEAS_EARFCNS and MEAS_PCIS line should have the same length.')
-
-                    earpcis = None
-
-                    if self.version == 2.0:
-
-                        linec = meas.read_line()
-
-                        earpcis = [(int(i), int(j), int(k)) for (i, j, k) in zip(line[5:], lineb[5:], linec[5:])]
+                    elif line[0] == 'VERSION':
+                        self.version = 2.0
 
                         out_wr.write_row(line)
 
-                        out_wr.write_row(lineb)
-
-                        out_wr.write_row(linec)
-
-                    else:
-
-                        # Writing couples in file...
+                    elif line[0] == 'TECHNO':
 
                         out_wr.write_row(line)
 
-                        out_wr.write_row(lineb)
+                    # Registering measurements...
 
-                        earpcis = [(int(i), int(j)) for (i, j) in zip(line[5:], lineb[5:])]
+                    elif line[0] == 'MEASURE_SERVING':
 
-                elif line[0] == 'MEAS_NB':
+                        if self.techno == "5G NR":
 
-                    if len(line) != len(lineb):
+                            insert_data(
 
-                        raise RuntimeError('error: MEAS_PCIS and MEAS_NB lines should have the same length.')
+                                serving_dict,
 
-                    out_wr.write_row(line)     # writing the number of meas samples (which is just after the list of PCIS and with the same length)
+                                {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
 
-                # Registering measurement data...
+                                'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'BEAM': [int(line[6])],
 
-                elif line[0] == 'MEASUREMENT':
+                                'RSRP': [float(line[7])], 'RSRQ': [float(line[8])], 'RSSI': [float(line[9])],
 
-                    if not earpcis:
+                                'CINR': [float(line[10])]},
 
-                        raise RuntimeError('error: EARFCNS/PCIS not declared.')
+                                1
 
-                    #if len(earpcis) + 5 != len(line):
+                            )
 
-                    #    raise RuntimeError('error: the measurement does not contains as much values than EARFCNs/PCIs.')
+                        else:
+                            try:
+                                # Verifying that all required fields are present in the line.
+                                required_fields = line[1:10] 
+                                if any(val.strip() == '' for val in required_fields):
+                                    raise ValueError(f"Missing values into MEASURE_SERVING at the line: {line}")
+                                insert_data(
 
-                    #if last_earfcn is None or last_pci is None:
+                                    serving_dict,
 
-                    #    raise RuntimeError('error: MEASUREMENT encountered before MEASURE_SERVING.')
+                                    {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
 
-                    out_wr.write_row(line)
+                                    'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])],
+                                    'BEAM': [0],
 
-                elif line[0] == 'MEAS_PCIS':
+                                    'RSRP': [float(line[6])], 'RSRQ': [float(line[7])], 'RSSI': [float(line[8])],
 
-                    raise RuntimeError('error: MEAS_PCIS line must be directly preceded by a MEAS_EARFCNS line.')
+                                    'CINR': [float(line[9])]},
 
+                                    1
+
+                                )
+                            except ValueError as e:
+                                print(f"[ERROR] MEASURE_SERVING incorrect line : {e}")
+
+                    # Registering EARFCN / PCI / BEAM (if V2) tuples...
+
+                    elif line[0] == 'MEAS_EARFCNS':
+
+                        if len(line) < 6:
+
+                            raise RuntimeError('error: MEAS_EARFCNS line must contain at least 6 fields')
+
+                        lineb = meas.read_line()
+
+                        if lineb[0] != 'MEAS_PCIS':
+
+                            raise RuntimeError('error: MEAS_EARFCNS line must be followed by MEAS_PCIS line.')
+
+                        if len(lineb) < 6:
+
+                            raise RuntimeError('error: MEAS_PCIS line must contain at least 6 fields')
+
+                        if len(line) != len(lineb):
+
+                            raise RuntimeError('error: MEAS_EARFCNS and MEAS_PCIS line should have the same length.')
+
+                        earpcis = None
+
+                        if self.version == 2.0:
+
+                            linec = meas.read_line()
+
+                            earpcis = [(int(i), int(j), int(k)) for (i, j, k) in zip(line[5:], lineb[5:], linec[5:])]
+
+                            out_wr.write_row(line)
+
+                            out_wr.write_row(lineb)
+
+                            out_wr.write_row(linec)
+
+                        else:
+
+                            # Writing couples in file...
+
+                            out_wr.write_row(line)
+
+                            out_wr.write_row(lineb)
+
+                            earpcis = [(int(i), int(j)) for (i, j) in zip(line[5:], lineb[5:])]
+
+                    elif line[0] == 'MEAS_NB':
+
+                        if len(line) != len(lineb):
+
+                            raise RuntimeError('error: MEAS_PCIS and MEAS_NB lines should have the same length.')
+
+                        out_wr.write_row(line)     # writing the number of meas samples (which is just after the list of PCIS and with the same length)
+
+                    # Registering measurement data...
+
+                    elif line[0] == 'MEASUREMENT':
+
+                        if not earpcis:
+
+                            raise RuntimeError('error: EARFCNS/PCIS not declared.')
+
+                        #if len(earpcis) + 5 != len(line):
+
+                        #    raise RuntimeError('error: the measurement does not contains as much values than EARFCNs/PCIs.')
+
+                        #if last_earfcn is None or last_pci is None:
+
+                        #    raise RuntimeError('error: MEASUREMENT encountered before MEASURE_SERVING.')
+
+                        out_wr.write_row(line)
+
+                    elif line[0] == 'MEAS_PCIS':
+
+                        raise RuntimeError('error: MEAS_PCIS line must be directly preceded by a MEAS_EARFCNS line.')
+
+                except Exception as e:
+                    print(f"[Error] : {e}")
+                    raise RuntimeError(f"Last correct line before error : {last_valid_line}")
+                
+                last_valid_line = line
                 line = meas.read_line()
 
             # Associating measurement points to corresponding base stations...

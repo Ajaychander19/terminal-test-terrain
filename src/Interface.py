@@ -14,6 +14,7 @@ import association
 from viavianalyzer import Viavilyzer
 import gmonyzer
 
+import time
 
 # Add path to COMET source dir to be able to find its modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../COMET/src')))
@@ -174,9 +175,12 @@ class GUI(tkinter.Frame):
                     # csvtoPcap(files,self.working_directory)
 
                     for f in files:
+                        start_time = time.perf_counter()
                         conv = xcalyzer.XcalConverter(f)
                         conv.process(self.working_directory)
-
+                        elapsed = time.perf_counter() - start_time
+                        print(f"Conversion duration: {elapsed:.6f} seconds")
+                        
                     # Removing temporary files.
                     filelist = [f for f in os.listdir(getPathText(""))]
                     for f in filelist:
@@ -239,18 +243,43 @@ class GUI(tkinter.Frame):
 
                 self.change_color('green')
             
-            elif number == 9: # GMon Pro measurements conversion
+            elif number == 9:  # GMon Pro measurements conversion
                 self.change_color('red')
-                file_path = filedialog.askopenfilename(initialdir=self.working_directory, title='Choose a file',
-                                                    filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
-                if not file_path:
-                    messagebox.showerror("Error", "Choose one file.")
+
+                file_paths = filedialog.askopenfilenames(
+                    initialdir=self.working_directory,
+                    title='Choose G-MoNPro file(s)',
+                    filetypes=(("CSV file", "*.csv"), ("all files", "*.*"))
+                )
+
+                nbfiles = len(file_paths)
+                if nbfiles == 0:
+                    messagebox.showerror("Error", "Choose at least one file.")
                 else:
                     try:
-                        gmonyzer.GMonProConverter(file_path, self.working_directory).process()
+                        if nbfiles > 1:
+                            # Merge files
+                            merger = gmonyzer.GMonProMerger()
+                            merged_file = merger.merge(self.working_directory, file_paths)
+
+                            # Convert merged file
+                            print(f"Merged file created: {merged_file}")
+                            gmonyzer.GMonProConverter(merged_file, self.working_directory).process()
+
+                        else:
+                            # Convert single file
+                            f = file_paths[0]
+                            print(f"Processing file: {f}")
+                            start_time = time.perf_counter()
+                            gmonyzer.GMonProConverter(f, self.working_directory).process()
+                            elapsed = time.perf_counter() - start_time
+                            print(f"Conversion duration: {elapsed:.6f} seconds")
+
                     except Exception as e:
                         messagebox.showerror("Processing Error", str(e))
+
                 self.change_color('green')
+
 
             elif number == 6:  # use an existing association
                 self.change_color('red')

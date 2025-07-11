@@ -1,8 +1,78 @@
 import csv
 import os
-import ntpath
 from collections import defaultdict
 from constantPath import getfileName, getOperatorname
+from typing import List
+from datetime import datetime
+
+class GMonProMerger:
+    """
+    This class merges several G-MoN Pro CSV files into a single CSV.
+    The header from the first file is kept.
+    """
+
+    def __init__(self):
+        print("Merging G-MoNPro files...")
+
+    def merge(self, output_dir: str, file_list: List[str]) -> str:
+        content_lines = []
+        timestamps = []
+        base_header = []
+
+        for path in sorted(file_list):
+            with open(path, newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f, delimiter=';')
+                lines = list(reader)
+
+                # Save the header from the first file
+                if not base_header:
+                    base_header = reader.fieldnames
+
+                for row in lines:
+                    if row: 
+                        # Convert all values to string and handle missing columns
+                        content_lines.append([row.get(col, '') for col in base_header])
+
+                # Extract the first date from the file
+                for row in lines:
+                    date_str = row.get("DATE", "").strip()
+                    if date_str and date_str.upper() != "NULL":
+                        try:
+                            timestamps.append(datetime.strptime(date_str, "%Y/%m/%d"))
+                        except ValueError:
+                            pass
+                        break
+
+        # Generate the output filename based on the date range
+        timestamps = sorted(timestamps)
+        if timestamps:
+            start_str = timestamps[0].strftime("%Y%m%d")
+            end_str = timestamps[-1].strftime("%Y%m%d")
+        else:
+            start_str = end_str = datetime.now().strftime("%Y%m%d")
+
+        base_name = f"merged_gmonpro_{start_str}_to_{end_str}"
+        merged_filename = f"{base_name}.csv"
+        merged_path = os.path.join(output_dir, merged_filename)
+
+        # Add a counter to avoid overwriting existing files
+        counter = 1
+        while os.path.exists(merged_path):
+            merged_filename = f"{base_name}_{counter}.csv"
+            merged_path = os.path.join(output_dir, merged_filename)
+            counter += 1
+
+        # Write the merged content to the new CSV file
+        with open(merged_path, "w", newline='', encoding='utf-8') as out:
+            writer = csv.writer(out, delimiter=';')
+            writer.writerow(base_header)
+            writer.writerows(content_lines)
+
+        print(f"Merged file created: {merged_path}")
+        return merged_path
+
+
+
 
 class GMonProConverter:
     """This class is used to analyze and convert GMon Pro CSV export files into a structured CSV format.
@@ -25,7 +95,7 @@ class GMonProConverter:
         'rsrp': 'RSRP/RSCP',
         'rsrq': 'RSRQ/ECIO',
         'rssi': 'RSSI',
-        'cinr': 'SNR',
+        # 'cinr': 'SNR',
         'tac': 'LAC/TAC',
         'cid': 'XCI',
         'plmn': 'PLMN',
@@ -63,7 +133,12 @@ class GMonProConverter:
           - Detects cell changes to write CELLINFO rows
           - Creates MEASURE_SERVING and inline MEASUREMENT rows with RSRP/RSRQ/RSSI values
         """
-        unique_tuples = sorted(set((row[self.COLUMNS['earfcn']], row[self.COLUMNS['pci']]) for row in data)) # Get unique (EARFCN, PCI) tuples
+        # Create a mapping of (EARFCN, PCI) tuples to their index, ignoring empty values
+        unique_tuples = sorted(set(
+            (row[self.COLUMNS['earfcn']].strip(), row[self.COLUMNS['pci']].strip())
+            for row in data
+            if row[self.COLUMNS['earfcn']].strip() != '' and row[self.COLUMNS['pci']].strip() != ''
+        ))
         self.index_map = {t: i for i, t in enumerate(unique_tuples)} # Create a mapping from (EARFCN, PCI) tuples to their index, it will be used to fill the MEASUREMENT rows
         last_tuple = None
 
@@ -76,8 +151,8 @@ class GMonProConverter:
                 pci = row[self.COLUMNS['pci']]
                 rsrp = row[self.COLUMNS['rsrp']]
                 rsrq = row[self.COLUMNS['rsrq']]
-                rssi = row[self.COLUMNS['rssi']] or '0'
-                cinr = row[self.COLUMNS['cinr']] or '0'
+                rssi = row[self.COLUMNS['rssi']] or '-1'
+                cinr = -1
                 tac = row[self.COLUMNS['tac']]
                 cid = row[self.COLUMNS['cid']]
                 plmn = row[self.COLUMNS['plmn']]
@@ -86,7 +161,22 @@ class GMonProConverter:
                 self.mcc, self.mnc = mcc, mnc
                 date = row[self.COLUMNS['date']]
 
+                # Clean and validate inputs
+                cid = row.get(self.COLUMNS['cid'], '').strip()
+                plmn = row.get(self.COLUMNS['plmn'], '').strip()
+                rsrp = row.get(self.COLUMNS['rsrp'], '').strip()
+                rsrq = row.get(self.COLUMNS['rsrq'], '').strip()
+
+                # Check for missing values
+                if plmn == '000000' or cid == '' or rsrp == '' or rsrq == '':
+                    print(f"[IGNORE] Line {idx} ignored : missing values (CID/PLMN/RSRP/RSRQ)")
+                    continue
+
+
                 current_tuple = (earfcn, pci)
+                if current_tuple not in self.index_map:
+                    print(f"[IGNORE] Tuple {current_tuple} missing to index_map at the line {idx}")
+                    continue
                 self.count_by_tuple[current_tuple] += 1
 
                 # Insert CELLINFO only on change
