@@ -133,6 +133,8 @@ class GMonProConverter:
           - Detects cell changes to write CELLINFO rows
           - Creates MEASURE_SERVING and inline MEASUREMENT rows with RSRP/RSRQ/RSSI values
         """
+        ignored_lines = 0
+
         # Create a mapping of (EARFCN, PCI) tuples to their index, ignoring empty values
         unique_tuples = sorted(set(
             (row[self.COLUMNS['earfcn']].strip(), row[self.COLUMNS['pci']].strip())
@@ -169,12 +171,14 @@ class GMonProConverter:
 
                 # Check for missing values
                 if plmn == '000000' or cid == '' or rsrp == '' or rsrq == '':
+                    ignored_lines += 1
                     print(f"[IGNORE] Line {idx} ignored : missing values (CID/PLMN/RSRP/RSRQ)")
                     continue
 
 
                 current_tuple = (earfcn, pci)
                 if current_tuple not in self.index_map:
+                    ignored_lines += 1
                     print(f"[IGNORE] Tuple {current_tuple} missing to index_map at the line {idx}")
                     continue
                 self.count_by_tuple[current_tuple] += 1
@@ -199,6 +203,9 @@ class GMonProConverter:
 
             except Exception as e:
                 print(f"Skipping line {idx} due to error: {e}")
+                ignored_lines += 1
+            
+        print(f"Total ignored lines: {ignored_lines}")
 
     def write_output(self):
         """Writes the final structured CSV file with headers and formatted rows.
