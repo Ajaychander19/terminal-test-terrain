@@ -6,7 +6,7 @@ body
 #map
 {
     float: left;
-    min-height: 830px;
+    min-height: 80vh;
     width: 100%;
     border: 2px solid #AAA;
 }
@@ -16,6 +16,7 @@ body
     background-color: gray;
     padding: 10px;
     padding-top: 35px;
+    
 }
 
 .btn, .panel

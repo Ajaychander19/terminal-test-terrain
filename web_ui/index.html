@@ -4,7 +4,8 @@
     <head>
 
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-	
+	    <script src="lib/geolib.js"></script>
+
 		<script type='text/javascript' src='library/d3/d3.min.js'></script>
 		<script type='text/javascript' src='library/d3/d3-hexbin.min.js'></script>
 		<script type='text/javascript' src='library/jquery-3.3.1.min.js '></script>
@@ -39,6 +40,8 @@
 		<link rel="stylesheet" href='library/bootstrap-3.3.7\bootstrap-3.3.7-dist\css\bootstrap-theme.css'>
 		<link rel="stylesheet" href='library/bootstrap-3.3.7\bootstrap-3.3.7-dist\css\bootstrap-toggle.min.css'>
 		<link rel="stylesheet" type="text/css" href="library/leaflet/leaflet.css" />
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
 		<!-- <input type="file" id="fileElem" multiple style="display:none" onchange="myFunction()" accept=".json"> -->
 		<input type="file" id="fileElem" style="display:none" accept=".csv">
@@ -51,8 +54,19 @@
 			</div>
 			<div class="col-sm-9">
 				 <div id="map"></div>
-				 <div class="panel-heading">ORIGINAL PROGRAM DEVELOPED BY HOANG TRIEU.<br>2022 VERSION OF THE PROGRAM DEVELOPED BY KILLIAN CALLAC.
-				 <br>2023 VERSION OF THE PROGRAM DEVELOPED BY TRISTAN MINIER.</div>
+				 <div id="statistiques" style="display: none; height: 100%; background-color: #f4f4f4;">
+					<canvas id="Chart" width="800" height="400"></canvas>
+					<!-- Contenu futur du graphique -->
+				</div>
+				
+				 <div class="panel-heading" style="line-height: 1.6; font-size: 14px;">
+							<strong>Original program developed by:</strong><br>
+							Hoang Trieu (Original)<br>
+							Killian Callac (2022)<br>
+							Tristan Minier (2023)<br>
+							Walid Ouaali (2025)
+				</div>
+
 			</div>
 
 			<div id="tool-div" class="col-sm-3">
@@ -74,7 +88,7 @@
 									</div>
 					<div class="checkbox checkbox-primary">
 						<input class="styled" type="checkbox"  id="Theory_Cell">
-						<label for="Theory_Cell">Theoretical Cell</label>
+						<label for="Theory_Cell">Geometrical cells</label>
 					</div>
 
 					<!-- <label class="checkbox-inline">
@@ -147,6 +161,11 @@
 				<div class="panel panel-success visu-params">
 					<button type="button" id="clear-all" class="btn btn-primary  btn-block " >Clear All</button>
 				</div>
+				<div class="panel panel-success visu-params">
+					<button type="button" id="showMapBtn" class="btn btn-success btn-block">Show Map</button>
+					<button type="button" id="showStatsBtn" class="btn btn-warning btn-block">Show Statistics</button>
+				</div>
+				
 
 				<!--<div class="panel panel-success">
 					<button type="button" id="turn_off_server" class="btn btn-primary  btn-block " >shutdown the Server</button>

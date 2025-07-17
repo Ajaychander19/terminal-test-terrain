@@ -20,10 +20,12 @@ const drawing = {
         _servingRSRQ    // Serving RSRQ layer
         _servingRSSI    // Serving RSSI layer
         _servingCINR    // Serving RSRP layer
+        _servingPciTooltipLayer // serving PCI tooltip 
         _rsrpLayer      // Global RSRP layer
         _rsrqLayer      // Global RSRQ layer
         _rssiLayer      // Global RSSI layer
         _cinrLayer      // Global RSRP layer
+        _pciTooltipLayer      // Global PCI Tooltip layer
         _nonFilteredTAC
         _nonFilteredPCI
         /**
@@ -38,6 +40,8 @@ const drawing = {
             this._cellLayer = L.layerGroup();
             this._tacLayer = L.layerGroup();
             this._pciLayer = L.layerGroup();
+            this._servingPCI = L.layerGroup(); 
+            this._servingPciTooltipLayer = drawing.hexBin('PCI', styles.hexColor_pci());
             this._servingRSRP = drawing.hexBin('RSRP', styles.hexColor(0, 1));
             this._servingRSRQ = drawing.hexBin('RSRQ', styles.hexColor(0, 1));
             this._servingRSSI = drawing.hexBin('RSSI', styles.hexColor(0, 1));
@@ -45,7 +49,8 @@ const drawing = {
             this._rsrpLayer = drawing.hexBin('RSRP', styles.hexColor(0, 1));
             this._rsrqLayer = drawing.hexBin('RSRQ', styles.hexColor(0, 1));
             this._rssiLayer = drawing.hexBin('RSSI', styles.hexColor(0, 1));
-            // this._cinrLayer = drawing.hexBin('CINR', styles.hexColor(0, 1));
+            this._cinrLayer = drawing.hexBin('CINR', styles.hexColor(0, 1));
+            this._pciTooltiprLayer = drawing.hexBin('PCI', styles.hexColor_pci());
             this._assocLayer = L.layerGroup();
             this._nonFilteredTAC = null;
             this._nonFilteredPCI = null;
@@ -60,19 +65,90 @@ const drawing = {
          * @function
          */
         drawCells(voronoi, antFeats, delFeats) {
+            console.log(antFeats); // Debug: show antenna features in the console
+
+            // Clear the previous cell layer
             this._cellLayer.clearLayers();
-            // GeoJSON features of Voronoi cells.
+
+            // Get the features of the Voronoi cells
             let vorFeats = voronoi.features;
-            // Creating layers for Voronoi cells and delimiters.
+
+            // Create GeoJSON layer for Voronoi cells with style
             let vorLayer = L.geoJson(turf.featureCollection(vorFeats), styles.polyStyle(0.1, '000000'));
+
+            // Create GeoJSON layer for delimiters (borders between cells)
             let delLayer = L.geoJson(turf.featureCollection(delFeats), styles.styleDelimiter());
-            delLayer.bringToBack();
-            // Grouping these layers
+
+            delLayer.bringToBack(); // Ensure delimiters are behind other layers
+
+            
+            delFeats.forEach((feature, featureIndex) => {
+                if (feature.geometry && feature.geometry.type === 'LineString') {
+                    const coords = feature.geometry.coordinates; // tableau [ [lon, lat], ... ]
+                    //console.log(coords);
+                    for (let i = 0; i < coords.length - 1; i++) {
+                        const [lon1, lat1] = coords[i];
+                        const [lon2, lat2] = coords[i + 1];
+                        // Utilisation de la fonction calculateAzimuth de ton fichier util
+                        const azimuth = utils.calculateAzimuth(lat1, lon1, lat2, lon2);
+                        //console.log(`Delimiter Feature ${featureIndex}, segment ${i}: azimuth = ${azimuth.toFixed(2)}°`);
+                    }
+                }
+            });
+            
+
+            // Add Voronoi cells and delimiters to the cell layer group
             vorLayer.addTo(this._cellLayer);
             delLayer.addTo(this._cellLayer);
-            // Antennas layer (always displayed by default).
-            this._antLayer = L.geoJson(turf.featureCollection(antFeats), styles.styleAntenna());
+
+            // Create the antenna layer with custom styling and popup behavior
+            this._antLayer = L.geoJson(turf.featureCollection(antFeats), {
+                // Convert point features to styled circle markers
+                pointToLayer: function(feature, latlng) {
+                    return L.circleMarker(latlng, styles.styleAntenna());
+                },
+
+                // Define what happens for each antenna feature
+                onEachFeature: function(feature, layer) {
+                    // Extract longitude and latitude from the GeoJSON coordinates
+                    const [longitude, latitude] = feature.geometry.coordinates[0];
+                    // Extract antenna ID or site name (adjust according to your data)
+                    const cartoNum = 'Unknown';
+
+                    // Build popup HTML content with links to Cartoradio and Google Street View
+                    let popupContent = `
+                        <div class="tooltip-header" style="margin-bottom:8px;">
+                            
+                            <a href="https://www.cartoradio.fr/#/cartographie/all/lonlat/${longitude}/${latitude}" 
+                            target="_blank" rel="noopener"><strong>
+                            <span style="color:blue;">Carto</span><span style="color:hotpink;">radio</span>
+                            </strong> 
+                                
+                            </a>
+                            <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${latitude},${longitude}" 
+                            target="_blank" rel="noopener" style="margin-left:8px;">
+                                <img src="./img/pngegg.png" alt="Street View" width="32" height="32">
+                            </a>
+                        </div>
+                    `;
+
+                    // Bind the popup to the antenna marker
+                    layer.bindPopup(popupContent, {
+                        closeOnClick: true,
+                        autoClose: true
+                    });
+
+                    // Optional: Change cursor on hover to indicate interactivity
+                    layer.on('mouseover', function() {
+                        this._path.style.cursor = 'pointer';
+                    });
+                }
+            });
+
+            // Optionally add the antenna layer to the map automatically
+            this.setAntLayer(true); // <- You can control this dynamically if needed
         }
+
         /**
          * Draw serving points layer.
          * @param {*} points Points data
@@ -84,7 +160,43 @@ const drawing = {
          *
          * @function
          */
-        drawPoints(points, valChooser, colorChooser) {
+        /*drawPoints(pointsData, valChooser, colorChooser) {
+            let newPointLayers = {}; // Dictionnaire pour stocker les groupes de couches de marqueurs
+            for (let earfcn in pointsData) {
+                newPointLayers[earfcn] = {};
+                let earfcnGr = pointsData[earfcn];
+                for (let pciKey in earfcnGr) { // pciKey est la valeur PCI pour ce groupe
+                    newPointLayers[earfcn][pciKey] = {};
+                    let pciGr = earfcnGr[pciKey];
+                    for (let beam in pciGr) {
+                        let beamLayerGroup = L.layerGroup(); // Un groupe de couches pour les points de ce faisceau
+                        let pointsArr = pciGr[beam]; // Tableau des points de mesure individuels
+
+                        pointsArr.forEach((point) => { 
+                            if (typeof point.lat !== 'undefined' && typeof point.lng !== 'undefined') {
+                                let latLng = [point.lat, point.lng];
+                                let valueForColor = valChooser(earfcn, pciKey, point); 
+                                let color = colorChooser(valueForColor); // Couleur du point
+
+                                let circleMarker = L.circleMarker(latLng, {
+                                    radius: 4, 
+                                    color: color, 
+                                    weight: 1,
+                                    opacity: 1,
+                                    fillOpacity: 0.7 
+                                });
+                                let tooltipContent = "PCI: " + pciKey;                                                                            
+                                circleMarker.bindTooltip(tooltipContent);
+                                beamLayerGroup.addLayer(circleMarker); // Ajoute le marqueur au groupe du faisceau
+                            }
+                        });
+                        newPointLayers[earfcn][pciKey][beam] = beamLayerGroup; // Stocke le groupe de couches
+                    }
+                }
+            }
+            return newPointLayers; // Retourne la structure attendue par setPointLayer
+        }*/
+       drawPoints(points, valChooser, colorChooser) {
             let pointDict = {};
             for (let earfcn in points) {
                 pointDict[earfcn] = {};
@@ -111,6 +223,7 @@ const drawing = {
             }
             return pointDict;
         }
+
         /**
          * Draws serving measurement heatmap layer.
          *
@@ -207,33 +320,67 @@ const drawing = {
             layer.data(hexData);
         }
         /**
-         * Draws the pins of the associated pins.
+         * Draws the pins of the associated stations.
          *
          * @param {*} assocs Association data.
-         * @param {*} antennas Antennas data;
-         * @param {*} checkEarfcns Checked EARFCNs (in checkboxes) array.
-         * @param {*} checkPcis Checked PCIs (in checkboxes) array.
-         * @param {*} updateMethod Pins updating () => () function.
-         * @param {Array} earfcns Selected EARFCNs.
-         * @param {Array} pcis Selected PCIs.
-         *
-         * @function
+         * @param {*} antennas Antennas data.
+         * @param {*} checkEarfcns Checked EARFCNs array.
+         * @param {*} checkPcis Checked PCIs array.
+         * @param {*} checkBeams Beams map.
+         * @param {*} updateMethod Function to call when updates occur.
+         * @param {Array} earfcns Selected EARFCNs (optional).
+         * @param {Array} pcis Selected PCIs (optional).
+         * @param {*} beams Beam data (optional).
+         * @param {boolean} check_box Whether to show checkboxes (true/false).
          */
-        drawAssocs(assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns = null, pcis = null, beams = null) {
+        drawAssocs(antdirs, assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns = null, pcis = null, beams = null, check_box = true) {
             this._assocLayer.clearLayers();
+
             for (let cartoNum in assocs) {
-                let assoc = assocs[cartoNum];    // Association between current Cartoradio Num. and EARFCN / PCI.
-                let ant = antennas[cartoNum];   // Associated antenna
-                // Creating the marker object.
-                let marker = L.marker([ant.lat, ant.lng], {icon: styles.stationIcon()});
-                // Creating popup.
-                marker.bindPopup(
-                    this.drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams),
-                    {closeOnClick: false, autoClose: false}
-                );
+                let assocList = assocs[cartoNum];  // Tableau d’associations
+                let ant = antennas[cartoNum];      // Antenne de référence
+                let antdirList = antdirs.filter(dir => dir.cartoNum === +cartoNum);  // Directions associées
+
+                let azimuthData = [];
+
+                assocList.forEach((assocItem) => {
+                    let matchedDir = antdirList.find(dir => dir.antNum === assocItem.antNum);
+                    if (matchedDir) {
+                        azimuthData.push([
+                            assocItem.antNum,      // ← Ajout de antNum
+                            assocItem.pci,
+                            matchedDir.latA,
+                            matchedDir.lngA,
+                            matchedDir.latB,
+                            matchedDir.lngB
+                        ]);
+                    }
+                });
+
+                console.log(`Azimuth data for cartoNum ${cartoNum}:`);
+                console.log(azimuthData);
+
+                // Marqueur station
+                let marker = L.marker([ant.lat, ant.lng], {
+                    icon: styles.stationIcon()
+                });
+
+                // Popup selon le mode
+                let popupContent = check_box
+                    ? this.drawAssocPopup(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams)
+                    : this.drawAssocPopupWithoutCheckbox(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams);
+
+                marker.bindPopup(popupContent, {
+                    closeOnClick: true,
+                    autoClose: true
+                });
+
                 marker.addTo(this._assocLayer);
             }
         }
+
+
+
         /**
          * Draw the popup of an associated site.
          *
@@ -248,76 +395,349 @@ const drawing = {
          *
          * @function
          */
-        drawAssocPopup(cartoNum, assoc, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns = null, pcis = null, beams = null) {
-            // Content element of the popup.
+        drawAssocPopup(
+            azimuthData,
+            ant,
+            cartoNum,
+            assocList,
+            checkEarfcns,
+            checkPcis,
+            checkBeams,
+            updateMethod,
+            earfcns = null,
+            pcis = null,
+            beams = null
+        ) {
             let popDiv = document.createElement('div');
-            // Popup title.
-            popDiv.innerHTML = '<span class="tooltip-title">' + '<a href=\"https://www.cartoradio.fr\">' + cartoNum + '</a></span><br>';
-            // Checkboxes container element.
-            let checkDiv = document.createElement('div');
-            checkDiv.classList.add('check-div');
-            // Inserting checkboxes for each associated EARFCN / PCI...
-            let ascEarfcns = assoc.map((asc) => asc.earfcn);
-            let ascPcis = assoc.map((asc) => asc.pci);
+
+            popDiv.innerHTML = `
+                <div class="tooltip-header" style="margin-bottom:8px;">
+                <strong>Site Number:</strong> 
+                <a href="https://www.cartoradio.fr/#/cartographie/all/lonlat/${ant.lng}/${ant.lat}" target="_blank" rel="noopener">
+                    ${cartoNum}
+                </a>
+                <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ant.lat},${ant.lng}" target="_blank" rel="noopener">
+                    <img src="./img/pngegg.png" alt="Street View" width="32" height="32">
+                </a>
+                </div>`;
+
+            let checkDiv = document.createElement('table');
+            checkDiv.classList.add('check-table');
+            checkDiv.style.width = '110%';
+            checkDiv.style.borderCollapse = 'collapse';
+
+            let thead = document.createElement('thead');
+            let headerRow = document.createElement('tr');
+            ['EARFCN', 'PCI', 'Azimuth (°)', 'Beams'].forEach(text => {
+                let th = document.createElement('th');
+                th.textContent = text;
+                th.style.textAlign = 'left';
+                th.style.padding = '4px 8px';
+                th.style.borderBottom = '1px solid #ccc';
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            checkDiv.appendChild(thead);
+
+            let tbody = document.createElement('tbody');
+
+            let ascEarfcns = assocList.map(asc => asc.earfcn);
+            let ascPcis = assocList.map(asc => asc.pci);
+
             let earpcis = utils.subEarpci(ascEarfcns, ascPcis, beams, earfcns, pcis);
-            for (let i in earpcis.earfcns) {
-                let earfcn = earpcis.earfcns[i];
+
+            let groupedByPci = {};
+            for (let i = 0; i < earpcis.earfcns.length; i++) {
                 let pci = earpcis.pcis[i];
-                checkBeams[pci] = ["all"];
-                let bs;
-                let beam;
-                let select_beams;
-                if (pcis != null && earfcns != null) {
-                    let current_beams = beams[pci].sort();
-                    current_beams = current_beams.filter((item, index) => current_beams.indexOf(item) === index);
-                    select_beams = document.createElement('select');
-                    select_beams.text = 'Select Beams';
-                    //all beams default
-                    let option = document.createElement('option');
-                    option.text = "All beams";
-                    option.value = "all";
-                    select_beams.add(option);
-                    for (var j = 0; j < current_beams.length; j++) {
-                        let option = document.createElement('option');
-                        option.text = current_beams[j];
-                        option.value = current_beams[j];
-                        select_beams.add(option);
-                    }
-                    select_beams.addEventListener('change', function () {
-                        checkBeams[pci].pop();
-                        let selectedValue = select_beams.value;
-                        checkBeams[pci].push(selectedValue);
-                        updateMethod();
-                    });
-                }
-                // Checkbox element.
-                let checkBox = document.createElement('input');
-                checkBox.setAttribute('type', 'checkbox');
-                // Identifying the checkbox.
-                let checkId = 'check' + '-' + cartoNum + '-' + earfcn + '-' + pci;
-                checkBox.id = checkId;
-                // When clicking the checkbox...
-                checkBox.onclick = (evt) => {
-                    // ...adding corresponding EARFCN / PCI to checkEARFCN an checkPCI.
-                    if (evt.target.checked) {
-                        checkEarfcns.push(earfcn);
-                        checkPcis.push(pci);
-                    } else utils.removeEarpci(checkEarfcns, checkPcis, earfcn, pci);
-                    updateMethod();
-                };
-                if (utils.indexOfEarpci(checkEarfcns, checkPcis, earfcn, pci) !== -1) checkBox.checked = true;
-                // Label of the checkbox.
-                let label = document.createElement('label');
-                label.setAttribute('for', checkId);
-                label.innerHTML = earfcn + ' - ' + pci /*+ beam*/;
-                // Adding it to the checkboxes container div...
-                checkDiv.append(...[
-                    checkBox, label, select_beams, document.createElement('br')
-                ]);
+                let earfcn = earpcis.earfcns[i];
+                let freq = utils.earfcnToFreqLte(earfcn);
+
+                if (!groupedByPci[pci]) groupedByPci[pci] = [];
+                groupedByPci[pci].push({ earfcn, freq });
             }
-            popDiv.append(checkDiv);
+
+            let sortedPcis = Object.keys(groupedByPci).map(Number).sort((a, b) => a - b);
+
+            for (let idx = 0; idx < sortedPcis.length; idx++) {
+                let pci = sortedPcis[idx];
+                checkBeams[pci] = ["all"];
+                let entries = groupedByPci[pci];
+                entries.sort((a, b) => b.freq - a.freq);
+
+                let azimuth = '-';
+                if (Array.isArray(azimuthData)) {
+                    let match = azimuthData.find(row => row[1] === pci);
+                    if (match) {
+                        let latA = match[2];
+                        let lngA = match[3];
+                        let latB = match[4];
+                        let lngB = match[5];
+                        let azimuthAngle = utils.calculateAzimuth(latA, lngA, latB, lngB);
+                        azimuth = `${azimuthAngle.toFixed(1)}° (${utils.getCardinalDirection(azimuthAngle)})`;
+                    }
+                }
+
+                for (let { earfcn, freq } of entries) {
+                    let row = document.createElement('tr');
+
+                    let earfcnCell = document.createElement('td');
+                    earfcnCell.style.padding = '4px 8px';
+                    earfcnCell.style.verticalAlign = 'middle';
+
+                    let wrapperLabel = document.createElement('label');
+                    wrapperLabel.style.display = 'flex';
+                    wrapperLabel.style.alignItems = 'center';
+                    wrapperLabel.style.gap = '6px';
+
+                    let checkBox = document.createElement('input');
+                    checkBox.setAttribute('type', 'checkbox');
+                    let checkId = 'check' + '-' + cartoNum + '-' + earfcn + '-' + pci;
+                    checkBox.id = checkId;
+                    checkBox.setAttribute('aria-label', `EARFCN ${earfcn}, PCI ${pci}`);
+
+                    if (utils.indexOfEarpci(checkEarfcns, checkPcis, earfcn, pci) !== -1) {
+                        checkBox.checked = true;
+                    }
+
+                    checkBox.onclick = (evt) => {
+                        if (evt.target.checked) {
+                            checkEarfcns.push(earfcn);
+                            checkPcis.push(pci);
+                        } else {
+                            utils.removeEarpci(checkEarfcns, checkPcis, earfcn, pci);
+                        }
+                        updateMethod();
+                    };
+
+                    let labelText = document.createElement('span');
+                    labelText.textContent = `${earfcn} (${freq?.toFixed(1)} MHz)`;
+
+                    wrapperLabel.appendChild(checkBox);
+                    wrapperLabel.appendChild(labelText);
+                    earfcnCell.appendChild(wrapperLabel);
+
+                    let pciCell = document.createElement('td');
+                    pciCell.style.padding = '4px 8px';
+                    pciCell.style.verticalAlign = 'middle';
+                    pciCell.textContent = pci;
+
+                    let azimuthCell = document.createElement('td');
+                    azimuthCell.style.padding = '4px 8px';
+                    azimuthCell.style.verticalAlign = 'middle';
+                    azimuthCell.textContent = azimuth;
+
+                    let beamCell = document.createElement('td');
+                    beamCell.style.padding = '4px 8px';
+                    beamCell.style.verticalAlign = 'middle';
+
+                    if (pcis != null && earfcns != null && beams?.[pci]) {
+                        let current_beams = beams[pci].sort();
+                        current_beams = current_beams.filter((item, index) => current_beams.indexOf(item) === index);
+
+                        let select_beams = document.createElement('select');
+                        select_beams.style.minWidth = '120px';
+
+                        let optionAll = document.createElement('option');
+                        optionAll.text = "Best beam";
+                        optionAll.value = "all";
+                        select_beams.add(optionAll);
+
+                        for (let beam of current_beams) {
+                            let option = document.createElement('option');
+                            option.text = beam;
+                            option.value = beam;
+                            select_beams.add(option);
+                        }
+
+                        select_beams.addEventListener('change', function () {
+                            checkBeams[pci] = [select_beams.value];
+                            updateMethod();
+                        });
+
+                        beamCell.appendChild(select_beams);
+                    } else {
+                        beamCell.textContent = '-';
+                    }
+
+                    row.append(earfcnCell, pciCell, azimuthCell, beamCell);
+                    tbody.appendChild(row);
+                }
+            }
+
+            checkDiv.appendChild(tbody);
+            popDiv.appendChild(checkDiv);
             return popDiv;
         }
+
+        drawAssocPopupWithoutCheckbox(
+            azimuthData,
+            ant,
+            cartoNum,
+            assoc,
+            checkEarfcns,
+            checkPcis,
+            checkBeams,
+            updateMethod,
+            earfcns = null,
+            pcis = null,
+            beams = null
+            ) {
+            // Create the main container
+            let popDiv = document.createElement('div');
+
+            // Header with site number and links
+            popDiv.innerHTML = `
+                <div class="tooltip-header" style="margin-bottom:8px;">
+                <strong>Site Number:</strong> 
+                <a href="https://www.cartoradio.fr/#/cartographie/all/lonlat/${ant.lng}/${ant.lat}" target="_blank" rel="noopener">
+                    ${cartoNum}
+                </a>
+                <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ant.lat},${ant.lng}" target="_blank" rel="noopener">
+                    <img src="./img/pngegg.png" alt="Street View" width="32" height="32">
+                </a>
+                </div>
+            `;
+
+            // Table element setup
+            let checkDiv = document.createElement('table');
+            checkDiv.classList.add('check-table');
+            checkDiv.style.width = '100%';
+            checkDiv.style.borderCollapse = 'collapse';
+
+            // Table header with Azimuth added before Beams
+            let thead = document.createElement('thead');
+            let headerRow = document.createElement('tr');
+            ['EARFCN', 'PCI', 'Azimuth (°)', 'Beams'].forEach(text => {
+                let th = document.createElement('th');
+                th.textContent = text;
+                th.style.textAlign = 'left';
+                th.style.padding = '4px 8px';
+                th.style.borderBottom = '1px solid #ccc';
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            checkDiv.appendChild(thead);
+
+            // Table body
+            let tbody = document.createElement('tbody');
+
+            // Extract EARFCNs and PCIs from assoc array
+            let ascEarfcns = assoc.map((asc) => asc.earfcn);
+            let ascPcis = assoc.map((asc) => asc.pci);
+            // Filter EARFCN/PCI pairs using utils.subEarpci with optional beams, earfcns, and pcis
+            let earpcis = utils.subEarpci(ascEarfcns, ascPcis, beams, earfcns, pcis);
+
+            // Group EARFCNs by PCI
+            let groupedByPci = {};
+            for (let i = 0; i < earpcis.earfcns.length; i++) {
+                let pci = earpcis.pcis[i];
+                let earfcn = earpcis.earfcns[i];
+                let freq = utils.earfcnToFreqLte(earfcn);
+
+                if (!groupedByPci[pci]) groupedByPci[pci] = [];
+                groupedByPci[pci].push({ earfcn, freq });
+            }
+
+            // Sort PCIs ascending
+            let sortedPcis = Object.keys(groupedByPci).map(Number).sort((a, b) => a - b);
+
+            // Build table rows
+            for (let pci of sortedPcis) {
+                checkBeams[pci] = ["all"];
+                let entries = groupedByPci[pci];
+
+                // Sort entries by descending frequency
+                entries.sort((a, b) => b.freq - a.freq);
+
+                for (let { earfcn, freq } of entries) {
+                let select_beams = null;
+
+                if (pcis != null && earfcns != null && beams?.[pci]) {
+                    let current_beams = beams[pci].sort();
+                    current_beams = current_beams.filter((item, index) => current_beams.indexOf(item) === index);
+
+                    select_beams = document.createElement('select');
+                    select_beams.style.minWidth = '120px';
+
+                    let optionAll = document.createElement('option');
+                    optionAll.text = "Best beam";
+                    optionAll.value = "all";
+                    select_beams.add(optionAll);
+
+                    for (let beam of current_beams) {
+                    let option = document.createElement('option');
+                    option.text = beam;
+                    option.value = beam;
+                    select_beams.add(option);
+                    }
+
+                    select_beams.addEventListener('change', function () {
+                    checkBeams[pci].pop();
+                    let selectedValue = select_beams.value;
+                    checkBeams[pci].push(selectedValue);
+                    updateMethod();
+                    });
+                }
+
+                // Calculate azimuth from site to antenna (approximate)
+                let azimuth = '-';
+                if (Array.isArray(azimuthData)) {
+                    let match = azimuthData.find(row => row[1] === pci);
+                    if (match) {
+                        let latA = match[2];
+                        let lngA = match[3];
+                        let latB = match[4];
+                        let lngB = match[5];
+                        let azimuthAngle = utils.calculateAzimuth(latA, lngA, latB, lngB);
+                        azimuth = `${azimuthAngle.toFixed(1)}° (${utils.getCardinalDirection(azimuthAngle)})`;
+                    }
+                }
+
+                // Create table row
+                let row = document.createElement('tr');
+
+                // EARFCN cell
+                let earfcnCell = document.createElement('td');
+                earfcnCell.style.padding = '4px 8px';
+                earfcnCell.style.verticalAlign = 'middle';
+                earfcnCell.textContent = `${earfcn} (${freq?.toFixed(1)} MHz)`;
+
+                // PCI cell
+                let pciCell = document.createElement('td');
+                pciCell.style.padding = '4px 8px';
+                pciCell.style.verticalAlign = 'middle';
+                pciCell.textContent = pci;
+
+                // Azimuth cell
+                let azimuthCell = document.createElement('td');
+                azimuthCell.style.padding = '4px 8px';
+                azimuthCell.style.verticalAlign = 'middle';
+                azimuthCell.textContent = azimuth;
+
+                // Beams cell
+                let beamCell = document.createElement('td');
+                beamCell.style.padding = '4px 8px';
+                beamCell.style.verticalAlign = 'middle';
+                if (select_beams) {
+                    beamCell.appendChild(select_beams);
+                } else {
+                    beamCell.textContent = '-';
+                }
+
+                row.append(earfcnCell, pciCell, azimuthCell, beamCell);
+                tbody.appendChild(row);
+                }
+            }
+
+            checkDiv.appendChild(tbody);
+            popDiv.appendChild(checkDiv);
+
+            return popDiv;
+            }
+
+
+
+
         /**
          * Write serving points on a group layer.
          * @param {*} layer Leaflet group layer.
@@ -436,6 +856,25 @@ const drawing = {
         drawPCI(points, col = 1) {
             return this.drawPoints(points, (_e, pc, _p) => pc, (p) => styles.pciColor(p, col));
         }
+        
+        /**
+         * Draws the serving PCI layer.
+         * @param {*} points Serving measurement points.
+         * @param {number} min Minimum PCI value (used for the color range).
+         * @param {number} max Maximum PCI value (used for the color range).
+         * @param {Array} earfcns Selected EARFCNs
+         * @param {Array} pcis Selected PCIs.
+         * @param {Array} beams Selected beams.
+         *
+         * @function
+         */
+        /*drawServingPCI(points, min, max, earfcns = null, pcis = null, beams = null) {
+            this.drawServingHex(
+                this._servingPCI, points, (_e, _p, pt) => pt.pci, // Utilisation de pt.pci pour PCI
+                min, max, earfcns, pcis, beams, // Passage des paramètres pour filtrer les EARFCN, PCI et beams
+            );
+        }*/
+
         /**
          * Draws the serving RSRP layer.
          * @param {function} points Serving measurement points.
@@ -448,7 +887,7 @@ const drawing = {
          */
         drawServingRSRP(points, min, max, earfcns = null, pcis = null, beams = null) {
             this.drawServingHex(
-                this._servingRSRP, points, (_e, _p, pt) => pt.rsrp,
+                this._servingRSRP, points, (_e, _p, pt) => Math.round(pt.rsrp),
                 min, max, earfcns, pcis, beams,
             );
         }
@@ -464,7 +903,7 @@ const drawing = {
          */
         drawServingRSRQ(points, min, max, earfcns = null, pcis = null, beams = null) {
             this.drawServingHex(
-                this._servingRSRQ, points, (_e, _p, pt) => pt.rsrq,
+                this._servingRSRQ, points, (_e, _p, pt) => Math.round(pt.rsrq),
                 min, max, earfcns, pcis, beams
             );
         }
@@ -480,7 +919,7 @@ const drawing = {
          */
         drawServingRSSI(points, min, max, earfcns = null, pcis = null, beams = null) {
             this.drawServingHex(
-                this._servingRSSI, points, (_e, _p, pt) => pt.rssi,
+                this._servingRSSI, points, (_e, _p, pt) => Math.round(pt.rssi),
                 min, max, earfcns, pcis, beams
             );
         }
@@ -496,10 +935,28 @@ const drawing = {
          */
         drawServingCINR(points, min, max, earfcns = null, pcis = null, beams = null) {
             this.drawServingHex(
-                this._servingCINR, points, (_e, _p, pt) => pt.cinr,
+                this._servingCINR, points, (_e, _p, pt) => Math.round(pt.cinr),
                 min, max, earfcns, pcis, beams
             );
         }
+
+        /**
+         * Draws the serving CINR layer.
+         * @param {function} points Serving measurement points.
+         * @param {number} min Minimum PCI value (used for the color range)// not used.
+         * @param {number} max Maximum PCI value (used for the color range)//not used.
+         * @param {Array} earfcns Selected EARFCNs
+         * @param {Array} pcis Selected PCIs.
+         *
+         * @function
+         */
+        drawServingPCI_tooltip(points, min, max, earfcns = null, pcis = null, beams = null) {
+            this.drawServingHex(
+                this._servingPciTooltipLayer, points, (_e, _p, pt) => _p,
+                min, max, earfcns, pcis, beams
+            );
+        }
+
         /**
          * Draws the global RSRP layer.
          *
@@ -549,6 +1006,23 @@ const drawing = {
             this.drawHex(this._rssiLayer, measurements, earfcns, pcis, beams, min, max, subEarfcns, subPcis, subBeams);
         }
         /**
+         * Draws the global PCI-tooltip layer.
+         *
+         * @param {*} measurements Global RSSI measurement data.
+         * @param {Array} earfcns EARFCNs for list of (EARFCN, PCI) pairs.
+         * @param {Array} pcis PCIs for list of (EARFCN, PCI) pairs.
+         * @param {number} min Minimum RSSI value.
+         * @param {number} max Maximum RSSI value.
+         * @param {Array} reqEarfcns Selected EARFCNs
+         * @param {Array} reqPcis Selected PCIs.
+         *
+         * @function
+         */
+        /*drawPCI(measurements, earfcns, pcis, beams, min, max, subEarfcns = null, subPcis = null, subBeams = null) {
+            this.drawHex(this._pciLayer, measurements, earfcns, pcis, beams, min, max, subEarfcns, subPcis, subBeams);
+        }*/
+
+        /**
          * Updates the TAC layer.
          *
          * @param {*} points Serving points data.
@@ -572,7 +1046,9 @@ const drawing = {
          */
         updatePCILayer(points, earfcn = null, pci = null, beam = null, col = 1) {
             this._nonFilteredPCI = this.drawPCI(points, col);
+            
             this.setPointLayer(this._pciLayer, this._nonFilteredPCI, earfcn, pci, beam);
+            
         }
         /**
          * Sets Voronoi cells layer visibility.
@@ -656,6 +1132,15 @@ const drawing = {
             this._setLayerVisibility(this._servingCINR, b);
         }
         /**
+         * Sets serving pci_tooltip layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         *
+         * @function
+         */
+        setServingPCITOOLTIP(b) {
+            this._setLayerVisibility(this._servingPciTooltipLayer, b);
+        }
+        /**
          * Sets global RSRP layer visibility.
          * @param {boolean} b true to set the layer visible.
          *
@@ -663,6 +1148,15 @@ const drawing = {
          */
         setRSRP(b) {
             this._setLayerVisibility(this._rsrpLayer, b);
+        }
+         /**
+         * Sets global pci_tooltip layer visibility.
+         * @param {boolean} b true to set the layer visible.
+         *
+         * @function
+         */
+        setpciTooltip(b) {
+            this._setLayerVisibility(this._pciTooltipLayer, b);
         }
         /**
          * Sets global RSRQ layer visibility.

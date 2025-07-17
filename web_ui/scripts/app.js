@@ -35,6 +35,9 @@ const app = {
         _rsrqChecked = false;
         _rssiChecked = false;
         _cinrChecked = false;
+        _pciTooltiprChecked = false;
+        _withCheckBox=false;
+        _chartInstance = null; // chart instance 
 
         /**
          * Application class constructor.
@@ -54,6 +57,7 @@ const app = {
             };
 
             // Creating the map.
+            //document.getElementById('map').style.height = '80vh';
             this._map = L.map('map', styles.mapStyle(baseMaps['Base Layer']));
 
             this.reset();   // Resetting UI.
@@ -100,6 +104,9 @@ const app = {
             // TODO Determinate range for CINR.
             const CINR_MIN = -20;
             const CINR_MAX = 20;
+            // TODO Determinate range for PCI.
+            const PCI_MIN = 0;
+            const PCI_MAX = 1008;
 
             // Filtering EARFCNs and PCIs following drop down menus selection.
             let filtEarpcis = utils.subEarpci(earfcns, pcis, beams, selEarfcns, selPcis);
@@ -118,15 +125,18 @@ const app = {
 
             // Updating serving measurement layers.
             this._drawingMap.drawServingRSRP(points, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis, finalBeams);
-            this._drawingMap.drawServingRSRQ(points, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis, finalBeams);
+            //this._drawingMap.drawServingPCI(points, PCI_MIN, PCI_MAX, finalEarfcns, finalPcis, finalBeams);
+            this._drawingMap.drawServingRSRQ(points, PCI_MIN, PCI_MAX, finalEarfcns, finalPcis, finalBeams);
             this._drawingMap.drawServingRSSI(points, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis, finalBeams);
             this._drawingMap.drawServingCINR(points, CINR_MIN, CINR_MAX, finalEarfcns, finalPcis, finalBeams);
+            this._drawingMap.drawServingPCI_tooltip(points, PCI_MIN, PCI_MAX, finalEarfcns, finalPcis, finalBeams);
         
             // Updating global measurement layers.
             this._drawingMap.drawRSRP(this._fileReader.rsrps, earfcns, pcis, beams, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis, finalBeams);
             this._drawingMap.drawRSRQ(this._fileReader.rsrqs, earfcns, pcis, beams, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis, finalBeams);
             this._drawingMap.drawRSSI(this._fileReader.rssis, earfcns, pcis, beams, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis, finalBeams);
-        
+            //this._drawingMap.drawPCI(this._fileReader.pcis, earfcns, pcis, beams, PCI_MIN, PCI_MAX, finalEarfcns, finalPcis, finalBeams);
+
         }
 
         /**
@@ -145,10 +155,12 @@ const app = {
                 this._drawingMap.setServingRSRQ(this._rsrqChecked);
                 this._drawingMap.setServingRSSI(this._rssiChecked);
                 this._drawingMap.setServingCINR(this._cinrChecked);
+                this._drawingMap.setServingPCITOOLTIP(this._pciTooltiprChecked);
 
                 this._drawingMap.setRSRP(false);
                 this._drawingMap.setRSRQ(false);
                 this._drawingMap.setRSSI(false);
+                this._drawingMap.setpciTooltip(false);
 
             } else {
 
@@ -157,11 +169,13 @@ const app = {
                 this._drawingMap.setRSRP(this._rsrpChecked);
                 this._drawingMap.setRSRQ(this._rsrqChecked);
                 this._drawingMap.setRSSI(this._rssiChecked);
+                this._drawingMap.setpciTooltip(this._pciTooltiprChecked);
 
                 this._drawingMap.setServingRSRP(false);
                 this._drawingMap.setServingRSRQ(false);
                 this._drawingMap.setServingRSSI(false);
                 this._drawingMap.setServingCINR(false);
+                this._drawingMap.setServingPCITOOLTIP(false);
 
             }
 
@@ -174,14 +188,16 @@ const app = {
          */
         updateAssocs() {
             // Getting selected EARFCNS / PCIS.
-
-            let earpcis = this._allSites ? {earfcns: [], pcis: [], beams: {}, indices: []} : utils.subEarpci(this._fileReader.earfcns,
-                this._fileReader.pcis, this._fileReader._beams, this._selEarfcns, this._selPcis);
-
+            let earpcis = utils.subEarpci(this._fileReader.earfcns,this._fileReader.pcis, this._fileReader._beams, this._selEarfcns, this._selPcis);
+            let frequency=utils.earfcnToFreqLte(5225);
             // Redrawing associated stations pins.
+            console.log(this._allSites);
+            console.log(frequency);
             this._drawingMap.drawAssocs(
-                this._fileReader.assocs, this._fileReader.antennas, this._checkEarfcns, this._checkPcis, this._checkBeams,
-                () => this.update(), earpcis.earfcns, earpcis.pcis, earpcis.beams);
+                this._fileReader.antennaDirections, this._fileReader.assocs, this._fileReader.antennas, this._checkEarfcns, this._checkPcis, this._checkBeams,
+                () => this.update(), earpcis.earfcns, earpcis.pcis, earpcis.beams,!this._allSites);
+            this._withCheckBox=!this._withCheckBox;
+            
 
         }
 
@@ -211,6 +227,7 @@ const app = {
             this._rsrqChecked = false;
             this._rssiChecked = false;
             this._cinrChecked = false;
+            this._pciTooltiprChecked = false;
 
             this._fileReader = null;
             
@@ -320,6 +337,8 @@ const app = {
             // PCI checkbox.
             document.querySelector('#PCI').onclick = (evt) => {
                 this._drawingMap.setPCILayer(evt.target.checked);
+                this._pciTooltiprChecked = evt.target.checked;
+                this.updateDisplay();
             };
 
             // RSRP checkbox.
@@ -359,7 +378,7 @@ const app = {
 
                 this._allSites = (evt.target.value === 'all-sites');
                 this.update();
-                this.updateAssocs();
+                this.updateAssocs();    
 
             }
 
@@ -412,6 +431,167 @@ const app = {
                 this.update();
 
             }
+            document.querySelector('#showStatsBtn').onclick = () => {
+                // Masquer la carte et afficher la section des statistiques
+                document.getElementById('map').style.display = 'none';
+                document.getElementById('statistiques').style.display = 'block';
+            
+                // Récupérer les points depuis le fichier CSV
+                let points = this._fileReader.points;
+                console.log(points);
+            
+                // Dessiner le graphe
+                const ctx = document.getElementById("Chart").getContext("2d");
+            
+                // Détruire l'ancien graphique s'il existe
+                if (this._chartInstance) {
+                    this._chartInstance.destroy();
+                }
+            
+                const rsrpValues = [];
+                const rssiValues = [];
+                const rsrqValues = [];
+                const pciValues = [];
+                const indices = [];
+            
+                let index = 0;
+                for (const tac in points) {
+                    for (const pci in points[tac]) {
+                        for (const cid in points[tac][pci]) {
+                            const samples = points[tac][pci][cid];
+                            for (const sample of samples) {
+                                if (
+                                    sample.rsrp !== undefined &&
+                                    sample.rssi !== undefined &&
+                                    sample.rsrq !== undefined
+                                ) {
+                                    rsrpValues.push(sample.rsrp);
+                                    rssiValues.push(sample.rssi);
+                                    rsrqValues.push(sample.rsrq);
+                                    pciValues.push(pci); // Ajout du PCI
+                                    indices.push(index++);
+                                }
+                            }
+                        }
+                    }
+                }
+            
+                this._chartInstance = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: indices,
+                        datasets: [
+                            {
+                                label: "RSRP (dBm)",
+                                data: rsrpValues,
+                                borderColor: "#4e79a7",
+                                backgroundColor: "rgba(78, 121, 167, 0.1)",
+                                yAxisID: "yLeft",
+                                tension: 0.2,
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            {
+                                label: "RSSI (dBm)",
+                                data: rssiValues,
+                                borderColor: "#f28e2b",
+                                backgroundColor: "rgba(242, 142, 43, 0.1)",
+                                yAxisID: "yLeft",
+                                tension: 0.2,
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            {
+                                label: "RSRQ (dB)",
+                                data: rsrqValues,
+                                borderColor: "#59a14f",
+                                backgroundColor: "rgba(89, 161, 79, 0.1)",
+                                yAxisID: "yRight",
+                                tension: 0.2,
+                                pointRadius: 0,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: "RSRP, RSSI, and RSRQ Variation"
+                            },
+                            legend: {
+                                position: "top"
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.dataset.label || '';
+                                        const value = context.parsed.y;
+                                        const index = context.dataIndex;
+                                        const pci = pciValues[index];
+                                        return `${label}: ${value} dBm (PCI: ${pci})`;
+                                    }
+                                }
+                            },
+                            zoom: {
+                                pan: {
+                                    enabled: true,
+                                    mode: 'xy'
+                                },
+                                zoom: {
+                                    wheel: { enabled: true },
+                                    pinch: { enabled: true },
+                                    mode: 'x'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: "Measurement Index"
+                                }
+                            },
+                            yLeft: {
+                                type: "linear",
+                                position: "left",
+                                title: {
+                                    display: true,
+                                    text: "Signal Strength (dBm)"
+                                },
+                                ticks: {
+                                    beginAtZero: false
+                                }
+                            },
+                            yRight: {
+                                type: "linear",
+                                position: "right",
+                                title: {
+                                    display: true,
+                                    text: "RSRQ (dB)"
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        }
+                    }
+                });
+            };
+            
+        
+            // Récupérer le bouton "Afficher la Carte"
+            document.querySelector('#showMapBtn').onclick = () => {
+                // Masquer la section des statistiques et afficher la carte
+                document.getElementById('map').style.display = 'block';
+                document.getElementById('statistiques').style.display = 'none';
+            };
+            
 
         }
 

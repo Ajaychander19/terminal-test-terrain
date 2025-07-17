@@ -41,7 +41,7 @@ const styles = {
     HEATMAP: [],
 
     /**
-     * 
+     * yelo
      * @param {number} opac Opacity (0.0-1.0)
      * @param {String} hexColor Hexadecimal color (RRGGBB).
      * @returns Voronoi cells style of opacity opac and color hexColor.
@@ -146,6 +146,17 @@ const styles = {
 			colorRange: styles.HEATMAP,
 			radiusRange: [ 1, 12 ],
 
+			pointserEvents: 'all'
+        }
+
+    },
+    hexColor_pci: function () {
+
+        // copied from the old program.
+        return {
+			radius : 12,
+			opacity: 0,
+			duration: 200,
 			pointserEvents: 'all'
         }
 

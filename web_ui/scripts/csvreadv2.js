@@ -42,6 +42,7 @@ var csvreadv2 = {
         _sectDels
 
         _antennas
+        _antennasV2
 
         // Minimum / maximums.
         _minRSRP
@@ -79,6 +80,7 @@ var csvreadv2 = {
             this._antDirs = [];
             this._sectDels = [];
             this._antennas = {};
+            this._antennasV2 = {};
 
             this._minRSRP = null;
             this._minRSRQ = null;
@@ -240,6 +242,7 @@ var csvreadv2 = {
                 this._antennas[cartoNum].dels.push(delVect);
 
             });
+            
 
             parsedResult.BS_ANT_DIR.forEach((line) => {
                 let antVect = {
@@ -252,10 +255,14 @@ var csvreadv2 = {
                 };
 
                 this._antDirs.push(antVect);
+                console.log("antDirs");
+                let result = this._antDirs.filter(ant => ant.cartoNum === 66280);
+                console.log("Antennes pour cartoNum 66280:", result);
             });
 
             parsedResult.ASSOC.forEach((line) =>{
                 let carto = +line['Cartoradio_Number'];
+                console.log(parsedResult.ASSOC);
                 let earfcn_ = +line['EARFCN'];
                 let pci_ = +line['PCI'];
 
@@ -268,6 +275,7 @@ var csvreadv2 = {
                     earfcn: +line['EARFCN'],
                     pci: +line['PCI']
                 });
+                //console.log(this.assocs);
             });
 
             parsedResult.POINT.forEach((line) =>{
