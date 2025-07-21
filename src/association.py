@@ -8,7 +8,8 @@ import numpy as np
 import csvtools as csvt
 import shapely.geometry as geom
 import scipy.spatial as sp
-from dictutils import insert_data, fill_data
+from dictutils import insert_data
+
 
 class CellAssociator:
 
@@ -94,27 +95,16 @@ class CellAssociator:
 
         """Class constructor.
 
-
         Parameters:
-
             in_meas: path of the input measurement file.
-
             in_sites: path of the input "sites" file.
-
             outdir: path of the output file.
-
         """
-
         self._in_sites = in_sites   # Sites file path.
-
         self._in_meas = in_meas     # Measurements file path ad name.
-
         self._outdir = outdir       # Output file directory.
-
         self._measure_point = None    # Association between points and measurements.
-
         self._antennas = None       # Antennas
-
         self.version = None
         self.techno = "4G"
 
@@ -125,15 +115,12 @@ class CellAssociator:
         print('Starting association...')
 
         file_name = os.path.join(self._outdir, 'assoc_{0}_{1}.csv'.format(
-
                     pathlib.Path(self._in_meas).stem.replace("cev",""),
-
                     pathlib.Path(self._in_sites).stem.replace("cev","")))
 
         header = self._HEADER_V2
 
         with csvt.CSVReader(self._in_meas) as meas:
-
             line = meas.read_line()
 
             if line[0] == 'VERSION':
@@ -153,13 +140,9 @@ class CellAssociator:
                 n = len(line) - 5
 
                 header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
-
                 header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
-
                 header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
-
                 header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
-
                 header['MEASUREMENT'] = header['MEASUREMENT'] + ['Meas_{}'.format(i) for i in range(n)]
 
         with csvt.CSVWriter(file_name, header) as out_wr:
@@ -184,13 +167,67 @@ class CellAssociator:
             self._write_output(out_wr)
 
             header['MEAS_EARFCNS'] = ['NA', 'NA', 'NA', 'NA']
-
             header['MEAS_PCIS'] = ['NA', 'NA', 'NA', 'NA']
-
             header['MEAS_BEAMS'] = ['NA', 'NA', 'NA', 'NA']
-
             header['MEAS_NB'] = ['NA', 'NA', 'NA', 'NA']
+            header['MEASUREMENT'] = ['Timestamp', 'Lat', 'Lng', 'Measurement_Name']
 
+
+    def calculate_association_TA(self):
+        """Calculates the association between EARFCNs / PCIs and base stations using timing advance."""
+
+        print('Starting association...')
+
+        file_name = os.path.join(self._outdir, 'assoc_{0}_{1}_TA.csv'.format(
+                    pathlib.Path(self._in_meas).stem.replace("cev",""),
+                    pathlib.Path(self._in_sites).stem.replace("cev","")))
+        
+        header = self._HEADER_V2
+
+        with csvt.CSVReader(self._in_meas) as meas:
+            line = meas.read_line()
+
+            if line[0] == 'VERSION':
+
+                self.version = float(line[1])
+                header = self._HEADER_V2
+
+            meas.read_line()
+            line = meas.read_line()
+            if line[0] == 'TECHNO':
+                self.techno = str(line[1])
+
+            line = meas.read_line()
+
+            if line[0] == 'MEAS_EARFCNS':
+
+                n = len(line) - 5
+
+                header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
+                header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
+                header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
+                header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
+                header['MEASUREMENT'] = header['MEASUREMENT'] + ['Meas_{}'.format(i) for i in range(n)]
+
+        with csvt.CSVWriter(file_name, header) as out_wr:
+
+            print('Reading measurements...')
+
+            self._read_measurements(out_wr) # Measurements
+
+            print('Reading sites...')
+
+            self._read_antennas(out_wr) # Delimiter
+
+            print('Identifying possible Associations...')
+            self._associate_data_with_TA()
+            
+            self._write_output(out_wr)
+
+            header['MEAS_EARFCNS'] = ['NA', 'NA', 'NA', 'NA']
+            header['MEAS_PCIS'] = ['NA', 'NA', 'NA', 'NA']
+            header['MEAS_BEAMS'] = ['NA', 'NA', 'NA', 'NA']
+            header['MEAS_NB'] = ['NA', 'NA', 'NA', 'NA']
             header['MEASUREMENT'] = ['Timestamp', 'Lat', 'Lng', 'Measurement_Name']
 
 
@@ -198,50 +235,26 @@ class CellAssociator:
 
         """PRIVATE METHOD which reads measurement file.
 
-
         Reads the measurement file and store data in memory.
-
         MEAS_EARFCNS, MEAS_PCIS and MEASUREMENT fields are reproduced in the output file.
 
-
         Parameters:
-
             out_wr: output file to be written.
 
-
         Raises:
-
             RuntimeError: if a problem occurs while decoding data from the file.
-
-
         """
 
-        # Last recorded EARFCN / PCI (used to associate measurements to points).
-
-        last_earfcn = None
-
-        last_pci = None
-
         # Serving cell infos.
-
         serving_dict = {
-
             'Timestamp': [], 'Lat': [], 'Lng': [], 'EARFCN': [], 'PCI': [], 'BEAM': [],
-
-            'RSRP': [], 'RSRQ': [], 'RSSI': [], 'CINR': []
-
+            'RSRP': [], 'RSRQ': [], 'RSSI': [], 'CINR': [], 'TA': []
         }
 
-        # Measurement infos.
-
-        measurements = {'Timestamp': [], 'RSRP': [], 'RSRQ': [], 'RSSI': []}
-
         # Found cells information (SIB1).
-
         cellinfo_dict = {'EARFCN': [], 'PCI': [], 'TAC': [], 'CID': []}
 
         # EARFCNs / PCIs
-
         earpcis = []
 
         # Reading measurement file...
@@ -261,44 +274,32 @@ class CellAssociator:
                             raise RuntimeError('error: CELLINFO line must contain at least 10 fields')
 
                         insert_data(
-
                             cellinfo_dict,
-
                             {'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'TAC': [int(line[6])], 'CID': [int(line[7])]},
-
                             1
-
                         )
 
                     elif line[0] == 'VERSION':
                         self.version = 2.0
-
                         out_wr.write_row(line)
 
                     elif line[0] == 'TECHNO':
-
                         out_wr.write_row(line)
 
                     # Registering measurements...
-
                     elif line[0] == 'MEASURE_SERVING':
 
                         if self.techno == "5G NR":
+                            
+                            ta_value = int(line[10]) if len(line) > 10 and line[10].strip() != '' else None
 
                             insert_data(
-
                                 serving_dict,
-
                                 {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
-
                                 'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'BEAM': [int(line[6])],
-
                                 'RSRP': [float(line[7])], 'RSRQ': [float(line[8])], 'RSSI': [float(line[9])],
-
-                                'CINR': [float(line[10])]},
-
+                                'CINR': [float(line[10])], 'TA': [ta_value]}, 
                                 1
-
                             )
 
                         else:
@@ -307,18 +308,18 @@ class CellAssociator:
                                 required_fields = line[1:10] 
                                 if any(val.strip() == '' for val in required_fields):
                                     raise ValueError(f"Missing values into MEASURE_SERVING at the line: {line}")
+                                
+                                ta_value = int(line[10]) if len(line) > 10 and line[10].strip() != '' else None
+
                                 insert_data(
 
                                     serving_dict,
 
                                     {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
-
                                     'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])],
                                     'BEAM': [0],
-
                                     'RSRP': [float(line[6])], 'RSRQ': [float(line[7])], 'RSSI': [float(line[8])],
-
-                                    'CINR': [float(line[9])]},
+                                    'CINR': [float(line[9])], 'TA': [ta_value]}, 
 
                                     1
 
@@ -327,79 +328,49 @@ class CellAssociator:
                                 print(f"[ERROR] MEASURE_SERVING incorrect line : {e}")
 
                     # Registering EARFCN / PCI / BEAM (if V2) tuples...
-
                     elif line[0] == 'MEAS_EARFCNS':
 
                         if len(line) < 6:
-
                             raise RuntimeError('error: MEAS_EARFCNS line must contain at least 6 fields')
 
                         lineb = meas.read_line()
 
                         if lineb[0] != 'MEAS_PCIS':
-
                             raise RuntimeError('error: MEAS_EARFCNS line must be followed by MEAS_PCIS line.')
 
                         if len(lineb) < 6:
-
                             raise RuntimeError('error: MEAS_PCIS line must contain at least 6 fields')
 
                         if len(line) != len(lineb):
-
                             raise RuntimeError('error: MEAS_EARFCNS and MEAS_PCIS line should have the same length.')
 
                         earpcis = None
 
                         if self.version == 2.0:
-
                             linec = meas.read_line()
-
                             earpcis = [(int(i), int(j), int(k)) for (i, j, k) in zip(line[5:], lineb[5:], linec[5:])]
-
                             out_wr.write_row(line)
-
                             out_wr.write_row(lineb)
-
                             out_wr.write_row(linec)
 
                         else:
-
                             # Writing couples in file...
-
                             out_wr.write_row(line)
-
                             out_wr.write_row(lineb)
-
                             earpcis = [(int(i), int(j)) for (i, j) in zip(line[5:], lineb[5:])]
 
                     elif line[0] == 'MEAS_NB':
-
                         if len(line) != len(lineb):
-
                             raise RuntimeError('error: MEAS_PCIS and MEAS_NB lines should have the same length.')
-
                         out_wr.write_row(line)     # writing the number of meas samples (which is just after the list of PCIS and with the same length)
 
                     # Registering measurement data...
-
                     elif line[0] == 'MEASUREMENT':
-
                         if not earpcis:
-
                             raise RuntimeError('error: EARFCNS/PCIS not declared.')
-
-                        #if len(earpcis) + 5 != len(line):
-
-                        #    raise RuntimeError('error: the measurement does not contains as much values than EARFCNs/PCIs.')
-
-                        #if last_earfcn is None or last_pci is None:
-
-                        #    raise RuntimeError('error: MEASUREMENT encountered before MEASURE_SERVING.')
-
                         out_wr.write_row(line)
 
                     elif line[0] == 'MEAS_PCIS':
-
                         raise RuntimeError('error: MEAS_PCIS line must be directly preceded by a MEAS_EARFCNS line.')
 
                 except Exception as e:
@@ -410,59 +381,32 @@ class CellAssociator:
                 line = meas.read_line()
 
             # Associating measurement points to corresponding base stations...
-
             self._measure_point = pd.merge(
-
                 pd.DataFrame(cellinfo_dict), pd.DataFrame(serving_dict),
-
                 on=['EARFCN', 'PCI']
-
             ).drop_duplicates(subset=['Timestamp']).sort_values(['Timestamp'])
 
-            # # Associating points to corresponding measurements...
-
-            # self._measure_point = pd.merge(
-
-            #     self._measure_point, pd.DataFrame(measurements),
-
-            #     on=['Timestamp']
-
-            # ).drop_duplicates(subset=['Timestamp']).sort_values(['Timestamp'])
 
     def _read_antennas(self, out_wr: csvt.CSVWriter):
 
         """PRIVATE METHOD which reads "sites" file.
-
-
         Reads the "sites" file and store its data in memory.
-
         DELIMITER fields are reproduced in the output file.
 
-
         Parameters:
-
             out_wr: output file to be written.
 
-
         Raises:
-
             RuntimeError: if a problem occurs while decoding data from the file.
-
-
         """
 
         # Antennas data
-
         antennas_dict = {
-
             'Cartoradio_Number': [], 'Ant_Number': [], 'Lat': [], 'Lng': [], 'Dest_Lat': [], 'Dest_Lng': [],
-
             'Azimuth': [], 'AzimuthMin': [], 'AzimuthMax': []
-
         }
 
         # Reading antenna file...
-
         with csvt.CSVReader(self._in_sites) as sites:
 
             line = sites.read_line()
@@ -470,39 +414,26 @@ class CellAssociator:
             while line != ['']:
 
                 # Antenna info...
-
                 if line[0] == 'BS_ANTENNA':
 
                     insert_data(
-
                         antennas_dict,
-
                         {
-
                             'Cartoradio_Number': [int(line[2])], 'Ant_Number': [int(line[8])],
-
                             'Lat': [float(line[3])], 'Lng': [float(line[4])], 'Dest_Lat': [float(line[9])],
-
                             'Dest_Lng': [float(line[10])], 'Azimuth': [float(line[11])],
-
                             'AzimuthMin': [float(line[12])],  'AzimuthMax': [float(line[13])]
-
                         },
-
                         1
-
                     )
 
                 # Sector delimiter...
-
                 elif line[0] == 'DELIMITER':
-
                     out_wr.write_row(line)
 
                 line = sites.read_line()
 
             # Creating antennas information dataframe.
-
             self._antennas = pd.DataFrame(antennas_dict)
 
     def _associate_read(self, assoc_file: str):
@@ -550,93 +481,62 @@ class CellAssociator:
         sames EARFCNS/PCIS and base stations."""
 
         # Associations between antennas and EARFCNs / PCIs
-
         self._assocsProp = {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': [], 'Score': []}
-
         self._assocs =  {'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [], 'EARFCN': [], 'PCI': [], 'Score': []}
 
         # Calculating Voronoi cells.
 
         # Base stations coordinates.
-
         bs_coords = np.array(list(self._antennas.groupby(['Lat', 'Lng']).groups.keys()))
 
         # Voronoi cells calculation.
-
         vor = sp.Voronoi(bs_coords)
 
         # Association between Voronoi cells and base stations coordinates.
-
         bs_vor = {'Lat': [], 'Lng': [], 'Vor': []}
 
         # Associating Voronoi cells and base stations coords...
-
         for i in range(len(vor.points)):
-
             point = vor.points[i]
-
             p_reg = vor.point_region[i]
-
             region = vor.regions[p_reg]
 
             # Filtering open Voronoi cells (at extremities of the covered area).
-
             if -1 not in region and region:
-
                 insert_data(bs_vor, {
-
                     'Lat': [point[0]],
-
                     'Lng': [point[1]],
-
                     'Vor': [p_reg]
-
                 }, 1)
 
         # Associating antennas and Voronoi cells.
-
         ant_vor_sectors = pd.merge(self._antennas, pd.DataFrame(bs_vor), on=['Lat', 'Lng']).drop_duplicates(
-
             ['Cartoradio_Number', 'Ant_Number'])
 
         # Calculating convex hulls.
-
         point_groups = self._measure_point.groupby(
-
             ['TAC', 'CID', 'EARFCN', 'PCI'])
 
         groups = {}     # Groups of points of same EARFCN / PCI.
-
         hulls = {}      # Convex hulls associated to groups of points.
 
         # Calculating convex hulls...
-
         gr_keys = point_groups.groups.keys()
 
         for gr_key in gr_keys:
-
             gr = point_groups.get_group(gr_key)
-
             coords = np.array(list(zip(gr['Lat'], gr['Lng'])))
-
             groups[gr_key] = coords
-
             hulls[gr_key] = geom.MultiPoint(coords).convex_hull
 
         # Vectorizing criteria calculation functions...
-
         v_weight = np.vectorize(weight)     # Weight of each point.
-
         v_sigma = np.vectorize(calc_sigma)  # Angular criteria ("sigma")
-
         v_psi = np.vectorize(lambda x: 1.0 if x else 0.0)   # Cell criteria ("psi")
-
         v_belongs = np.vectorize(lambda x, y, s: s.contains(geom.Point(x, y)))    # "Belongs to shape" function.
-
         v_valid = np.vectorize(is_valid)    # "Theta" validity function (antenna selection).
 
         # Grouping antennas by Voronoi cell number.
-
         vor_groups = ant_vor_sectors.groupby(['Vor'])
 
         # For each group of point with same EARFCN / PCI...
@@ -646,77 +546,48 @@ class CellAssociator:
         for gr_key in gr_keys:      # n
 
             # "Theta" criteria values.
-
             theta_values = {}
 
             # Group of points and their RSRPs.
-
             point_group = point_groups.get_group(gr_key)
-
             points_rsrps = point_group['RSRP'].to_numpy()
 
             # Size of group.
-
             card = len(point_group)
 
             if card>MIN_NUMBER_OF_MEASURES_FOR_ASSOCIATION:  # if no enough measurement, don't try any association
 
                 # Calculating weights...
-
                 weights = v_weight(points_rsrps)
 
                 totalweight = np.sum(weights)
 
-                #admission_score = totalweight/card
-
-                #nb_of_large = (weights> 0.5).sum()
-
                 if (totalweight>10):
 
                     # For each Voronoi cell...
-
                     for vor_key in vor_groups.groups.keys():  # i
-
-                        vgroup = vor_groups.get_group(vor_key)  # Group of antennas in the Voronoi cell.
-
+                        vgroup = vor_groups.get_group((vor_key,))  # Group of antennas in the Voronoi cell.
                         vlen = len(vgroup)  # Number of antennas in the Voronoi cell.
-
                         vgroup = vgroup.to_dict('list')
 
                         # Polygon of the Voronoi cell.
-
                         vor_shape = geom.Polygon(vor.vertices[vor.regions[vor_key]])
 
                         # Station / polygon distance calculation...
-
                         linear_vor = geom.LinearRing(vor_shape.exterior.coords)
 
                         # BS coords...
-
                         vlat = vgroup['Lat'][0]
-
                         vlng = vgroup['Lng'][0]
-
-                        # Projects the base station point over the current group of points convex hull...
-
-                        interp = linear_vor.interpolate(
-
-                            linear_vor.project(geom.Point(vlat, vlng)))
-
-                        dist = np.sqrt(((vlat - interp.x) ** 2 + (interp.y - vlng) ** 2))
 
                         # Calculating angles between points of base station and north over flat earth projection.
 
                         # Points latitude / longitude...
-
                         points_lat = point_group['Lat'].to_numpy()
-
                         points_lng = point_group['Lng'].to_numpy()
 
                         # Points coordinates over flat earth projection.
-
                         dirs_north = (points_lat - vlat) * (np.pi / 180)
-
                         dirs_east = (points_lng - vlng) * (np.pi / 180) * np.cos(vlat / 180 * np.pi)
 
                         # Angles between north direction and point direction from the current base station.
@@ -724,177 +595,110 @@ class CellAssociator:
                         # minus artan2 should be considered since the angles are CLOCKWISE for azimut
 
                         angles = np.arctan2(dirs_east, dirs_north)
-
                         distPoints = np.sqrt(dirs_east ** 2 + dirs_north ** 2)
 
                         # calcul d'un score prendant la distance
-
                         # principe : si la distance augmente, le signal diminue. On essaye de trouver un produit
-
                         # qui soit cosntant idéalement constant et on regarde l'inverse de l'indice de Jain
-
                         # valeur 1 : excellent
-
                         # valeur>1 : assez mauvais
-
-                        #fact1 = (dirs_east**2+dirs_north**2)**1.5 * np.exp(points_rsrps*np.log(10)/10)
-
-                        #fact1 =  np.sqrt(dirs_east ** 2 + dirs_north ** 2) * weights**2
-
-                        #fact2 = fact1 ** 2
-
-                        #distbis = card * np.sum(fact2) / np.sum(fact1)**2
-
-                        #distbis = np.mean((dirs_east**2+dirs_north**2)**1.5 * np.exp(points_rsrps*np.log(10)/10)) # version 2 : on singe loi de propagation
-
-                        #distbis = np.mean((dirs_east ** 2 + dirs_north ** 2) * weights**2)  # version 1 :
-
-                        # correlation entre distance et poids, si tres proche de -1, distancebis est null, c'est bon
 
                         distbis = 1+np.corrcoef(distPoints ** 3.3, np.exp(points_rsrps*np.log(10)/10) )[0][1]
 
                         # Calculate values only if Voronoi cell intersects with the convex hull
-
                         # of the current group of points.
-
                         if vor_shape.intersects(hulls[gr_key]):
 
                             # Is each point belonging to the cell ?
-
                             points_belongs = v_belongs(points_lat, points_lng, vor_shape)
 
                             for i in range(vlen):  # j
 
                                 # Azimuth delimitation of the sector and conversion in radian
-
                                 # between -Pi and Pi, Be careful angles are CLOCKWISE
-
                                 az_min = vgroup['AzimuthMin'][i]* (np.pi / 180)
-
                                 az_max = vgroup['AzimuthMax'][i]* (np.pi / 180)
 
                                         # Criteria calculation.
 
                                 # Angular criteria "sigma".
-
                                 sigma_vect = v_sigma(angles, weights, az_min, az_max)
-
                                 sigma = np.sum(sigma_vect) / totalweight  # modification XLXLXL totalweight
 
                                 # Cell belonging criteria "phi".
-
                                 psi_vect = v_psi(points_belongs) * sigma_vect
-
                                 psi = np.sum(psi_vect) / totalweight  # modification XLXLXL totalweight
 
                                 # Theta criteria calculation.
-
                                 theta = calc_theta(sigma, psi)
 
                                 if not theta == 0.0:
-
                                     theta_values[
-
                                         (vgroup['Cartoradio_Number'][i], vgroup['Ant_Number'][i], distbis, gr_key)
-
                                     ] = theta
 
                     # If non-zero theta values have been calculated...
-
                     if theta_values:
 
                         # Choosing one max theta value.
-
                         theta_argmax = max(theta_values, key=lambda k: theta_values[k])
-
                         theta_max = theta_values[theta_argmax]
 
                         # Check for other max values, equals to the first max value.
-
                         theta_list = [k for k in theta_values.keys()]
 
                         # Other theta values.
-
                         theta_array = np.array([theta_values[k] for k in theta_values.keys()])
 
                         # Selecting antennas.
-
                         if theta_array.size > 0:
 
                             # Select valid antennas following theta values.
-
                             valids = v_valid(theta_max, theta_array, 0.08)
 
                             # If valid antennas found, choose the antenna with a minimal distance
-
                             # with the convex hull of the current group of points.
-
                             if np.all(valids):             # for one candidate theta is much higher than for the other
 
                                 # Inserting data.
-
                                 insert_data(self._assocsProp, {
-
                                     'Cartoradio_Number': [theta_argmax[0]],
-
                                     'Ant_Number': [theta_argmax[1]],
-
                                     'TAC': [theta_argmax[3][0]],
-
                                     'CID': [theta_argmax[3][1]],
-
                                     'EARFCN': [theta_argmax[3][2]],
-
                                     'PCI': [theta_argmax[3][3]],
-
                                     'Score': [theta_max]
-
                                 }, 1)
 
                                 print('Ant_number=', theta_argmax[1], '   (EARFCN,PCI)=(', theta_argmax[3][2], ',',
-
                                     theta_argmax[3][3], ')  score=',theta_max)
 
                             else:
-
                                 min_dist = theta_argmax[2]
-
                                 argmin_dist = 0
 
                                 # Selecting minimal base station / convex hull distance.
-
                                 for i, selected in enumerate(theta_list):
-
                                     dst = selected[2]
 
                                     if dst < min_dist:
-
                                         min_dist = dst
-
                                         argmin_dist = i
 
                                 if (theta_argmax[2]/min_dist>1.5):
 
                                     insert_data(self._assocsProp, {
-
                                         'Cartoradio_Number': [theta_list[argmin_dist][0]],
-
                                         'Ant_Number': [theta_list[argmin_dist][1]],
-
                                         'TAC': [theta_list[argmin_dist][3][0]],
-
                                         'CID': [theta_list[argmin_dist][3][1]],
-
                                         'EARFCN': [theta_list[argmin_dist][3][2]],
-
                                         'PCI': [theta_list[argmin_dist][3][3]],
-
                                         'Score': [theta_array[argmin_dist]]
-
                                     }, 1)
 
                                     print('Ant_number=', theta_list[argmin_dist][1], '   (EARFCN,PCI)=(', theta_list[argmin_dist][3][2], ',',
-
                                           theta_list[argmin_dist][3][3],')  score=',theta_max, 'Rem : closest')
 
                                 else:       # the ratio of distance is not large enough => choose the sector best theta value
@@ -902,177 +706,261 @@ class CellAssociator:
                                     # Inserting data.
 
                                     insert_data(self._assocsProp, {
-
                                         'Cartoradio_Number': [theta_argmax[0]],
-
                                         'Ant_Number': [theta_argmax[1]],
-
                                         'TAC': [theta_argmax[3][0]],
-
                                         'CID': [theta_argmax[3][1]],
-
                                         'EARFCN': [theta_argmax[3][2]],
-
                                         'PCI': [theta_argmax[3][3]],
-
                                         'Score': [theta_max]
-
                                     }, 1)
 
                                     print('Ant_number=', theta_argmax[1], '   (EARFCN,PCI)=(', theta_argmax[3][2], ',',
-
                                           theta_argmax[3][3],')  score=',theta_max)
 
         # identification for each Ant Number of all measurement groups associated
-
         # selection of the group with the highest score
-
         # when score 1 is found, elimination because it means points are not enough spread in the cell
-
         # trick : non selected (i.e. duplicates) Antenna numbers are forced to 0
-
         # first step = reduce all scores equal to 1 that are generally due to not enough point
 
         for i in range(len(self._assocsProp['Ant_Number'])):
-
             NoteMax = self._assocsProp['Score'][i]
 
             if NoteMax == 1:  # score 1 is suspect => reduction of the score
-
                 self._assocsProp['Score'][i] = NoteMax/3  # reduce the score
 
         for i in range(len(self._assocsProp['Ant_Number'])):
-
             for j in range(i + 1, len(self._assocsProp['Ant_Number'])):
-
                 if self._assocsProp['Ant_Number'][j] != 0:
-
                     if self._assocsProp['Ant_Number'][j] == self._assocsProp['Ant_Number'][i]:  # meme numero d'antenne pour deux associations
-
                         if self._assocsProp['EARFCN'][j] == self._assocsProp['EARFCN'][i]:  # meme ARFCN => garder qu'un
-
                             if self._assocsProp['Score'][j] > NoteMax:
-
                                 NoteMax = self._assocsProp['Score'][j]
-
                                 self._assocsProp['Ant_Number'][i] = 0  # on force numero d'origine a 0 car doublon a ne pas considerer
-
                             else:
-
                                 self._assocsProp['Ant_Number'][j] = 0  # on force numero a 0 car doublon a ne pas reconsiderer
-
                         else:  # differents codes ARFCN
-
                             if self._assocsProp['PCI'][j] == self._assocsProp['PCI'][i]:  # meme code PCI => renforce credibilite association
-
                                 NoteMax = self._assocsProp['Score'][i] + self._assocsProp['Score'][j]  # on force note de chacune a somme des notes
-
                                 self._assocsProp['Score'][i] = NoteMax
-
                                 self._assocsProp['Score'][j] = NoteMax
-
                             else:  # differents codes EARFCN et differents code PCI
-
                                 if self._assocsProp['Score'][j] > NoteMax:  # nouveau cas augmente la note
-
                                     NoteMax = self._assocsProp['Score'][j]
-
                                     self._assocsProp['Ant_Number'][i] = 0  # on force numero d'origine a 0 car doublon a ne pas considerer
-
                                 else:
-
                                     self._assocsProp['Ant_Number'][j] = 0  # on tient pas compte de la nouvelle (si precedente deja trouvee 2 fois, sa note cumulative est normalement superieure => choix majoritaire)
 
         # creation of the definitive list with only one association per antenna
-
         for i in range(len(self._assocsProp['Ant_Number'])):
 
                 if self._assocsProp['Ant_Number'][i] != 0:
 
                     insert_data(self._assocs, {
-
                         'Cartoradio_Number': [self._assocsProp['Cartoradio_Number'][i]],
-
                         'Ant_Number': [self._assocsProp['Ant_Number'][i]],
-
                         'TAC': [self._assocsProp['TAC'][i]],
-
                         'CID': [self._assocsProp['CID'][i]],
-
                         'EARFCN':[self._assocsProp['EARFCN'][i]],
-
                         'PCI': [self._assocsProp['PCI'][i]],
-
                         'Score': [self._assocsProp['Score'][i]]
-
                     }, 1)
 
         print(self._assocs)
+    
+    def _associate_data_with_TA(self):
+        """Associate EARFCN/PCI pairs to antennas using Timing Advance and Azimuth to choose antenna within selected site."""
+
+        delta = 80  # Tolerance in meters
+        alpha = 1.5 # Exponent for distance weighting
+        margin = 1  # Margin in km for bounding box
+
+        # Initialize the associations dictionary
+        self._assocs = {
+            'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [],
+            'EARFCN': [], 'PCI': [], 'Score': []
+        }
+
+        # Load measurement and antenna data
+        df_meas = self._measure_point.copy()
+        df_ant = self._antennas.copy()
+
+        # Check if necessary columns are present
+        if 'TA' not in df_meas.columns:
+            print("[WARNING] No TA column found in measurement data.")
+            return
+
+        # Check if azimuth is available in antenna data
+        use_azimuth = 'Azimuth' in df_ant.columns
+
+        # Drop rows without values in Lat, Lng, and TA
+        df_meas = df_meas.dropna(subset=['Lat', 'Lng', 'TA'])
+
+        # Grouping measurements by EARFCN and PCI
+        grouped = df_meas.groupby(['EARFCN', 'PCI'])
+
+        # Loop through each group of measurements with same EARFCN and PCI
+        for (earfcn, pci), sub_df in grouped:
+
+            # Initialize a dictionary to hold vote scores for each site
+            vote_scores = {}
+
+            # Calculate the bounding box for the measurements: add a margin of 5 km
+            lat_min, lat_max = sub_df['Lat'].min(), sub_df['Lat'].max()
+            lng_min, lng_max = sub_df['Lng'].min(), sub_df['Lng'].max()
+            margin_lat = margin / 111
+            margin_lng = margin / (111 * np.cos(np.radians((lat_min + lat_max) / 2)))
+            lat_min -= margin_lat
+            lat_max += margin_lat
+            lng_min -= margin_lng
+            lng_max += margin_lng
+
+            # Antennas within the bounding box
+            nearby_ants = df_ant[
+                (df_ant['Lat'] >= lat_min) & (df_ant['Lat'] <= lat_max) &
+                (df_ant['Lng'] >= lng_min) & (df_ant['Lng'] <= lng_max)
+            ]
+            if nearby_ants.empty:
+                continue
+
+            print(f"Processing EARFCN: {earfcn}, PCI: {pci}, Number of antennas found: {len(nearby_ants)}")
+
+            # Convert antenna coordinates to cartesian coordinates
+            ant_coords = np.array([latlng_to_xy(lat, lng) for lat, lng in zip(nearby_ants['Lat'], nearby_ants['Lng'])])
+
+            # Save antenna IDs for scoring
+            site_ids = nearby_ants['Cartoradio_Number'].values
+
+            # Loop through each measurement in the group
+            for _, meas in sub_df.iterrows():
+
+                lat_m, lng_m, ta = meas['Lat'], meas['Lng'], meas['TA']
+                try:
+                    # Calculate the theorical distance to each antenna using Timing Advance
+                    # Multiply by 0.5208 to convert TA to meters (assuming 300 km/s speed of light)
+                    # and divide by 2 to get the one-way distance
+                    L = (ta * 0.5208 * 300) / 2 
+                except:
+                    continue
+
+                # Compute the real distance of the terminal to each antenna
+                x_m, y_m = latlng_to_xy(lat_m, lng_m) 
+                dx = x_m - ant_coords[:, 0]
+                dy = y_m - ant_coords[:, 1]
+                distances = np.sqrt(dx**2 + dy**2)
+
+                # Calculate coefficients based on the distance and delta
+                # If the antenna is inside the ring then the coefficient is one and the further 
+                # the antenna is from the ring defined by the calculated L +/- delta the smaller 
+                # the coefficient is
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    error = L - distances
+                    coefs = np.where(
+                        error == 0,  # Perfect match
+                        1,
+                        np.minimum(1, (np.abs(delta / error) / 2) ** alpha)
+                    )
+                    coefs[np.isnan(coefs)] = 0
+
+
+                # Score by site with cartoradio number as key
+                for idx, coef in enumerate(coefs):
+                    site_key = site_ids[idx]
+                    vote_scores[site_key] = vote_scores.get(site_key, 0) + coef
+
+            if not vote_scores:
+                continue
+
+            # Select the site with the highest score
+            # If multiple sites have the same score, the max function will return one of them
+            selected_site, best_score = max(vote_scores.items(), key=lambda x: x[1])
+
+            if best_score < 6:
+                print(f"[WARNING] No suitable site found for EARFCN: {earfcn}, PCI: {pci} with score {best_score}.")
+                continue
+            
+            # Among the antennas of the selected site, choose the one with the best azimuth match
+            subset_site = nearby_ants[nearby_ants['Cartoradio_Number'] == selected_site]
+            if subset_site.empty:
+                continue
+
+            if use_azimuth:
+                # Average latitude and longitude of the measurements for bearing calculation
+                lat_cible = sub_df['Lat'].mean()
+                lng_cible = sub_df['Lng'].mean()
+
+                # Compute bearings from the antennas to the average measurement point
+                # and compare with azimuths to find the best match
+                bearings = compute_bearing(
+                    subset_site['Lat'].values,
+                    subset_site['Lng'].values,
+                    lat_cible,
+                    lng_cible
+                )
+
+                # Convert azimuths to bearings
+                azis = subset_site['Azimuth'].values
+                diffs = np.abs((bearings - azis + 180) % 360 - 180)
+                best_idx = np.argmin(diffs)
+
+            else:
+                # When azimuth is not used, select the first antenna
+                best_idx = 0
+
+            # Data for the best antenna
+            best_ant = subset_site.iloc[best_idx]
+            sample = sub_df.iloc[0]
+
+            # Insert the association into the _assocs dictionary
+            self._assocs['Cartoradio_Number'].append(best_ant['Cartoradio_Number'])
+            self._assocs['Ant_Number'].append(best_ant['Ant_Number'])
+            self._assocs['TAC'].append(int(sample.get('TAC', 0)))
+            self._assocs['CID'].append(int(sample.get('CID', 0)))
+            self._assocs['EARFCN'].append(earfcn)
+            self._assocs['PCI'].append(pci)
+            self._assocs['Score'].append(vote_scores[selected_site])
 
     def _write_output(self, out_wr: csvt.CSVWriter):
 
         """PRIVATE METHOD which writes relation calculated by _associate_datas in the output file.
 
-
         Produced fields are :
-
             - POINT: corresponds to a measurement point.
-
             - BS_ANT_DIR: describes the directivity of an antenna.
-
             - ASSOC: describe an association between an antenna and an EARFCN / PCI.
 
-
         Parameters:
-
             out_wr: output file.
-
         """
 
         # Writing antennas directivity.
-
         ants = self._antennas.groupby(['Ant_Number'])
 
         for a in ants.groups.keys():
-
-            ant = ants.get_group(a).to_dict('list')
-
+            ant = ants.get_group((a,)).to_dict('list')
             out_wr.write_row([
-
                 'BS_ANT_DIR', ant['Cartoradio_Number'][0], ant['Ant_Number'][0], ant['Lat'][0],
-
                 ant['Lng'][0], ant['Dest_Lat'][0], ant['Dest_Lng'][0]
-
             ])
 
         # Writing associations
-
         for i in range(len(self._assocs['Cartoradio_Number'])):
-
             out_wr.write_row([
-
                 'ASSOC', self._assocs['Cartoradio_Number'][i], self._assocs['Ant_Number'][i], self._assocs['TAC'][i],
-
                 self._assocs['CID'][i], self._assocs['EARFCN'][i], self._assocs['PCI'][i], self._assocs['Score'][i]
-
             ])
 
         # Writing points.
-
         point_assoc = self._measure_point.to_dict('list')
 
         for i in range(len(point_assoc['Lat'])):
 
             out_wr.write_row([
-
                 'MEASURE_SERVING', point_assoc['Lat'][i], point_assoc['Lng'][i], point_assoc['TAC'][i],
-
                 point_assoc['CID'][i], point_assoc['EARFCN'][i], point_assoc['PCI'][i], point_assoc['BEAM'][i],
-
                 point_assoc['RSRP'][i], point_assoc['RSRQ'][i], point_assoc['RSSI'][i],
-
                 point_assoc['CINR'][i]
-
             ])
 
         print(pd.DataFrame(self._assocs))
@@ -1228,3 +1116,19 @@ def is_valid(theta_max: float, other_theta: float, threshold: float):
         #        return other_theta > 0.8     # XL XL XL
 
         return np.abs(np.log10(other_theta / theta_max)) > threshold
+    
+def latlng_to_xy(lat, lng, R= 6371000):
+    x = math.radians(lng) * R * math.cos(math.radians(lat))
+    y = math.radians(lat) * R
+    return x, y
+
+def compute_bearing(lat1, lon1, lat2, lon2):
+    """Compute the absolute bearing (in degrees) from point A (lat1, lon1) to point B (lat2, lon2)."""
+    d_lon = np.radians(lon2 - lon1)
+    lat1 = np.radians(lat1)
+    lat2 = np.radians(lat2)
+    x = np.sin(d_lon) * np.cos(lat2)
+    y = np.cos(lat1) * np.sin(lat2) - (np.sin(lat1) * np.cos(lat2) * np.cos(d_lon))
+    bearing = np.arctan2(x, y)
+    return (np.degrees(bearing) + 360) % 360  # Normalize to [0, 360)
+
