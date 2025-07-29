@@ -165,7 +165,7 @@ class XcalConverter:
             'name': [], 'timestamp': [], 'lat': [], 'lng': [],                          # Common fields
             'earfcn': [], 'pci': [],  'rsrp': [], 'rsrq': [], 'rssi': [], 'cinr': [],   # Serving Cell
             'tac': [], 'cid': [], 'mcc': [], 'mnc': [],                                 # Cell information
-            'meas_name': []                                                             # Measurement
+            'meas_name': [], 'ta': []                                                   # Measurement
         }
 
         self._mcc = None
@@ -501,6 +501,7 @@ class XcalConverter:
 
             # Goto content start.
             # The file structure had been checked a first time, so we don't need of the Description part.
+            last_serving_index = -1
             for i in range(self._content_start + 1):
                 aof.readline()
 
@@ -542,11 +543,13 @@ class XcalConverter:
                     insert_data(self._data_dict, {
                         'name': ['MEASURE_SERVING'], 'timestamp': [tstamp], 'lat': [None], 'lng': [None],
                         'earfcn': [serving_earfcn], 'pci': [serving_pci], 'rsrp': [serving_rsrp],
-                        'rsrq': [serving_rsrq], 'rssi': [serving_rssi], 'cinr': [serving_cinr]
+                        'rsrq': [serving_rsrq], 'rssi': [serving_rssi], 'cinr': [serving_cinr],
+                        'ta': ['']
                     }, 1)
 
+                    last_serving_index = index
                     index += 1
-
+                     
                     # Inserting measurement data.
                     to_insert = {
                         'name': ['MEASUREMENT'] * 3, 'timestamp': [tstamp] * 3, 'lat': [None] * 3, 'lng': [None] * 3,
@@ -625,6 +628,12 @@ class XcalConverter:
                         index += 3
                         last_meas_tstamp = tstamp
 
+                elif first == 'QCLTE_PTA':
+                    if l_len >= 3 and last_serving_index >= 0:
+                        serving_ta = float(line[2])
+                        # Add the TA to the last serving cell measurement
+                        self._data_dict['ta'][last_serving_index] = serving_ta
+
                 elif first == 'QCLTE_CELLINFO':
 
                     insert_data(self._data_dict, {
@@ -679,7 +688,7 @@ class XcalConverter:
             'CELLINFO': ['Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'],
             'MEASURE_SERVING': [
                 'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI',
-                'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR'
+                'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR', 'Serving_TA'
             ],
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
         }
@@ -726,7 +735,8 @@ class XcalConverter:
                 elif name == 'MEASURE_SERVING':     # Serving cell information fields.
                     to_write.extend([
                         self._data_dict['earfcn'][i], self._data_dict['pci'][i], self._data_dict['rsrp'][i],
-                        self._data_dict['rsrq'][i], self._data_dict['rssi'][i], self._data_dict['cinr'][i]
+                        self._data_dict['rsrq'][i], self._data_dict['rssi'][i], self._data_dict['cinr'][i],
+                        self._data_dict['ta'][i] if i < len(self._data_dict['ta']) else ''
                     ])
                 elif name == 'MEASUREMENT':         # Measurement field.
                     to_write.append(self._data_dict['meas_name'][i])

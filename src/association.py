@@ -178,6 +178,9 @@ class CellAssociator:
 
         print('Starting association...')
 
+        file_meas = pathlib.Path(self._in_meas)
+        file_sites = pathlib.Path(self._in_sites)
+
         file_name = os.path.join(self._outdir, 'assoc_{0}_{1}_TA.csv'.format(
                     pathlib.Path(self._in_meas).stem.replace("cev",""),
                     pathlib.Path(self._in_sites).stem.replace("cev","")))
@@ -220,6 +223,7 @@ class CellAssociator:
             self._read_antennas(out_wr) # Delimiter
 
             print('Identifying possible Associations...')
+            print('Input files: {0} and {1}'.format(file_meas, file_sites))
             self._associate_data_with_TA()
             
             self._write_output(out_wr)
@@ -309,7 +313,7 @@ class CellAssociator:
                                 if any(val.strip() == '' for val in required_fields):
                                     raise ValueError(f"Missing values into MEASURE_SERVING at the line: {line}")
                                 
-                                ta_value = int(line[10]) if len(line) > 10 and line[10].strip() != '' else None
+                                ta_value = float(line[10]) if len(line) > 10 and line[10].strip() != '' else None
 
                                 insert_data(
 
@@ -775,6 +779,8 @@ class CellAssociator:
         delta = 80  # Tolerance in meters
         alpha = 1.5 # Exponent for distance weighting
         margin = 1  # Margin in km for bounding box
+        threshold = 6  # Minimum score to consider an association valid
+        # print(f"Using delta: {delta}, alpha: {alpha}, margin: {margin} km, threshold: {threshold}")
 
         # Initialize the associations dictionary
         self._assocs = {
@@ -800,6 +806,27 @@ class CellAssociator:
         # Grouping measurements by EARFCN and PCI
         grouped = df_meas.groupby(['EARFCN', 'PCI'])
 
+        # Get unique EARFCNs and antennas
+        unique_earfcns = df_meas['EARFCN'].dropna().unique()
+        unique_antennas = df_ant[['Cartoradio_Number', 'Ant_Number']].drop_duplicates()
+
+        # Create antenna keys with unique combinations of EARFCN, Cartoradio_Number, and Ant_Number
+        antenna_keys = [
+            (earfcn, row.Cartoradio_Number, row.Ant_Number)
+            for earfcn in unique_earfcns
+            for _, row in unique_antennas.iterrows()
+        ]
+
+        # Sort and convert antenna keys and PCI keys to integers
+        pci_keys = sorted(df_meas['PCI'].dropna().unique())
+
+        # Convert to integer juste for printing
+        antenna_keys = [(int(e), int(s), int(a)) for (e, s, a) in antenna_keys] 
+        pci_keys = [int(i) for i in pci_keys]
+
+        # Create a score matrix will contain max score for each EARFCN/PCI pair and antenna
+        score_matrix = np.zeros((len(pci_keys), len(antenna_keys)))
+
         # Loop through each group of measurements with same EARFCN and PCI
         for (earfcn, pci), sub_df in grouped:
 
@@ -815,6 +842,7 @@ class CellAssociator:
             lat_max += margin_lat
             lng_min -= margin_lng
             lng_max += margin_lng
+            # print(f"Processing EARFCN: {earfcn}, PCI: {pci}, Bounding Box: ({lat_min}, {lng_min}) to ({lat_max}, {lng_max})")
 
             # Antennas within the bounding box
             nearby_ants = df_ant[
@@ -823,8 +851,6 @@ class CellAssociator:
             ]
             if nearby_ants.empty:
                 continue
-
-            print(f"Processing EARFCN: {earfcn}, PCI: {pci}, Number of antennas found: {len(nearby_ants)}")
 
             # Convert antenna coordinates to cartesian coordinates
             ant_coords = np.array([latlng_to_xy(lat, lng) for lat, lng in zip(nearby_ants['Lat'], nearby_ants['Lng'])])
@@ -876,7 +902,7 @@ class CellAssociator:
             # If multiple sites have the same score, the max function will return one of them
             selected_site, best_score = max(vote_scores.items(), key=lambda x: x[1])
 
-            if best_score < 6:
+            if best_score < threshold:
                 print(f"[WARNING] No suitable site found for EARFCN: {earfcn}, PCI: {pci} with score {best_score}.")
                 continue
             
@@ -912,14 +938,47 @@ class CellAssociator:
             best_ant = subset_site.iloc[best_idx]
             sample = sub_df.iloc[0]
 
-            # Insert the association into the _assocs dictionary
-            self._assocs['Cartoradio_Number'].append(best_ant['Cartoradio_Number'])
-            self._assocs['Ant_Number'].append(best_ant['Ant_Number'])
+            # Building the association key
+            key_ant = (earfcn, best_ant['Cartoradio_Number'], best_ant['Ant_Number'])
+
+            # Find the index of the antenna key in the list
+            col_idx = antenna_keys.index(key_ant)
+            row_idx = pci_keys.index(pci)
+            score_matrix[row_idx, col_idx] = max(score_matrix[row_idx, col_idx], vote_scores[selected_site])
+
+
+        for col_idx, key_ant in enumerate(antenna_keys):
+            # Score for all PCIs associated with this antenna, earfcn key
+            scores = score_matrix[:, col_idx]  # Get scores for this antenna across all PCIs
+            nonzero_rows = np.nonzero(scores)[0] # Get indices of non-zero scores
+
+            if len(nonzero_rows) == 0:
+                continue
+
+            # Best pci for the tuple (EARFCN, Cartoradio_Number, Ant_Number)
+            best_row_idx = nonzero_rows[np.argmax(scores[nonzero_rows])]
+            best_score = scores[best_row_idx]
+            best_pci = pci_keys[best_row_idx]
+
+            earfcn, cartoradio, ant_number = key_ant
+
+            # Extracting the sample row for the best PCI
+            sample_rows = df_meas[(df_meas['EARFCN'] == earfcn) & (df_meas['PCI'] == best_pci)]
+            if sample_rows.empty:
+                continue
+
+            sample = sample_rows.iloc[0]
+
+            # Insertion dans _assocs
+            self._assocs['Cartoradio_Number'].append(cartoradio)
+            self._assocs['Ant_Number'].append(ant_number)
             self._assocs['TAC'].append(int(sample.get('TAC', 0)))
             self._assocs['CID'].append(int(sample.get('CID', 0)))
             self._assocs['EARFCN'].append(earfcn)
-            self._assocs['PCI'].append(pci)
-            self._assocs['Score'].append(vote_scores[selected_site])
+            self._assocs['PCI'].append(best_pci)
+            self._assocs['Score'].append(best_score)
+
+
 
     def _write_output(self, out_wr: csvt.CSVWriter):
 
