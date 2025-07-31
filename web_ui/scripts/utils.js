@@ -80,6 +80,17 @@ const lteBands = [
 
 
 const utils = {
+    normalize: function(val, min, max) {
+        // Clamp et normalisation
+        return Math.min(Math.max((val - min) / (max - min), 0), 1);
+    },
+
+    getColorFromPalette: function(val, min, max, palette) {
+        const normalized = utils.normalize(val, min, max);
+        // Calcul de l'index dans la palette
+        const idx = Math.floor(normalized * (palette.length - 1));
+        return palette[idx];
+    },
 
     /**
      * Calculates the direction 

@@ -28,6 +28,7 @@ const drawing = {
         _pciTooltipLayer      // Global PCI Tooltip layer
         _nonFilteredTAC
         _nonFilteredPCI
+        _hasCenteredMap
         /**
          * Class constructor.
          *
@@ -54,6 +55,7 @@ const drawing = {
             this._assocLayer = L.layerGroup();
             this._nonFilteredTAC = null;
             this._nonFilteredPCI = null;
+            this._hasCenteredMap = false;
         }
         /**
          * Draws Voronoi cells, delimiters and antennas layers.
@@ -65,89 +67,57 @@ const drawing = {
          * @function
          */
         drawCells(voronoi, antFeats, delFeats) {
-            console.log(antFeats); // Debug: show antenna features in the console
+            if (this._cellLayer && this._map.hasLayer(this._cellLayer)) {
+                this._map.removeLayer(this._cellLayer);
+            }
 
-            // Clear the previous cell layer
-            this._cellLayer.clearLayers();
+            this._cellLayer = L.layerGroup().addTo(this._map);
 
-            // Get the features of the Voronoi cells
-            let vorFeats = voronoi.features;
+            const vorFeats = voronoi.features;
+            const vorLayer = L.geoJson(turf.featureCollection(vorFeats), styles.polyStyle(0.1, '000000'));
 
-            // Create GeoJSON layer for Voronoi cells with style
-            let vorLayer = L.geoJson(turf.featureCollection(vorFeats), styles.polyStyle(0.1, '000000'));
+            const delLayer = L.geoJson(turf.featureCollection(delFeats), styles.styleDelimiter());
+            delLayer.bringToBack(); 
 
-            // Create GeoJSON layer for delimiters (borders between cells)
-            let delLayer = L.geoJson(turf.featureCollection(delFeats), styles.styleDelimiter());
-
-            delLayer.bringToBack(); // Ensure delimiters are behind other layers
-
-            
-            delFeats.forEach((feature, featureIndex) => {
-                if (feature.geometry && feature.geometry.type === 'LineString') {
-                    const coords = feature.geometry.coordinates; // tableau [ [lon, lat], ... ]
-                    //console.log(coords);
-                    for (let i = 0; i < coords.length - 1; i++) {
-                        const [lon1, lat1] = coords[i];
-                        const [lon2, lat2] = coords[i + 1];
-                        // Utilisation de la fonction calculateAzimuth de ton fichier util
-                        const azimuth = utils.calculateAzimuth(lat1, lon1, lat2, lon2);
-                        //console.log(`Delimiter Feature ${featureIndex}, segment ${i}: azimuth = ${azimuth.toFixed(2)}°`);
-                    }
-                }
-            });
-            
-
-            // Add Voronoi cells and delimiters to the cell layer group
-            vorLayer.addTo(this._cellLayer);
-            delLayer.addTo(this._cellLayer);
-
-            // Create the antenna layer with custom styling and popup behavior
             this._antLayer = L.geoJson(turf.featureCollection(antFeats), {
-                // Convert point features to styled circle markers
                 pointToLayer: function(feature, latlng) {
                     return L.circleMarker(latlng, styles.styleAntenna());
                 },
-
-                // Define what happens for each antenna feature
                 onEachFeature: function(feature, layer) {
-                    // Extract longitude and latitude from the GeoJSON coordinates
                     const [longitude, latitude] = feature.geometry.coordinates[0];
-                    // Extract antenna ID or site name (adjust according to your data)
-                    const cartoNum = 'Unknown';
+                    const cartoNum = feature.properties.cartoNum || 'Unknown';
 
-                    // Build popup HTML content with links to Cartoradio and Google Street View
-                    let popupContent = `
+                    const popupContent = `
                         <div class="tooltip-header" style="margin-bottom:8px;">
-                            
+                            <div><strong>Cartoradio n°:</strong> ${cartoNum}</div>
                             <a href="https://www.cartoradio.fr/#/cartographie/all/lonlat/${longitude}/${latitude}" 
-                            target="_blank" rel="noopener"><strong>
-                            <span style="color:blue;">Carto</span><span style="color:hotpink;">radio</span>
-                            </strong> 
-                                
-                            </a>
+                                target="_blank" rel="noopener"><strong>
+                                <span style="color:blue;">Carto</span><span style="color:hotpink;">radio</span>
+                            </strong></a>
                             <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${latitude},${longitude}" 
-                            target="_blank" rel="noopener" style="margin-left:8px;">
+                                target="_blank" rel="noopener" style="margin-left:8px;">
                                 <img src="./img/pngegg.png" alt="Street View" width="32" height="32">
                             </a>
                         </div>
                     `;
 
-                    // Bind the popup to the antenna marker
                     layer.bindPopup(popupContent, {
                         closeOnClick: true,
                         autoClose: true
                     });
 
-                    // Optional: Change cursor on hover to indicate interactivity
                     layer.on('mouseover', function() {
                         this._path.style.cursor = 'pointer';
                     });
                 }
             });
 
-            // Optionally add the antenna layer to the map automatically
-            this.setAntLayer(true); // <- You can control this dynamically if needed
+            vorLayer.addTo(this._cellLayer);
+            delLayer.addTo(this._cellLayer);
+            this._antLayer.addTo(this._cellLayer);
         }
+
+
 
         /**
          * Draw serving points layer.
@@ -160,59 +130,54 @@ const drawing = {
          *
          * @function
          */
-        /*drawPoints(pointsData, valChooser, colorChooser) {
-            let newPointLayers = {}; // Dictionnaire pour stocker les groupes de couches de marqueurs
-            for (let earfcn in pointsData) {
-                newPointLayers[earfcn] = {};
-                let earfcnGr = pointsData[earfcn];
-                for (let pciKey in earfcnGr) { // pciKey est la valeur PCI pour ce groupe
-                    newPointLayers[earfcn][pciKey] = {};
-                    let pciGr = earfcnGr[pciKey];
-                    for (let beam in pciGr) {
-                        let beamLayerGroup = L.layerGroup(); // Un groupe de couches pour les points de ce faisceau
-                        let pointsArr = pciGr[beam]; // Tableau des points de mesure individuels
-
-                        pointsArr.forEach((point) => { 
-                            if (typeof point.lat !== 'undefined' && typeof point.lng !== 'undefined') {
-                                let latLng = [point.lat, point.lng];
-                                let valueForColor = valChooser(earfcn, pciKey, point); 
-                                let color = colorChooser(valueForColor); // Couleur du point
-
-                                let circleMarker = L.circleMarker(latLng, {
-                                    radius: 4, 
-                                    color: color, 
-                                    weight: 1,
-                                    opacity: 1,
-                                    fillOpacity: 0.7 
-                                });
-                                let tooltipContent = "PCI: " + pciKey;                                                                            
-                                circleMarker.bindTooltip(tooltipContent);
-                                beamLayerGroup.addLayer(circleMarker); // Ajoute le marqueur au groupe du faisceau
-                            }
-                        });
-                        newPointLayers[earfcn][pciKey][beam] = beamLayerGroup; // Stocke le groupe de couches
-                    }
-                }
-            }
-            return newPointLayers; // Retourne la structure attendue par setPointLayer
-        }*/
+        
        drawPoints(points, valChooser, colorChooser) {
+            let latMin = Infinity, latMax = -Infinity;
+            let lngMin = Infinity, lngMax = -Infinity;
+
             let pointDict = {};
+            let baseLat = null, baseLng = null;
+            const MAX_DEGREES_DISTANCE = 1.0; // ~100 km
+
             for (let earfcn in points) {
                 pointDict[earfcn] = {};
                 let earfcnGr = points[earfcn];
+
                 for (let pci in earfcnGr) {
                     pointDict[earfcn][pci] = {};
                     let pciGr = earfcnGr[pci];
+
                     for (let beam in pciGr) {
                         let pointsDict = {};
                         let pointsArr = pciGr[beam];
+
                         pointsArr.forEach((point) => {
-                            let latLng = [point.lat, point.lng];
-                            let val = valChooser(earfcn, pci, point);
-                            pointsDict[val] = pointsDict[val] || [];
-                            pointsDict[val].push(latLng);
+                            let lat = point.lat;
+                            let lng = point.lng;
+
+                            if (typeof lat !== 'number' || isNaN(lat) || typeof lng !== 'number' || isNaN(lng)) return;
+
+                            if (baseLat === null) {
+                                baseLat = lat;
+                                baseLng = lng;
+                            }
+
+                            let distance = Math.sqrt((lat - baseLat) ** 2 + (lng - baseLng) ** 2);
+
+                            if (distance < MAX_DEGREES_DISTANCE) {
+                                if (lat < latMin) latMin = lat;
+                                if (lat > latMax) latMax = lat;
+                                if (lng < lngMin) lngMin = lng;
+                                if (lng > lngMax) lngMax = lng;
+
+                                let val = valChooser(earfcn, pci, point);
+                                if (!pointsDict[val]) pointsDict[val] = [];
+                                pointsDict[val].push([lat, lng]);
+                            } else {
+                                console.warn("Point ignoré (trop loin) :", lat, lng);
+                            }
                         });
+
                         for (let val in pointsDict) {
                             let layer = new L.GridLayer.MaskCanvas(styles.pointStyle(colorChooser(val)));
                             layer.setData(pointsDict[val]);
@@ -221,8 +186,27 @@ const drawing = {
                     }
                 }
             }
+
+            let centerLat = (latMin + latMax) / 2;
+            let centerLng = (lngMin + lngMax) / 2;
+
+            console.log("latMin:", latMin);
+            console.log("latMax:", latMax);
+            console.log("lngMin:", lngMin);
+            console.log("lngMax:", lngMax);
+            console.log("centerLat:", centerLat);
+            console.log("centerLng:", centerLng);
+
+            console.log(this._hasCenteredMap);
+            if (!this._hasCenteredMap) {
+                this._map.setView([centerLat, centerLng], 13);
+                this._hasCenteredMap = true;
+            }
+
             return pointDict;
         }
+
+
 
         /**
          * Draws serving measurement heatmap layer.
@@ -239,6 +223,7 @@ const drawing = {
          * @function
          */
         drawServingHex(layer, points, valChooser, min, max, earfcns = null, pcis = null, beams = null) {
+            
             // Layer data points;
             let hexData = [];
             // EARFCNs and PCIs amongs input points.
@@ -314,6 +299,7 @@ const drawing = {
                 }
             }
             // Drawing the layer.
+            console.log("drawing hex");
             layer.options.colorScaleExtent = [min, max];
             layer.redraw();
             // Adding data...
@@ -337,9 +323,9 @@ const drawing = {
             this._assocLayer.clearLayers();
 
             for (let cartoNum in assocs) {
-                let assocList = assocs[cartoNum];  // Tableau d’associations
-                let ant = antennas[cartoNum];      // Antenne de référence
-                let antdirList = antdirs.filter(dir => dir.cartoNum === +cartoNum);  // Directions associées
+                let assocList = assocs[cartoNum];  
+                let ant = antennas[cartoNum];      
+                let antdirList = antdirs.filter(dir => dir.cartoNum === +cartoNum);  
 
                 let azimuthData = [];
 
@@ -347,7 +333,7 @@ const drawing = {
                     let matchedDir = antdirList.find(dir => dir.antNum === assocItem.antNum);
                     if (matchedDir) {
                         azimuthData.push([
-                            assocItem.antNum,      // ← Ajout de antNum
+                            assocItem.antNum,      
                             assocItem.pci,
                             matchedDir.latA,
                             matchedDir.lngA,
@@ -360,12 +346,12 @@ const drawing = {
                 console.log(`Azimuth data for cartoNum ${cartoNum}:`);
                 console.log(azimuthData);
 
-                // Marqueur station
+                
                 let marker = L.marker([ant.lat, ant.lng], {
                     icon: styles.stationIcon()
                 });
 
-                // Popup selon le mode
+                
                 let popupContent = check_box
                     ? this.drawAssocPopup(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams)
                     : this.drawAssocPopupWithoutCheckbox(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams);
@@ -450,7 +436,7 @@ const drawing = {
             for (let i = 0; i < earpcis.earfcns.length; i++) {
                 let pci = earpcis.pcis[i];
                 let earfcn = earpcis.earfcns[i];
-                let freq = utils.earfcnToFreqLte(earfcn);
+                let freq = Math.round(utils.earfcnToFreqLte(earfcn));
 
                 if (!groupedByPci[pci]) groupedByPci[pci] = [];
                 groupedByPci[pci].push({ earfcn, freq });
@@ -473,7 +459,7 @@ const drawing = {
                         let latB = match[4];
                         let lngB = match[5];
                         let azimuthAngle = utils.calculateAzimuth(latA, lngA, latB, lngB);
-                        azimuth = `${azimuthAngle.toFixed(1)}° (${utils.getCardinalDirection(azimuthAngle)})`;
+                        azimuth = `${Math.round(azimuthAngle)}° (${utils.getCardinalDirection(azimuthAngle)})`;
                     }
                 }
 
@@ -510,7 +496,7 @@ const drawing = {
                     };
 
                     let labelText = document.createElement('span');
-                    labelText.textContent = `${earfcn} (${freq?.toFixed(1)} MHz)`;
+                    labelText.textContent = `${earfcn} (${freq} MHz)`;
 
                     wrapperLabel.appendChild(checkBox);
                     wrapperLabel.appendChild(labelText);
@@ -632,7 +618,7 @@ const drawing = {
             for (let i = 0; i < earpcis.earfcns.length; i++) {
                 let pci = earpcis.pcis[i];
                 let earfcn = earpcis.earfcns[i];
-                let freq = utils.earfcnToFreqLte(earfcn);
+                let freq = Math.round(utils.earfcnToFreqLte(earfcn));
 
                 if (!groupedByPci[pci]) groupedByPci[pci] = [];
                 groupedByPci[pci].push({ earfcn, freq });
@@ -689,7 +675,7 @@ const drawing = {
                         let latB = match[4];
                         let lngB = match[5];
                         let azimuthAngle = utils.calculateAzimuth(latA, lngA, latB, lngB);
-                        azimuth = `${azimuthAngle.toFixed(1)}° (${utils.getCardinalDirection(azimuthAngle)})`;
+                        azimuth = `${Math.round(azimuthAngle)}° (${utils.getCardinalDirection(azimuthAngle)})`;
                     }
                 }
 
@@ -700,7 +686,7 @@ const drawing = {
                 let earfcnCell = document.createElement('td');
                 earfcnCell.style.padding = '4px 8px';
                 earfcnCell.style.verticalAlign = 'middle';
-                earfcnCell.textContent = `${earfcn} (${freq?.toFixed(1)} MHz)`;
+                earfcnCell.textContent = `${earfcn} (${freq} MHz)`;
 
                 // PCI cell
                 let pciCell = document.createElement('td');
@@ -832,6 +818,7 @@ const drawing = {
                     );
                 }
             );
+            
             layer.options.colorScaleExtent = [min, max];
             layer.redraw();
             layer.data(hexData);
@@ -886,6 +873,12 @@ const drawing = {
          * @function
          */
         drawServingRSRP(points, min, max, earfcns = null, pcis = null, beams = null) {
+            const rsrp = -85;
+            const minRsrp = -120;
+            const maxRsrp = -60;
+
+            const color = utils.getColorFromPalette(maxRsrp, minRsrp, maxRsrp, styles.HEATMAP);
+            console.log("color of rsrp=-85 is "+color);
             this.drawServingHex(
                 this._servingRSRP, points, (_e, _p, pt) => Math.round(pt.rsrp),
                 min, max, earfcns, pcis, beams,
@@ -902,6 +895,7 @@ const drawing = {
          * @function
          */
         drawServingRSRQ(points, min, max, earfcns = null, pcis = null, beams = null) {
+            console.log("min="+ min + "max=" + max );
             this.drawServingHex(
                 this._servingRSRQ, points, (_e, _p, pt) => Math.round(pt.rsrq),
                 min, max, earfcns, pcis, beams
@@ -1058,6 +1052,10 @@ const drawing = {
          */
         setCellLayer(b) {
             this._setLayerVisibility(this._cellLayer, b);
+
+            if (b && this._antLayer) {
+                this._antLayer.bringToFront(); 
+            }
         }
         /**
          * Sets antennas layer visibility.
@@ -1156,6 +1154,7 @@ const drawing = {
          * @function
          */
         setpciTooltip(b) {
+            console.log("i am here in setpci");
             this._setLayerVisibility(this._pciTooltipLayer, b);
         }
         /**
@@ -1221,7 +1220,8 @@ const drawing = {
                         // Creating option element.
                         let option = document.createElement('option');
                         option.setAttribute('value', earfcn);
-                        option.innerHTML = earfcn;
+                        const freq = Math.round(utils.earfcnToFreqLte(earfcn));
+                        option.innerHTML = `${earfcn}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(${freq} MHz)`;
                         // Adding it.
                         earSelector.append(option);
                     }
@@ -1252,20 +1252,44 @@ const drawing = {
      * @function
      */
     hexBin: function (tooltip, options) {
-        // Creating the layer with style.
-        let hex = L.hexbinLayer(options);
-        // Minimum point selection function.
-        let minFunct = function (d) {
-            let tempArray = d.map((i) => i.o[2]);
-            return Math.min.apply(null, tempArray);
+            let hex = L.hexbinLayer(options);
+
+            
+            const minFunct = (d) => {
+                const values = d.map(i => i.o[2]);
+                return Math.min(...values);
+            };
+
+            
+            function getUnit(type) {
+                switch(type) {
+                    case 'RSRP':
+                        return 'dBm';
+                    case 'RSSI':
+                        
+                        return 'dBm';
+                    case 'CINR':
+                        return 'dB';
+                    case 'RSRQ':
+                        return 'dB';
+                    default:
+                        return ''; 
+                }
+            }
+
+            hex._fn.colorValue = minFunct;
+
+            hex.hoverHandler(
+                L.HexbinHoverHandler.tooltip({
+                    tooltipContent: (d) => {
+                        const val = minFunct(d);
+                        const unit = getUnit(tooltip);
+                        return `${tooltip}: ${val} ${unit}`;
+                    }
+                })
+            );
+
+            return hex;
         }
-        hex._fn.colorValue = minFunct;
-        // Handler used to show the tooltip.
-        hex.hoverHandler(
-            L.HexbinHoverHandler.tooltip({
-                tooltipContent: (d) => tooltip + ': ' + minFunct(d)
-            })
-        );
-        return hex;
-    }
+
 }

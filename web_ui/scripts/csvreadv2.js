@@ -19,6 +19,8 @@ var csvreadv2 = {
         // File reading.
         _file
         _freader
+        //technology 4G/5G
+        _techno
 
         // Measurements columns.
         _earfcns
@@ -78,6 +80,7 @@ var csvreadv2 = {
             this._cinrs = [];
             this._assocs = {};
             this._antDirs = [];
+            this._techno = [];
             this._sectDels = [];
             this._antennas = {};
             this._antennasV2 = {};
@@ -255,9 +258,13 @@ var csvreadv2 = {
                 };
 
                 this._antDirs.push(antVect);
-                console.log("antDirs");
-                let result = this._antDirs.filter(ant => ant.cartoNum === 66280);
-                console.log("Antennes pour cartoNum 66280:", result);
+            });
+            parsedResult.TECHNO.forEach((line) => {
+                let techno = {
+                    technology: +line['TECHNO'],
+                };
+
+                this._techno.push(techno);
             });
 
             parsedResult.ASSOC.forEach((line) =>{
@@ -392,6 +399,12 @@ var csvreadv2 = {
          * @function
          */
         get antennaDirections() { return utils.deepCopy(this._antDirs); }
+        /**
+         * @returns technology
+         *
+         * @function
+         */
+        get measurementTechno() { return utils.deepCopy(this._techno); }
 
         /**
          * @return Antennas data, and sector delimiters data.
@@ -431,6 +444,7 @@ var csvreadv2 = {
                 measureServing: [],
                 measurement: [],
                 bsAntDir: [],
+                techno: [],
                 assoc:[],
                 others:[],
             };
@@ -450,6 +464,8 @@ var csvreadv2 = {
                     currentHeaderType = 'delimiter';
                 } else if (line[0] === 'BS_ANT_DIR') {
                     currentHeaderType = 'bsAntDir';
+                } else if (line[0] === 'TECHNO') {
+                    currentHeaderType = 'techno';
                 } else if (line[0] === 'MEASUREMENT') {
                     currentHeaderType = 'measurement';
                 } else if (line[0] === 'ASSOC') {
@@ -476,6 +492,7 @@ var csvreadv2 = {
             const parsedMeasurement = Papa.parse(parsedData.measurement.join('\n'), { header: true });
             const parsedDelimiter = Papa.parse(parsedData.delimiter.join('\n'), { header: true });
             const parsedAssoc = Papa.parse(parsedData.assoc.join('\n'), { header: true });
+            const parsedTechno = Papa.parse(parsedData.techno.join('\n'), { header: true });
             const parsedOthers = Papa.parse(parsedData.others.join('\n'), { header: true });
 
             return {
@@ -488,6 +505,7 @@ var csvreadv2 = {
                 ASSOC: parsedAssoc.data,
                 DELIMITER : parsedDelimiter.data,
                 BS_ANT_DIR : parsedBsAntDir.data,
+                TECHNO : parsedTechno.data,
                 OTHERS: parsedOthers.data
             };
         }

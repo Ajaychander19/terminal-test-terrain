@@ -183,6 +183,20 @@ const styles = {
 
     },
 
+    loaderStyle: function(state){
+        return {
+            border: "6px solid #f3f3f3",
+            borderTop: "6px solid #3498db",
+            borderRadius: "50%",
+            width: "40px",
+            height: "40px",
+            animation: "spin 1s linear infinite",
+            margin: "auto",
+            display: state 
+        };
+
+    },
+
     /**
      * 
      * @param {*} baseMap Lealfet map default background.
@@ -200,6 +214,7 @@ const styles = {
             layers: baseMap
         };
     },
+    
 
     /**
      * Produces a gradient made of a given number of color for HexBin layers.
