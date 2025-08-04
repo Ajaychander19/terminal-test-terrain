@@ -9,7 +9,7 @@ import csvtools as csvt
 import shapely.geometry as geom
 import scipy.spatial as sp
 from dictutils import insert_data
-
+from scipy.spatial.distance import pdist
 
 class CellAssociator:
 
@@ -71,6 +71,10 @@ class CellAssociator:
 
         'TECHNO': ['Techno'],
 
+        'START_DATE': ['Date'],
+
+        'END_DATE': ['Date'],
+
         'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA'],
 
         'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA'],
@@ -107,6 +111,8 @@ class CellAssociator:
         self._antennas = None       # Antennas
         self.version = None
         self.techno = "4G"
+        self.start_date = None
+        self.end_date = None
 
     def calculate_association(self, mode: int, assoc_file: str):
 
@@ -121,29 +127,29 @@ class CellAssociator:
         header = self._HEADER_V2
 
         with csvt.CSVReader(self._in_meas) as meas:
-            line = meas.read_line()
+            for _ in range(10):
+                line = meas.read_line()
+                if not line:
+                    break
 
-            if line[0] == 'VERSION':
+                if line[0] == 'VERSION':
 
-                self.version = float(line[1])
-                header = self._HEADER_V2
+                    self.version = float(line[1])
+                    header = self._HEADER_V2
 
-            meas.read_line()
-            line = meas.read_line()
-            if line[0] == 'TECHNO':
-                self.techno = str(line[1])
+                if line[0] == 'TECHNO':
+                    self.techno = str(line[1])
 
-            line = meas.read_line()
+                if line[0] == 'MEAS_EARFCNS':
 
-            if line[0] == 'MEAS_EARFCNS':
+                    n = len(line) - 5
 
-                n = len(line) - 5
-
-                header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
-                header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
-                header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
-                header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
-                header['MEASUREMENT'] = header['MEASUREMENT'] + ['Meas_{}'.format(i) for i in range(n)]
+                    header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
+                    header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
+                    header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
+                    header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
+                    header['MEASUREMENT'] = header['MEASUREMENT'] + ['Meas_{}'.format(i) for i in range(n)]
+                    break
 
         with csvt.CSVWriter(file_name, header) as out_wr:
 
@@ -186,32 +192,42 @@ class CellAssociator:
                     pathlib.Path(self._in_sites).stem.replace("cev","")))
         
         header = self._HEADER_V2
+        
 
         with csvt.CSVReader(self._in_meas) as meas:
-            line = meas.read_line()
+            for _ in range(10):
+                line = meas.read_line()
+                if not line:
+                    break
 
-            if line[0] == 'VERSION':
+                if line[0] == 'VERSION':
 
-                self.version = float(line[1])
-                header = self._HEADER_V2
+                    self.version = float(line[1])
+                    header = self._HEADER_V2
+                    header['START_DATE'] = ['Date']
+                    header['END_DATE'] = ['Date']
+                
+                if line[0] == 'START_DATE':
+                    self.start_date = line[1]
 
-            meas.read_line()
-            line = meas.read_line()
-            if line[0] == 'TECHNO':
-                self.techno = str(line[1])
+                if line[0] == 'END_DATE':
+                    self.send_date = line[1]
 
-            line = meas.read_line()
+                if line[0] == 'TECHNO':
+                    self.techno = str(line[1])
 
-            if line[0] == 'MEAS_EARFCNS':
+                if line[0] == 'MEAS_EARFCNS':
 
-                n = len(line) - 5
+                    n = len(line) - 5
 
-                header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
-                header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
-                header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
-                header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
-                header['MEASUREMENT'] = header['MEASUREMENT'] + ['Meas_{}'.format(i) for i in range(n)]
-
+                    header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
+                    header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
+                    header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
+                    header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
+                    header['MEASUREMENT'] = header['MEASUREMENT'] + ['Meas_{}'.format(i) for i in range(n)]
+                    break
+            
+            
         with csvt.CSVWriter(file_name, header) as out_wr:
 
             print('Reading measurements...')
@@ -228,11 +244,6 @@ class CellAssociator:
             
             self._write_output(out_wr)
 
-            header['MEAS_EARFCNS'] = ['NA', 'NA', 'NA', 'NA']
-            header['MEAS_PCIS'] = ['NA', 'NA', 'NA', 'NA']
-            header['MEAS_BEAMS'] = ['NA', 'NA', 'NA', 'NA']
-            header['MEAS_NB'] = ['NA', 'NA', 'NA', 'NA']
-            header['MEASUREMENT'] = ['Timestamp', 'Lat', 'Lng', 'Measurement_Name']
 
 
     def _read_measurements(self, out_wr: csvt.CSVWriter):
@@ -267,7 +278,7 @@ class CellAssociator:
 
             line = meas.read_line()     # Current line.
             last_valid_line = None
-
+            boolean_version = False
             while line != ['']:
 
                 # Registering base stations.
@@ -284,7 +295,19 @@ class CellAssociator:
                         )
 
                     elif line[0] == 'VERSION':
-                        self.version = 2.0
+                        boolean_version = True
+                        if float(line[1]) < 3.0:
+                            raise RuntimeError('error: this measurement file is not compatible with this version of the program, please use a newer version.')
+                        
+                        self.version = 3.0
+                        out_wr.write_row(line)
+                    if not boolean_version:
+                        raise RuntimeError('error: this measurement file does not contain a VERSION line, please use a newer version of the program.')
+                    
+                    elif line[0] == 'START_DATE':
+                        out_wr.write_row(line)
+
+                    elif line[0] == 'END_DATE':
                         out_wr.write_row(line)
 
                     elif line[0] == 'TECHNO':
@@ -350,7 +373,7 @@ class CellAssociator:
 
                         earpcis = None
 
-                        if self.version == 2.0:
+                        if self.version == 3.0:
                             linec = meas.read_line()
                             earpcis = [(int(i), int(j), int(k)) for (i, j, k) in zip(line[5:], lineb[5:], linec[5:])]
                             out_wr.write_row(line)
@@ -390,6 +413,28 @@ class CellAssociator:
                 on=['EARFCN', 'PCI']
             ).drop_duplicates(subset=['Timestamp']).sort_values(['Timestamp'])
 
+        df_meas = self._measure_point.copy()
+
+        # Compute mean and std for Lat and Lng
+        lat_mean = df_meas['Lat'].mean()
+        lng_mean = df_meas['Lng'].mean()
+        lat_std = df_meas['Lat'].std()
+        lng_std = df_meas['Lng'].std()
+
+        # Define the filtering range (mean +/- 4 standard deviations)
+        lat_min, lat_max = lat_mean - 4 * lat_std, lat_mean + 4 * lat_std
+        lng_min, lng_max = lng_mean - 4 * lng_std, lng_mean + 4 * lng_std
+
+        # Delete points outside the defined range
+        filtered = []
+        for i, row in df_meas.iterrows():
+            if not (lat_min <= row['Lat'] <= lat_max) or not (lng_min <= row['Lng'] <= lng_max):
+                print(f"[FILTER] Excluded GPS point at lat={row['Lat']}, lng={row['Lng']}")
+            else:
+                filtered.append(row)
+
+        # Update the measure_point DataFrame with filtered data
+        self._measure_point = pd.DataFrame(filtered)
 
     def _read_antennas(self, out_wr: csvt.CSVWriter):
 
@@ -410,12 +455,22 @@ class CellAssociator:
             'Azimuth': [], 'AzimuthMin': [], 'AzimuthMax': []
         }
 
+        version_boolean = False
+
         # Reading antenna file...
         with csvt.CSVReader(self._in_sites) as sites:
 
             line = sites.read_line()
 
             while line != ['']:
+
+                if line[0] == 'VERSION':
+                    version_boolean = True
+                    if float(line[1]) < 3.0:
+                        raise RuntimeError('error: this site file is not compatible with this version of the program, please use a newer version.')
+                    
+                if version_boolean == False:
+                    raise RuntimeError('error: this site file does not contain a VERSION line, please use a newer version of the program.')
 
                 # Antenna info...
                 if line[0] == 'BS_ANTENNA':
@@ -780,6 +835,7 @@ class CellAssociator:
         alpha = 1.5 # Exponent for distance weighting
         margin = 1  # Margin in km for bounding box
         threshold = 6  # Minimum score to consider an association valid
+        distance_threshold = 50  # Minimum distance in meters between two values to consider a couple earfcns/pcis
         # print(f"Using delta: {delta}, alpha: {alpha}, margin: {margin} km, threshold: {threshold}")
 
         # Initialize the associations dictionary
@@ -829,6 +885,21 @@ class CellAssociator:
 
         # Loop through each group of measurements with same EARFCN and PCI
         for (earfcn, pci), sub_df in grouped:
+
+            # Create table of coordinates for the measurements
+            coords_xy = np.array([latlng_to_xy(lat, lng) for lat, lng in zip(sub_df['Lat'], sub_df['Lng'])])
+
+            # Skip groups with less than 2 measurements
+            if len(coords_xy) < 2:
+                continue 
+
+            # Compute the maximum distance between points in the group
+            max_distance = pdist(coords_xy).max() 
+
+            # Skip groups where the maximum distance is below the threshold
+            if max_distance < distance_threshold:
+                print(f"[SKIP] Group EARFCN={earfcn}, PCI={pci} ignored (distance={max_distance:.1f}m, {len(sub_df)} measures)")
+                continue
 
             # Initialize a dictionary to hold vote scores for each site
             vote_scores = {}

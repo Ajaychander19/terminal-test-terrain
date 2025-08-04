@@ -3,7 +3,7 @@ import os
 from collections import defaultdict
 from constantPath import getfileName, getOperatorname
 from typing import List
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class GMonProMerger:
     """
@@ -100,7 +100,7 @@ class GMonProConverter:
         'cid': 'XCI',
         'plmn': 'PLMN',
         'ta': 'TA',
-        'date': 'DATE'
+        'date': 'DATE',
     }
 
     def __init__(self, path, output_directory):
@@ -113,7 +113,8 @@ class GMonProConverter:
         self._path = path
         self.output_directory = output_directory
         self.rows = []
-        self.row_date= [] 
+        self.row_date= []
+        self.row_time= [] 
         self.count_by_tuple = defaultdict(int) # Dictionary to count occurrences of (EARFCN, PCI) tuples
         self.index_map = {}
         self.mcc = None
@@ -162,6 +163,9 @@ class GMonProConverter:
                 ta = row[self.COLUMNS['ta']]
                 self.mcc, self.mnc = mcc, mnc
                 date = row[self.COLUMNS['date']]
+                time = row[self.COLUMNS['timestamp']]
+                dt = datetime.strptime(f"{date} {time}", "%Y/%m/%d %H:%M:%S")
+
 
                 # Clean and validate inputs
                 cid = row.get(self.COLUMNS['cid'], '').strip()
@@ -199,12 +203,17 @@ class GMonProConverter:
                     col_values[col_index] = value
                     self.rows.append(row_measurement + col_values)
                 
-                self.row_date.append(date)  # Store the date for later use
-
+                self.row_date.append(dt)  # Store the date for later use
+                
             except Exception as e:
                 print(f"Skipping line {idx} due to error: {e}")
                 ignored_lines += 1
-            
+
+        if len(self.row_date) > 1:
+            delta = max(self.row_date) - min(self.row_date)
+            if delta > timedelta(days=180):
+                print(f"[WARNING] Date range is more than 6 months: {min(self.row_date)} to {max(self.row_date)}")    
+                
         print(f"Total ignored lines: {ignored_lines}")
 
     def write_output(self):
@@ -229,7 +238,8 @@ class GMonProConverter:
             # Header
             writer.writerow(['DEFINE'])
             writer.writerow(['VERSION', 'Version'])
-            writer.writerow(['DATE', 'Date'])
+            writer.writerow(['START_DATE', 'Date'])
+            writer.writerow(['END_DATE', 'Date'])
             writer.writerow(['TECHNO', 'Techno'])
             writer.writerow(['MEAS_EARFCNS', 'NA', 'NA', 'NA', 'NA'] + [f'EARFCN_{i}' for i in range(n)])
             writer.writerow(['MEAS_PCIS', 'NA', 'NA', 'NA', 'NA'] + [f'PCI_{i}' for i in range(n)])
@@ -241,8 +251,9 @@ class GMonProConverter:
             writer.writerow(['MEASUREMENT','Timestamp','Lat','Lng','Measurement_Name', 'Values'])
 
             writer.writerow(['CONTENT'])
-            writer.writerow(['VERSION', '2.0'])
-            writer.writerow(['DATE', self.row_date[0]])
+            writer.writerow(['VERSION', '3.0'])
+            writer.writerow(['START_DATE', min(self.row_date)])
+            writer.writerow(['END_DATE', max(self.row_date)])
             writer.writerow(['TECHNO', '4G'])
 
             writer.writerow(['MEAS_EARFCNS', '', '', '', ''] + earfcns)

@@ -196,7 +196,7 @@ class GUI(tkinter.Frame):
                         os.remove(os.path.join(getPathText(""), f))
 
                 else:
-                    messagebox.showinfo("Warning", "Select at least one file")
+                    return
 
                 self.change_color('green')
 
@@ -205,8 +205,11 @@ class GUI(tkinter.Frame):
                 self.change_color('red')
                 files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',
                                                     filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
-                if len(files) != 2:
-                    messagebox.showerror("Error", "Two files are expected.")
+                if len(files) == 0:
+                    return
+                
+                elif len(files) != 2:
+                    messagebox.showerror("Error", "Two files expected.")
                 else:
                     # createSite_json(files,self.working_directory)
                     site_file = files[0] if 'Sites' in files[0] else files[1]
@@ -224,7 +227,10 @@ class GUI(tkinter.Frame):
                                                     title='Choose measurement file and operator sites file',
                                                     filetypes=(("cev CSV file", "cev*.csv"), ("all files", "*.*")))
 
-                if len(files) != 2:
+                if len(files) == 0:
+                    return
+                
+                elif len(files) != 2:
                     messagebox.showerror("Error", "Two files expected.")
                 else:
 
@@ -246,8 +252,10 @@ class GUI(tkinter.Frame):
                 files = filedialog.askopenfilenames(initialdir=self.working_directory,
                                                     title='Choose measurement file and operator sites file',
                                                     filetypes=(("cev CSV file", "cev*.csv"), ("all files", "*.*")))
-
-                if len(files) != 2:
+                if len(files) == 0:
+                    return
+                
+                elif len(files) != 2:
                     messagebox.showerror("Error", "Two files expected.")
                 else:
 
@@ -274,7 +282,7 @@ class GUI(tkinter.Frame):
                     for f in files:
                         conv = Viavilyzer.produces_csv_op_files(f, self.working_directory)
                 else:
-                    messagebox.showinfo("Warning", "Select at least one file")
+                    return
 
                 self.change_color('green')
             
@@ -289,7 +297,7 @@ class GUI(tkinter.Frame):
 
                 nbfiles = len(file_paths)
                 if nbfiles == 0:
-                    messagebox.showerror("Error", "Choose at least one file.")
+                    return
                 else:
                     try:
                         if nbfiles > 1:
@@ -321,9 +329,11 @@ class GUI(tkinter.Frame):
                 files = filedialog.askopenfilenames(initialdir=self.working_directory,
                                                     title='Choose measurement file, operator sites file and association file',
                                                     filetypes=(("cev CSV file", "cev*.csv"), ("all files", "caf*.*")))
-
+                if len(files) == 0:
+                    return
+                
                 # Associate_cell(files, self.working_directory)
-                if len(files) != 3:
+                elif len(files) != 3:
                     messagebox.showerror("Error", "3 files expected.")
                 else:
                     if 'sites' in files[0]:

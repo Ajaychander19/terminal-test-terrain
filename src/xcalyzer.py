@@ -9,6 +9,8 @@ import shutil
 
 import pcaputils
 import csvtools
+import datetime
+
 
 # Constants
 _DICT_DISSECTOR = {
@@ -160,6 +162,7 @@ class XcalConverter:
         self._earfcns = []
         self._pcis = []
         self._nbsamples = []
+        self._date = []
 
         self._data_dict = {
             'name': [], 'timestamp': [], 'lat': [], 'lng': [],                          # Common fields
@@ -406,6 +409,8 @@ class XcalConverter:
                                 syntax_error(line_num, "16 columns expected, {} found.".format(l_len))
 
                             # Store serving EARFCN/PCI couple for the step two.
+                            dt = datetime.datetime.strptime(line[1], "%Y-%m-%d %H:%M:%S.%f")
+                            self._date.append(dt)
                             serving_earfcn = int(line[2])
                             serving_pci = int(line[4])
 
@@ -679,7 +684,8 @@ class XcalConverter:
         n = len(self._earfcns)
         csv_header = {
             'VERSION': ['Version'],
-            'DATE': ['Date'],
+            'START_DATE': ['Date'],
+            'END_DATE': ['Date'],
             'TECHNO': ['Techno'],
             'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA'] + ['EARFCN_{}'.format(i) for i in range(n)],
             'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA'] + ['PCI_{}'.format(i) for i in range(n)],
@@ -698,8 +704,17 @@ class XcalConverter:
 
         with csvtools.CSVWriter(getPathText('csv_tmp.csv'), csv_header) as csv_out:
 
-            csv_out.write_row(['VERSION'] + ['2.0'])
-            csv_out.write_row(['DATE'] + ['NULL'])
+            csv_out.write_row(['VERSION'] + ['3.0'])
+            if self._date:
+                start = min(self._date)
+                end = max(self._date)
+                csv_out.write_row(['START_DATE', start.strftime('%Y-%m-%d %H:%M:%S')])
+                csv_out.write_row(['END_DATE', end.strftime('%Y-%m-%d %H:%M:%S')])
+
+                # Checking the date range
+                if (end - start).days > 180:
+                    print(f"[WARNING] Date range is more than 6 months: {start} to {end}")
+
             csv_out.write_row(['TECHNO'] + ['4G'])
 
             # List of EARFCN/PCI/NB of samples just for writing the file (not used later)
