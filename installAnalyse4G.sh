@@ -3,16 +3,16 @@ echo "Installation of 4GAnalyser"
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
   echo "linux OS ($OSTYPE) detected."
   echo "1) Creation of python virtual environment"
-  python3 -m venv .
-  echo "2)Activate virtual environement"
-  source bin/activate
+  python3 -m venv venv  # Crée l'environnement virtuel dans un sous-dossier
+  echo "2) Activate virtual environment"
+  source venv/bin/activate
   echo "3) Installation of required python library"
   pip install pandas shapely scipy
   deactivate
   echo "4) Copy of user-defined dissectors for wireshark"
   cp user_dlts ~/.config/wireshark/.
   echo "5) Installation terminated"
-  source bin/activate
+  source venv/bin/activate
   echo "6) Launching the software"
   mkdir tmp
   cd src
@@ -21,11 +21,9 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 elif [[ "$OSTYPE" == "msys" ]]; then
   echo "Windows OS ($OSTYPE) detected."
   echo "1) Creation of python virtual environment"
-  python -m venv .
-
+  python -m venv venv  # Crée l'environnement virtuel dans un sous-dossier
   echo "2) Activate virtual environment"
-  source Scripts/activate  # Windows: 'Scripts', Linux: 'bin'
-
+  source venv/Scripts/activate
   echo "3) Installation of required python libraries"
   pip install pandas shapely scipy numpy
 
