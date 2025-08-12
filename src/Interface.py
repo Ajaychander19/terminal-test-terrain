@@ -13,7 +13,7 @@ import cartoradio
 import association
 from viavianalyzer import Viavilyzer
 import gmonyzer
-
+from association_manage import manage_cevcaa
 import time
 
 # Add path to COMET source dir to be able to find its modules
@@ -148,6 +148,14 @@ class GUI(tkinter.Frame):
             self.association,
             "Choose the .csv site file created from the 'Cartoradio File Conversion' and the .csv measurement file")
 
+        self.association = tkinter.Button(self, command=lambda: self.button_click(11),
+                                          text="Manage association", font=boldFont, background='light green')
+        self.association.configure(height=2, width=25)
+        self.association.pack(padx=5, pady=5)
+        self.association_ttp = CreateToolTip(
+            self.association,
+            "Choose the .csv site file created from the 'Cartoradio File Conversion' and the .csv measurement file")
+        
         self.canvas = Canvas(self, height=20)
         self.canvas.pack()
         self.color = 'green'
@@ -251,7 +259,9 @@ class GUI(tkinter.Frame):
                 self.change_color('red')
                 files = filedialog.askopenfilenames(initialdir=self.working_directory,
                                                     title='Choose measurement file and operator sites file',
-                                                    filetypes=(("cev CSV file", "cev*.csv"), ("all files", "*.*")))
+                                                    filetypes=(("cev CSV file SFR", "cevSFR*.csv"),
+                                                               ("cev CSV file Orange", "cevOrange*.csv"),
+                                                                ("all files", "*.*")))
                 if len(files) == 0:
                     return
                 
@@ -292,7 +302,7 @@ class GUI(tkinter.Frame):
                 file_paths = filedialog.askopenfilenames(
                     initialdir=self.working_directory,
                     title='Choose G-MoNPro file(s)',
-                    filetypes=(("CSV file", "*.csv"), ("all files", "*.*"))
+                    filetypes=(("gmonpro CSV file", "gmonpro_*.csv"), ("all files", "*.*"))
                 )
 
                 nbfiles = len(file_paths)
@@ -328,7 +338,7 @@ class GUI(tkinter.Frame):
                 self.change_color('red')
                 files = filedialog.askopenfilenames(initialdir=self.working_directory,
                                                     title='Choose measurement file, operator sites file and association file',
-                                                    filetypes=(("cev CSV file", "cev*.csv"), ("all files", "caf*.*")))
+                                                    filetypes=(("cev CSV file", "cev*.csv"), ("all files", "*.*")))
                 if len(files) == 0:
                     return
                 
@@ -363,8 +373,6 @@ class GUI(tkinter.Frame):
                     else:
                         messagebox.showerror("Error", "No file converted from Cartoradio.")
 
-                    print("coucou")
-
                     association.CellAssociator(
                         meas_file,
                         site_file,
@@ -393,6 +401,37 @@ class GUI(tkinter.Frame):
                         converter.process()
 
                 self.change_color('green')
+
+            elif number == 11:  # Manage cevcaa file
+                self.change_color('red')
+                try:
+                    files = filedialog.askopenfilenames(
+                        initialdir=self.working_directory,
+                        title='Choose cevcaa/cevcaf and one or more assoc files',
+                        filetypes=[
+                            ("SFR cevcaf/assoc", ("cevcafSFR*.csv", "assoc_SFR*.csv")),
+                            ("Orange cevcaf/assoc", ("cevcafOrange*.csv", "assoc_Orange*.csv")),
+                            ("All files", "*.*"),
+                        ]
+                    )
+                    if not files:
+                        return
+
+                    cevcaa_paths = [p for p in files if 'cevcaf' in os.path.basename(p).lower()]
+                    assoc_paths  = [p for p in files if 'assoc'  in os.path.basename(p).lower()]
+
+                    if len(cevcaa_paths) != 1:
+                        messagebox.showerror("Error", "Select exactly ONE cevcaa file.")
+                        return
+                    
+                    cevcaa_file = cevcaa_paths[0]
+                    manage_cevcaa(cevcaa_file, assoc_paths, self.working_directory, parent=self)
+
+                    messagebox.showinfo("Done", "Association management completed.")
+                except Exception as e:
+                    messagebox.showerror("Runtime Error", f"An error occurred:\n {e}")
+                finally:
+                    self.change_color('green')
 
         except Exception as e:
             messagebox.showerror("Runtime Error", "An error occured:\n {}".format(str(e)))

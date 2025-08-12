@@ -89,7 +89,7 @@ class CellAssociator:
 
         'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
 
-        'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI'],
+        'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI', 'Score', 'Confidence_Score'],
 
         'MEASURE_SERVING': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'BEAM', 'RSRP', 'RSRQ', 'RSSI', 'CINR']
 
@@ -841,8 +841,10 @@ class CellAssociator:
         # Initialize the associations dictionary
         self._assocs = {
             'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [],
-            'EARFCN': [], 'PCI': [], 'Score': []
+            'EARFCN': [], 'PCI': [], 'Score': [], 'Confidence_Score': []
         }
+
+        confidence_by_pair = {}
 
         # Load measurement and antenna data
         df_meas = self._measure_point.copy()
@@ -876,6 +878,33 @@ class CellAssociator:
         # Sort and convert antenna keys and PCI keys to integers
         pci_keys = sorted(df_meas['PCI'].dropna().unique())
 
+        # Global bbox (no margin)
+        lat_min_all = df_meas['Lat'].min()
+        lat_max_all = df_meas['Lat'].max()
+        lng_min_all = df_meas['Lng'].min()
+        lng_max_all = df_meas['Lng'].max()
+
+        # Area of the global rectangle
+        dy_km_all = (lat_max_all - lat_min_all) * 111
+        dx_km_all = (lng_max_all - lng_min_all) * 111 * np.cos(np.radians((lat_min_all + lat_max_all) / 2))
+        S_rect_all = abs(dx_km_all * dy_km_all * 1e6) #km² to m²
+
+        # Sites in global rectangle
+        sites_in_all = df_ant[
+            (df_ant['Lat'] >= lat_min_all) & (df_ant['Lat'] <= lat_max_all) &
+            (df_ant['Lng'] >= lng_min_all) & (df_ant['Lng'] <= lng_max_all)
+        ]['Cartoradio_Number'].nunique() # Count unique antennas in the global rectangle
+
+        # Calculate global distance based on the area and number of sites
+        if sites_in_all != 0:
+            S_cell_all = S_rect_all / (sites_in_all * 3.0)  # tri-sector
+            D_global = np.sqrt(S_cell_all * 8.0 / (3.0 * np.sqrt(3.0)))
+        else:
+            D_global = -1.0  # No antennas found
+
+        # Set a constant K for confidence score calculation
+        K = 1.0
+
         # Convert to integer juste for printing
         antenna_keys = [(int(e), int(s), int(a)) for (e, s, a) in antenna_keys] 
         pci_keys = [int(i) for i in pci_keys]
@@ -895,6 +924,17 @@ class CellAssociator:
 
             # Compute the maximum distance between points in the group
             max_distance = pdist(coords_xy).max() 
+
+            # Calculate the confidence score based on the maximum distance and global distance
+            N = len(coords_xy)
+            if D_global > 0:
+                confidence_score = np.exp(-K * max_distance * np.sqrt(N) / D_global)
+                print(f"Processing EARFCN={earfcn}, PCI={pci}, N={N}, max_distance={max_distance:.1f}m, confidence_score={confidence_score:.2f}")
+            else:
+                confidence_score = None
+                print("[WARNING] No antennas detected in perimeter, confidence score cannot be calculated.")
+            
+            confidence_by_pair[(earfcn, int(pci))] = confidence_score
 
             # Skip groups where the maximum distance is below the threshold
             if max_distance < distance_threshold:
@@ -1048,6 +1088,9 @@ class CellAssociator:
             self._assocs['EARFCN'].append(earfcn)
             self._assocs['PCI'].append(best_pci)
             self._assocs['Score'].append(best_score)
+            self._assocs['Confidence_Score'].append(
+                confidence_by_pair.get((earfcn, int(best_pci)), np.nan)
+            )
 
 
 
@@ -1078,7 +1121,8 @@ class CellAssociator:
         for i in range(len(self._assocs['Cartoradio_Number'])):
             out_wr.write_row([
                 'ASSOC', self._assocs['Cartoradio_Number'][i], self._assocs['Ant_Number'][i], self._assocs['TAC'][i],
-                self._assocs['CID'][i], self._assocs['EARFCN'][i], self._assocs['PCI'][i], self._assocs['Score'][i]
+                self._assocs['CID'][i], self._assocs['EARFCN'][i], self._assocs['PCI'][i], self._assocs['Score'][i],
+                self._assocs['Confidence_Score'][i] if 'Confidence_Score' in self._assocs else None
             ])
 
         # Writing points.

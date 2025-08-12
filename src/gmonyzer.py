@@ -193,7 +193,7 @@ class GMonProConverter:
                     last_tuple = (earfcn, pci, tac, cid)
 
                 # Insert MEASURE_SERVING
-                self.rows.append(["MEASURE_SERVING", f"{timestamp:.1f}", lat, lon, earfcn, pci, rsrp, rsrq, rssi, cinr, ta])
+                self.rows.append(["MEASURE_SERVING", f"{timestamp:.1f}", lat, lon, earfcn, pci, rsrp, rsrq, rssi, cinr, ta, dt.strftime("%Y-%m-%d %H:%M:%S")])
 
                 # Immediately insert 3 MEASUREMENT rows for the current sample
                 for metric, value in zip(["RSRP", "RSRQ", "RSSI"], [rsrp, rsrq, rssi]):
@@ -247,7 +247,7 @@ class GMonProConverter:
             writer.writerow(['MEAS_NB', 'NA', 'NA', 'NA', 'NA'] + [f'nb_meas_{i}' for i in range(n)])
 
             writer.writerow(['CELLINFO', 'Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'])
-            writer.writerow(['MEASURE_SERVING', 'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI', 'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR', 'Serving_TA'])
+            writer.writerow(['MEASURE_SERVING', 'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI', 'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR', 'Serving_TA', 'Datetime'])
             writer.writerow(['MEASUREMENT','Timestamp','Lat','Lng','Measurement_Name', 'Values'])
 
             writer.writerow(['CONTENT'])
