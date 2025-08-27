@@ -158,7 +158,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str, t
                 for i in range(len(station_group_dict['Numéro Cartoradio'])):
 
                     # Current Cartoradio Number.
-                    carto_num = station_group_dict['Numéro Cartoradio'][i]
+                    carto_num = station_group_dict['Numéro de support'][i]
 
                     # Current antenna azimuth.
                     ant_az = station_group_dict['Azimut'][i]

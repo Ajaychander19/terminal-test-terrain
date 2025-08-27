@@ -1,5 +1,6 @@
 """This module is dedicated to the analysis of AOF files produced by Accuver Xcal."""
 
+import subprocess
 from constantPath import getPathText, getfileName, getOperatorname
 from dictutils import extract_int, insert_data, fill_data
 
@@ -760,20 +761,22 @@ class XcalConverter:
                 csv_out.write_row(to_write)
 
     def produce_pcaps(self):
-        """Produce PCAP files for each dissector from produced TXT files using text2pcap.
-
-        Raises:
-            CalledProcessError: if text2pcap produces an error.
-        """
-        # Controlling fkey.
-        # if fkey not in self.DICT_FILES_NAMES.keys():
-        #    raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
+        """Produce PCAP files for each dissector from produced TXT files using text2pcap."""
 
         for fkey in self.DICT_FILES_NAMES.keys():
             input_txt = getPathText(self.get_file_name(fkey, 'txt'))
             output_pcap = getPathText(self.get_file_name(fkey, 'pcap'))
 
-            pcaputils.produce_pcap(input_txt, output_pcap, _DICT_DISSECTOR[fkey])
+            try:
+                pcaputils.produce_pcap(input_txt, output_pcap, _DICT_DISSECTOR[fkey])
+            except FileNotFoundError:
+                print("[ERREUR] text2pcap (Wireshark) n’est pas installé ou introuvable dans le PATH.")
+                print("Veuillez installer Wireshark et vérifier que ses outils en ligne de commande sont accessibles.")
+                raise
+            except subprocess.CalledProcessError as e:
+                print(f"[ERREUR] Échec lors de l’exécution de text2pcap : {e}")
+                raise
+
 
     def merge_pcaps(self):
         """Merges temporary PCAP files into the file 'final_tmp.pcap'.

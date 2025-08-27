@@ -302,7 +302,9 @@ class GUI(tkinter.Frame):
                 file_paths = filedialog.askopenfilenames(
                     initialdir=self.working_directory,
                     title='Choose G-MoNPro file(s)',
-                    filetypes=(("gmonpro CSV file", "gmonpro_*.csv"), ("all files", "*.*"))
+                    filetypes=(("gmonpro SFR CSV file", ("gmonpro*20810*.csv")), 
+                               ("gmonpro Orange CSV file", ("gmonpro*20801*.csv")),
+                               ("all files", "*.*"))
                 )
 
                 nbfiles = len(file_paths)
@@ -409,15 +411,15 @@ class GUI(tkinter.Frame):
                         initialdir=self.working_directory,
                         title='Choose cevcaa/cevcaf and one or more assoc files',
                         filetypes=[
-                            ("SFR cevcaf/assoc", ("cevcafSFR*.csv", "assoc_SFR*.csv")),
-                            ("Orange cevcaf/assoc", ("cevcafOrange*.csv", "assoc_Orange*.csv")),
+                            ("SFR cevcaf/assoc", ("cevcaaSFR*.csv", "cevcafSFR*.csv", "assoc_SFR*.csv")),
+                            ("Orange cevcaf/assoc", ("cevcaaOrange*.csv", "cevcafOrange*.csv", "assoc_Orange*.csv")),
                             ("All files", "*.*"),
                         ]
                     )
                     if not files:
                         return
 
-                    cevcaa_paths = [p for p in files if 'cevcaf' in os.path.basename(p).lower()]
+                    cevcaa_paths = [p for p in files if ('cevcaf' or 'cevcaa') in os.path.basename(p).lower()]
                     assoc_paths  = [p for p in files if 'assoc'  in os.path.basename(p).lower()]
 
                     if len(cevcaa_paths) != 1:
