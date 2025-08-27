@@ -150,7 +150,7 @@ var csvreadv2 = {
             }
 
             // compute number of samples per PCI (all beams)
-            for (let j = 0; j <this._pcis.length; j++){
+            for (let j = 0; j < this._pcis.length; j++){
                if (!this._pciNb[this._pcis[j]]) {
                   this._pciNb[this._pcis[j]] = 0
                }
@@ -245,7 +245,7 @@ var csvreadv2 = {
                 this._antennas[cartoNum].dels.push(delVect);
 
             });
-            
+
 
             parsedResult.BS_ANT_DIR.forEach((line) => {
                 let antVect = {
@@ -253,23 +253,31 @@ var csvreadv2 = {
                     antNum: +line['Ant_Number'],
                     latA: +line['Support_Lat'],
                     lngA: +line['Support_Lng'],
-                    latB: +line['Dest_Lng'],
-                    lngB: +line['Dest_Lat']
+                    latB: +line['Dest_Lng'], // (laisse inchangé comme demandé)
+                    lngB: +line['Dest_Lat']  // (laisse inchangé comme demandé)
                 };
 
                 this._antDirs.push(antVect);
             });
-            parsedResult.TECHNO.forEach((line) => {
-                let techno = {
-                    technology: +line['TECHNO'],
-                };
 
-                this._techno.push(techno);
+            // ====== TECHNO (corrigé) ======
+            // Le fichier a une première ligne d'en-tête "TECHNO  Techno",
+            // puis une ligne de contenu "TECHNO  4G" (ou "5G").
+            // On privilégie la colonne 'Techno' si présente, sinon on retombe sur 'TECHNO'.
+            // On filtre également les valeurs vides et on exclut la chaîne 'TECHNO' (en-tête).
+            parsedResult.TECHNO.forEach((line) => {
+                const raw = (line['Techno'] !== undefined && line['Techno'] !== null && String(line['Techno']).trim() !== '')
+                    ? String(line['Techno']).trim()
+                    : (line['TECHNO'] !== undefined && line['TECHNO'] !== null ? String(line['TECHNO']).trim() : '');
+
+                if (raw && raw.toUpperCase() !== 'TECHNO') {
+                    this._techno.push({ technology: raw });
+                }
             });
+            // ====== /TECHNO ======
 
             parsedResult.ASSOC.forEach((line) =>{
                 let carto = +line['Cartoradio_Number'];
-                console.log(parsedResult.ASSOC);
                 let earfcn_ = +line['EARFCN'];
                 let pci_ = +line['PCI'];
 
@@ -282,7 +290,6 @@ var csvreadv2 = {
                     earfcn: +line['EARFCN'],
                     pci: +line['PCI']
                 });
-                //console.log(this.assocs);
             });
 
             parsedResult.POINT.forEach((line) =>{
@@ -318,6 +325,7 @@ var csvreadv2 = {
                     this._points[earfcn][pci][beam].push(point);
             });
         }
+
         _promiseFile() {
             return new Promise((resolve, reject) => {
                 this._freader.onload = (e) => resolve(this._freader.result);
@@ -399,6 +407,7 @@ var csvreadv2 = {
          * @function
          */
         get antennaDirections() { return utils.deepCopy(this._antDirs); }
+
         /**
          * @returns technology
          *

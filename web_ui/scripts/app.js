@@ -13,6 +13,7 @@ const app = {
         _map                        // Leaflet map.
         _drawingMap                 // Map object to wrap the Leaflet map.
         _fileReader                 // CSVReader object.
+        _technology                 // 4G/5G NR
 
         _earfcnOnServing = true;    // true if "Serving EARFCN" is selected.
         _pciOnServing = true;       // true if "Serving PCI" is selected.
@@ -208,7 +209,7 @@ const app = {
             // Redrawing associated stations pins.
             this._drawingMap.drawAssocs(
                 this._fileReader.antennaDirections, this._fileReader.assocs, this._fileReader.antennas, this._checkEarfcns, this._checkPcis, this._checkBeams,
-                () => this.update(), earpcis.earfcns, earpcis.pcis, earpcis.beams,!this._allSites);
+                () => this.update(), earpcis.earfcns, earpcis.pcis, earpcis.beams,!this._allSites, this._technology);
             this._withCheckBox=!this._withCheckBox;
             
 
@@ -381,6 +382,7 @@ const app = {
                 let file = evt.target.files[0];
                 this._fileReader = new csvreadv2.CSVReader(file);
                 await this._fileReader.readFile();
+                
 
                 // Hide loader, show success alert, force UI update before heavy processing
                 document.getElementById('loader-overlay').classList.remove('active');;
@@ -396,9 +398,13 @@ const app = {
                 let vor = processing.calcVoronoi(antennas);
                 let dels = processing.calcDelimiters(vor, antennas);
                 let ants = processing.calcAntennas(this._fileReader.antennaDirections);
-                let techno=processing.getTechnologies(this._fileReader.measurementTechno);
+                this._technology=processing.getTechnologies(this._fileReader.measurementTechno);
                 console.log("i am here!!");
-                console.log("technology is: "+techno);
+                console.log("technology is: "+ this._technology);
+                const heading = document.getElementById('earfcn-heading');
+                const select = document.getElementById('EARFCN_select');
+
+                
 
                 let earfcns = this._fileReader.earfcns;
                 let pcis = this._fileReader.pcis;
@@ -409,11 +415,20 @@ const app = {
 
                 this._drawingMap.setAntLayer(true);
                 this._drawingMap.setAssocLayer(true);
-                this._drawingMap.drawSelectors(earfcns, pcis, pciNb);
+                this._drawingMap.drawSelectors(earfcns, pcis, pciNb, this._technology);
 
                 this.enableInputs(true);
 
                 this.update();
+                if (this._technology.at(-1) === "5G NR") {
+                    heading.textContent = 'NRARFCN';
+                    select.options[0].text = 'Serving NRARFCN';
+                    select.options[1].text = 'All NRARFCNs';
+                } else { 
+                    heading.textContent = 'EARFCN';
+                    select.options[0].text = 'Serving EARFCN';
+                    select.options[1].text = 'All EARFCNs';
+                }
 
                 // Hide alert after delay
                 setTimeout(() => {
@@ -583,18 +598,14 @@ const app = {
                 });
             };
             document.querySelector('#showStatsBtn').onclick = () => {
-                // Masquer la carte et afficher la section des statistiques
                 document.getElementById('map').style.display = 'none';
                 document.getElementById('statistiques').style.display = 'block';
             
-                // Récupérer les points depuis le fichier CSV
                 let points = this._fileReader.points;
                 console.log(points);
             
-                // Dessiner le graphe
                 const ctx = document.getElementById("Chart").getContext("2d");
             
-                // Détruire l'ancien graphique s'il existe
                 if (this._chartInstance) {
                     this._chartInstance.destroy();
                 }
@@ -619,7 +630,7 @@ const app = {
                                     rsrpValues.push(sample.rsrp);
                                     rssiValues.push(sample.rssi);
                                     rsrqValues.push(sample.rsrq);
-                                    pciValues.push(pci); // Ajout du PCI
+                                    pciValues.push(pci); 
                                     indices.push(index++);
                                 }
                             }
@@ -774,7 +785,7 @@ function createLegend(label, minValue, maxValue) {
   canvas.height = 200;
   const ctx = canvas.getContext("2d");
 
-  // === Dégradé fluide ===
+
   const imageData = ctx.createImageData(canvas.width, canvas.height);
   for (let y = 0; y < canvas.height; y++) {
     const val = maxValue - ((maxValue - minValue) * y / canvas.height);

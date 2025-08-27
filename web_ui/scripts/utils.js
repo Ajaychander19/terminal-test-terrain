@@ -77,6 +77,91 @@ const lteBands = [
   { band: 108, earfcnMin: 71056, earfcnMax: 73335, nOffsDl: 71056, dlFreqLow: 470.0 },
   { band: 111, earfcnMin: 73386, earfcnMax: 73485, nOffsDl: 73386, dlFreqLow: 1820.0 }
 ];
+const nrBands = [
+  // FR1 bands (sub-6 GHz)
+  { band: 'n1', duplexMode: 'FDD', commonName: 'IMT', uplink: { low: 1920, high: 1980 }, downlink: { low: 2110, high: 2170 }, duplexSpacing: 190, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 45, 50] },
+  { band: 'n2', duplexMode: 'FDD', commonName: 'PCS', uplink: { low: 1850, high: 1910 }, downlink: { low: 1930, high: 1990 }, duplexSpacing: 80, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 45, 50] },
+  { band: 'n3', duplexMode: 'FDD', commonName: 'DCS', uplink: { low: 1710, high: 1785 }, downlink: { low: 1805, high: 1880 }, duplexSpacing: 95, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 45, 50] },
+  { band: 'n5', duplexMode: 'FDD', commonName: 'CLR', uplink: { low: 824, high: 849 }, downlink: { low: 869, high: 894 }, duplexSpacing: 45, channelBandwidths: [5, 10, 15, 20, 25] },
+  { band: 'n7', duplexMode: 'FDD', commonName: 'IMT-E', uplink: { low: 2500, high: 2570 }, downlink: { low: 2620, high: 2690 }, duplexSpacing: 120, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 45, 50] },
+  { band: 'n8', duplexMode: 'FDD', commonName: 'Extended GSM', uplink: { low: 880, high: 915 }, downlink: { low: 925, high: 960 }, duplexSpacing: 45, channelBandwidths: [5, 10, 15, 20, 25] },
+  { band: 'n12', duplexMode: 'FDD', commonName: 'Lower SMH', uplink: { low: 699, high: 716 }, downlink: { low: 729, high: 746 }, duplexSpacing: 30, channelBandwidths: [5, 10, 15] },
+  { band: 'n13', duplexMode: 'FDD', commonName: 'Upper SMH', uplink: { low: 777, high: 787 }, downlink: { low: 746, high: 756 }, duplexSpacing: -31, channelBandwidths: [5, 10] },
+  { band: 'n14', duplexMode: 'FDD', commonName: 'Upper SMH', uplink: { low: 788, high: 798 }, downlink: { low: 758, high: 768 }, duplexSpacing: -30, channelBandwidths: [5, 10] },
+  { band: 'n18', duplexMode: 'FDD', commonName: 'Lower 800', uplink: { low: 815, high: 830 }, downlink: { low: 860, high: 875 }, duplexSpacing: 45, channelBandwidths: [5, 10, 15] },
+  { band: 'n20', duplexMode: 'FDD', commonName: 'Digital Dividend', uplink: { low: 832, high: 862 }, downlink: { low: 791, high: 821 }, duplexSpacing: -41, channelBandwidths: [5, 10, 15, 20] },
+  { band: 'n24', duplexMode: 'FDD', commonName: 'Upper L-band', uplink: { low: 1626.5, high: 1660.5 }, downlink: { low: 1525, high: 1559 }, duplexSpacing: -101.5, channelBandwidths: [5, 10] },
+  { band: 'n25', duplexMode: 'FDD', commonName: 'Extended PCS', uplink: { low: 1850, high: 1915 }, downlink: { low: 1930, high: 1995 }, duplexSpacing: 80, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 45, 50] },
+  { band: 'n26', duplexMode: 'FDD', commonName: 'Extended CLR', uplink: { low: 814, high: 849 }, downlink: { low: 859, high: 894 }, duplexSpacing: 45, channelBandwidths: [3, 5, 10, 15, 20] },
+  { band: 'n28', duplexMode: 'FDD', commonName: 'APT', uplink: { low: 703, high: 748 }, downlink: { low: 758, high: 803 }, duplexSpacing: 55, channelBandwidths: [5, 10, 15, 20, 25] },
+  { band: 'n29', duplexMode: 'SDL', commonName: 'Lower SMH', uplink: { low: null, high: null }, downlink: { low: 717, high: 728 }, duplexSpacing: null, channelBandwidths: [5, 10] },
+  { band: 'n30', duplexMode: 'FDD', commonName: 'WCS', uplink: { low: 2305, high: 2315 }, downlink: { low: 2350, high: 2360 }, duplexSpacing: 45, channelBandwidths: [5, 10] },
+  { band: 'n31', duplexMode: 'FDD', commonName: 'NMT', uplink: { low: 452.5, high: 457.5 }, downlink: { low: 462.5, high: 467.5 }, duplexSpacing: 10, channelBandwidths: [3, 5] },
+  { band: 'n34', duplexMode: 'TDD', commonName: 'IMT', uplink: { low: 2010, high: 2025 }, downlink: { low: 2010, high: 2025 }, duplexSpacing: null, channelBandwidths: [5, 10, 15] },
+  { band: 'n38', duplexMode: 'TDD', commonName: 'IMT-E', uplink: { low: 2570, high: 2620 }, downlink: { low: 2570, high: 2620 }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 50] },
+  { band: 'n39', duplexMode: 'TDD', commonName: 'DCS-IMT Gap', uplink: { low: 1880, high: 1920 }, downlink: { low: 1880, high: 1920 }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40] },
+  { band: 'n40', duplexMode: 'TDD', commonName: 'S-Band', uplink: { low: 2300, high: 2400 }, downlink: { low: 2300, high: 2400 }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100] },
+  { band: 'n41', duplexMode: 'TDD', commonName: 'BRS', uplink: { low: 2496, high: 2690 }, downlink: { low: 2496, high: 2690 }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100] },
+  { band: 'n46', duplexMode: 'TDD', commonName: 'U-NII 5-8', uplink: { low: 5150, high: 5925 }, downlink: { low: 5150, high: 5925 }, duplexSpacing: null, channelBandwidths: [20, 40, 60, 80, 100] },
+  { band: 'n47', duplexMode: 'TDD', commonName: 'U-NII 5-8', uplink: { low: 5855, high: 5925 }, downlink: { low: 5855, high: 5925 }, duplexSpacing: null, channelBandwidths: [20, 30, 40, 50, 60, 70, 80, 90, 100] },
+  { band: 'n48', duplexMode: 'TDD', commonName: 'CBRS', uplink: { low: 3550, high: 3700 }, downlink: { low: 3550, high: 3700 }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100] },
+  { band: 'n50', duplexMode: 'TDD', commonName: 'L-Band', uplink: { low: 1432, high: 1517 }, downlink: { low: 1432, high: 1517 }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 50, 60, 80] },
+  { band: 'n51', duplexMode: 'TDD', commonName: 'L-Band Extension', uplink: { low: 1427, high: 1432 }, downlink: { low: 1427, high: 1432 }, duplexSpacing: null, channelBandwidths: [5] },
+  { band: 'n53', duplexMode: 'TDD', commonName: 'S-Band', uplink: { low: 2483.5, high: 2495 }, downlink: { low: 2483.5, high: 2495 }, duplexSpacing: null, channelBandwidths: [5, 10] },
+  { band: 'n54', duplexMode: 'TDD', commonName: 'L-band', uplink: { low: 1670, high: 1675 }, downlink: { low: 1670, high: 1675 }, duplexSpacing: null, channelBandwidths: [5] },
+  { band: 'n65', duplexMode: 'FDD', commonName: 'Extended IMT', uplink: { low: 1920, high: 1980 }, downlink: { low: 2110, high: 2170 }, duplexSpacing: 190, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 45, 50] },
+  { band: 'n66', duplexMode: 'FDD', commonName: 'Extended AWS', uplink: { low: 1710, high: 1780 }, downlink: { low: 2110, high: 2200 }, duplexSpacing: 400, channelBandwidths: [5, 10, 15, 20, 25, 30, 35, 40, 45] },
+  { band: 'n67', duplexMode: 'SDL', commonName: 'EU 700', uplink: { low: null, high: null }, downlink: { low: 738, high: 758 }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20] },
+  { band: 'n70', duplexMode: 'FDD', commonName: 'Supplementary AWS', uplink: { low: 1695, high: 1710 }, downlink: { low: 1995, high: 2020 }, duplexSpacing: 300, channelBandwidths: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50] },
+  { band: 'n71', duplexMode: 'FDD', commonName: 'Digital Dividend', uplink: { low: 663, high: 698 }, downlink: { low: 617, high: 652 }, duplexSpacing: -46, channelBandwidths: [5, 10, 15, 20, 25, 30, 35] },
+  { band: 'n72', duplexMode: 'FDD', commonName: 'PMR', uplink: { low: 451, high: 456 }, downlink: { low: 461, high: 466 }, duplexSpacing: 10, channelBandwidths: [3, 5] },
+  { band: 'n74', duplexMode: 'FDD', commonName: 'Lower L-Band', uplink: { low: 1427, high: 1470 }, downlink: { low: 1475, high: 1518 }, duplexSpacing: 48, channelBandwidths: [5, 10, 15, 20] },
+  { band: 'n75', duplexMode: 'SDL', commonName: 'L-Band', uplink: { low: null, high: null }, downlink: { low: 1432, high: 1517 }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 50] },
+  { band: 'n76', duplexMode: 'SDL', commonName: 'L-Band Extension', uplink: { low: null, high: null }, downlink: { low: 1427, high: 1432 }, duplexSpacing: null, channelBandwidths: [5] },
+  { band: 'n77', duplexMode: 'TDD', commonName: 'C-Band', uplink: { low: 3300, high: 4200 }, downlink: { low: 3300, high: 4200 }, duplexSpacing: null, channelBandwidths: [10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100] },
+  { band: 'n78', duplexMode: 'TDD', commonName: 'C-Band', uplink: { low: 3300, high: 3800 }, downlink: { low: 3300, high: 3800 }, duplexSpacing: null, channelBandwidths: [10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100] },
+  { band: 'n79', duplexMode: 'TDD', commonName: 'C-Band', uplink: { low: 4400, high: 5000 }, downlink: { low: 4400, high: 5000 }, duplexSpacing: null, channelBandwidths: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] },
+  { band: 'n80', duplexMode: 'SUL', commonName: 'DCS', uplink: { low: 1710, high: 1785 }, downlink: { low: null, high: null }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40] },
+  { band: 'n81', duplexMode: 'SUL', commonName: 'Extended GSM', uplink: { low: 880, high: 915 }, downlink: { low: null, high: null }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20] },
+  { band: 'n82', duplexMode: 'SUL', commonName: 'Digital Dividend', uplink: { low: 832, high: 862 }, downlink: { low: null, high: null }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20] },
+  { band: 'n83', duplexMode: 'SUL', commonName: 'APT', uplink: { low: 703, high: 748 }, downlink: { low: null, high: null }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30] },
+  { band: 'n84', duplexMode: 'SUL', commonName: 'IMT', uplink: { low: 1920, high: 1980 }, downlink: { low: null, high: null }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 50] },
+  { band: 'n85', duplexMode: 'FDD', commonName: 'Extended Lower SMH', uplink: { low: 698, high: 716 }, downlink: { low: 728, high: 746 }, duplexSpacing: 30, channelBandwidths: [3, 5, 10, 15] },
+  { band: 'n86', duplexMode: 'SUL', commonName: 'Extended AWS', uplink: { low: 1710, high: 1780 }, downlink: { low: null, high: null }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 40] },
+  { band: 'n89', duplexMode: 'SUL', commonName: 'CLR', uplink: { low: 824, high: 849 }, downlink: { low: null, high: null }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20] },
+  { band: 'n90', duplexMode: 'TDD', commonName: 'BRS', uplink: { low: 2496, high: 2690 }, downlink: { low: 2496, high: 2690 }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 70, 80, 90, 100] },
+  { band: 'n91', duplexMode: 'FDD', commonName: 'DD L-Band', uplink: { low: 832, high: 862 }, downlink: { low: 1427, high: 1432 }, duplexSpacing: 595, channelBandwidths: [5, 10, 15, 20] },
+  { band: 'n92', duplexMode: 'FDD', commonName: 'DD L-Band', uplink: { low: 832, high: 862 }, downlink: { low: 1432, high: 1517 }, duplexSpacing: 600, channelBandwidths: [5, 10, 15, 20] },
+  { band: 'n93', duplexMode: 'FDD', commonName: 'Extended GSM L-Band', uplink: { low: 880, high: 915 }, downlink: { low: 1427, high: 1432 }, duplexSpacing: 547, channelBandwidths: [5, 10, 15, 20] },
+  { band: 'n94', duplexMode: 'FDD', commonName: 'Extended GSM L-Band', uplink: { low: 880, high: 915 }, downlink: { low: 1432, high: 1517 }, duplexSpacing: 532, channelBandwidths: [5, 10, 15, 20] },
+  { band: 'n95', duplexMode: 'SUL', commonName: 'IMT', uplink: { low: 2010, high: 2025 }, downlink: { low: null, high: null }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20] },
+  { band: 'n96', duplexMode: 'TDD', commonName: 'U-NII 5-8', uplink: { low: 5925, high: 7125 }, downlink: { low: 5925, high: 7125 }, duplexSpacing: null, channelBandwidths: [20, 40, 60, 80, 100] },
+  { band: 'n97', duplexMode: 'SUL', commonName: 'S-Band', uplink: { low: 2300, high: 2400 }, downlink: { low: null, high: null }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100] },
+  { band: 'n98', duplexMode: 'SUL', commonName: 'DCS-IMT Gap', uplink: { low: 1880, high: 1920 }, downlink: { low: null, high: null }, duplexSpacing: null, channelBandwidths: [5, 10, 15, 20, 25, 30, 40] },
+  { band: 'n99', duplexMode: 'SUL', commonName: 'Upper L-band', uplink: { low: 1626.5, high: 1660.5 }, downlink: { low: null, high: null }, duplexSpacing: null, channelBandwidths: [5, 10] },
+  { band: 'n100', duplexMode: 'FDD', commonName: 'GSM-R', uplink: { low: 874.4, high: 880 }, downlink: { low: 919.4, high: 925 }, duplexSpacing: 45, channelBandwidths: [3, 5] },
+  { band: 'n101', duplexMode: 'FDD', commonName: 'FRMCS', uplink: { low: 1900, high: 1910 }, downlink: { low: 1900, high: 1910 }, duplexSpacing: null, channelBandwidths: [5, 10] },
+  { band: 'n102', duplexMode: 'TDD', commonName: 'U-NII-5', uplink: { low: 5925, high: 6425 }, downlink: { low: 5925, high: 6425 }, duplexSpacing: null, channelBandwidths: [20, 40, 60, 80, 100] },
+  { band: 'n104', duplexMode: 'TDD', commonName: 'U-NII-6-8', uplink: { low: 6425, high: 7125 }, downlink: { low: 6425, high: 7125 }, duplexSpacing: null, channelBandwidths: [20, 30, 40, 50, 60, 70, 80, 90, 100] },
+  { band: 'n105', duplexMode: 'FDD', commonName: 'Digital Dividend', uplink: { low: 663, high: 703 }, downlink: { low: 612, high: 652 }, duplexSpacing: -51, channelBandwidths: [5, 10, 15, 20, 25, 30, 35] },
+  { band: 'n106', duplexMode: 'FDD', commonName: 'LMRS', uplink: { low: 896, high: 901 }, downlink: { low: 935, high: 940 }, duplexSpacing: 39, channelBandwidths: [3] },
+
+  // FR2 bands (mmWave)
+  { band: 'n257', duplexMode: 'TDD', commonName: '28 GHz', uplink: { low: 26500, high: 29500 }, downlink: { low: 26500, high: 29500 }, duplexSpacing: null, channelBandwidths: [50, 100, 200, 400] },
+  { band: 'n258', duplexMode: 'TDD', commonName: '26 GHz', uplink: { low: 24250, high: 27500 }, downlink: { low: 24250, high: 27500 }, duplexSpacing: null, channelBandwidths: [50, 100, 200, 400] },
+  { band: 'n259', duplexMode: 'TDD', commonName: '39 GHz', uplink: { low: 37000, high: 40000 }, downlink: { low: 37000, high: 40000 }, duplexSpacing: null, channelBandwidths: [50, 100, 200, 400] },
+  { band: 'n260', duplexMode: 'TDD', commonName: '39 GHz', uplink: { low: 37000, high: 40000 }, downlink: { low: 37000, high: 40000 }, duplexSpacing: null, channelBandwidths: [50, 100, 200, 400] },
+  { band: 'n261', duplexMode: 'TDD', commonName: '28 GHz', uplink: { low: 27500, high: 28350 }, downlink: { low: 27500, high: 28350 }, duplexSpacing: null, channelBandwidths: [50, 100, 200, 400] },
+  { band: 'n262', duplexMode: 'TDD', commonName: '47 GHz', uplink: { low: 47200, high: 48200 }, downlink: { low: 47200, high: 48200 }, duplexSpacing: null, channelBandwidths: [50, 100, 200, 400] },
+  { band: 'n263', duplexMode: 'TDD', commonName: '60 GHz', uplink: { low: 57000, high: 71000 }, downlink: { low: 57000, high: 71000 }, duplexSpacing: null, channelBandwidths: [50, 100, 200, 400] }
+];
+
+const nrArfcnParameters = [
+  { freqRange: { low: 0, high: 3000 }, deltaFGlobal: 5, fRefOffs: 0, nRefOffs: 0 },
+  { freqRange: { low: 3000, high: 24250 }, deltaFGlobal: 15, fRefOffs: 3000, nRefOffs: 600000 },
+  { freqRange: { low: 24250, high: 100000 }, deltaFGlobal: 60, fRefOffs: 24250.08, nRefOffs: 2016667 }
+];
+
 
 
 const utils = {
@@ -173,6 +258,43 @@ const utils = {
         return null; // EARFCN not found
     },
 
+    nrarfcnToFreq5G: function (nrarfcn) {
+        for (let params of nrArfcnParameters) {
+            const { freqRange, deltaFGlobal, fRefOffs, nRefOffs } = params;
+            const fRef = fRefOffs + (deltaFGlobal / 1000) * (nrarfcn - nRefOffs);
+            if (fRef >= freqRange.low && fRef <= freqRange.high) {
+            return fRef;
+            }
+        }
+        return null; // NR-ARFCN not found
+    },
+
+   tofreq: function(nrarfcn, mode) {
+        console.log("used technology in tofreq is : ", mode);
+
+        if (!mode) return null;
+        let techno = Array.isArray(mode) ? mode.at(-1) : mode;
+
+        if (techno === "4G") {
+            for (const band of lteBands) {
+                if (nrarfcn >= band.earfcnMin && nrarfcn <= band.earfcnMax) {
+                    return band.dlFreqLow + 0.1 * (nrarfcn - band.nOffsDl);
+                }
+            }
+        } 
+        else if (techno === "5G" || techno === "5G NR") {
+            for (const params of nrArfcnParameters) {
+                const { freqRange, deltaFGlobal, fRefOffs, nRefOffs } = params;
+                const fRef = fRefOffs + (deltaFGlobal / 1000) * (nrarfcn - nRefOffs);
+                if (fRef >= freqRange.low && fRef <= freqRange.high) {
+                    return fRef;
+                }
+            }
+        }
+
+        return null;
+    },
+
 
 
     
@@ -261,62 +383,79 @@ const utils = {
      * 
      * @function 
      */
-    subEarpci: function (earfcns, pcis, beams=null, reqEarfcns=null, reqPcis=null, reqBeams=null) {
-        // Result object.
-        let result = {earfcns: [], pcis: [], beams: {}, indices: []};
+    subEarpci: function(earfcns, pcis, beams = null, reqEarfcns = null, reqPcis = null, reqBeams = null) {
+    let result = { earfcns: [], pcis: [], beams: {}, indices: [] };
 
-        // Indexes of EARFCNs / PCIs of the subset.
-        let subEarfcnsIdx = [];
-        let subPcisIdx = [];
+    if (!beams) beams = [];
 
-        // Filling subEarfcnsIdx.
-        if (!reqEarfcns) subEarfcnsIdx = earfcns.map((_, i) => parseInt(i));    // If null : all elements.
-        else reqEarfcns.forEach(
-            (e) => utils.interPush(subEarfcnsIdx, utils.indexesOf(earfcns, e))
-        );
+    // Convertir les filtres en Set pour lookup rapide
+    let reqEarfcnsSet = reqEarfcns ? new Set(reqEarfcns) : null;
+    let reqPcisSet = reqPcis ? new Set(reqPcis) : null;
 
-        // Filling subPcisIdx.
-        if (!reqPcis) subPcisIdx = pcis.map((_, i) => parseInt(i));             // If null : all elements.
-        else reqPcis.forEach(
-            (e) => utils.interPush(subPcisIdx, utils.indexesOf(pcis, e))
-        );
+    // Déterminer les indices à considérer
+    let subEarfcnsIdx = reqEarfcns ? earfcns.map((val, i) => reqEarfcnsSet.has(val) ? i : -1).filter(i => i !== -1)
+                                   : earfcns.map((_, i) => i);
+    let subPcisIdx = reqPcis ? pcis.map((val, i) => reqPcisSet.has(val) ? i : -1).filter(i => i !== -1)
+                             : pcis.map((_, i) => i);
 
-        subEarfcnsIdx.filter((i) => {    // Filtering over indexes.
+    // Utiliser un Set pour éviter duplication des clés (earfcn_pci)
+    let seenKeys = new Set();
 
-            let e = earfcns[i];     // EARFCN associated to the current index.
-            let p = pcis[i];        // PCI associated to the current index.
+    subEarfcnsIdx.forEach(i => {
+        let e = earfcns[i];
+        let p = pcis[i];
 
-            // Searching (e, p) pair in reqEarfcn and reqPcis if possible, evaluating in null otherwise.
-            let inter = (reqEarfcns && reqPcis) ?
-                utils.indexesOf(reqEarfcns, e).filter(
-                    (ear) => utils.indexesOf(reqPcis, p).includes(ear))
-                : null;
+        // Vérifier si l'indice est également dans subPcisIdx
+        if (!subPcisIdx.includes(i)) return;
 
-            // Pair found or not possible to find the pair.
-            let sameIndex = (inter) ? inter.length !== 0  : true
+        // Vérifier si la paire e/p correspond aux beams requis
+        if (reqBeams && beams[i] !== undefined) {
+            let beamAllowed = Array.isArray(reqBeams[p]) 
+                              ? reqBeams[p].includes("all") || reqBeams[p].includes(beams[i].toString())
+                              : true;
+            if (!beamAllowed) return;
+        }
 
-            // If pair found (if possible), and PCi found.
-            return subPcisIdx.includes(i) && sameIndex;
-        }).forEach( // Filling result.
-           (i) =>
-           {
+        // Clé unique pour éviter duplication
+        let key = `${e}_${p}`;
+        if (seenKeys.has(key)) return;
+        seenKeys.add(key);
+
+        // Ajouter les résultats
+        result.earfcns.push(e);
+        result.pcis.push(p);
+        result.indices.push(i);
+
+        // Ajouter les beams
+        if (beams[i] !== undefined) {
+            if (!result.beams[p]) result.beams[p] = [];
+            if (!result.beams[p].includes(beams[i])) result.beams[p].push(beams[i]);
+        }
+    });
+
+    // Fallback : seulement si aucun filtre n’est appliqué
+    if (result.earfcns.length === 0 && !reqEarfcns && !reqPcis && !reqBeams) {
+        for (let i = 0; i < earfcns.length; i++) {
+            let key = `${earfcns[i]}_${pcis[i]}`;
+            if (!seenKeys.has(key)) {
+                seenKeys.add(key);
                 result.earfcns.push(earfcns[i]);
                 result.pcis.push(pcis[i]);
-                let p = pcis[i];
-
-                if (!beams || reqBeams && (!Array.isArray(reqBeams[p]) || !reqBeams[p] || reqBeams[p].includes("all") || reqBeams[p].includes(beams[i].toString()))) {
-                    result.indices.push(i);
-                }
-
-                if (beams) {
-                    if (result.beams[p] === undefined) result.beams[p] = [];
-                    result.beams[p].push(beams[i]);
+                result.indices.push(i);
+                if (beams[i] !== undefined) {
+                    if (!result.beams[pcis[i]]) result.beams[pcis[i]] = [];
+                    if (!result.beams[pcis[i]].includes(beams[i])) result.beams[pcis[i]].push(beams[i]);
                 }
             }
+        }
+    }
 
-        );
-        return result;
-    },
+    return result;
+},
+
+
+
+
 
     /**
      * Pushes elements of arrayB in arrayA if not already in arrayA.

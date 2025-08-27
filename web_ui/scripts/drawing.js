@@ -137,7 +137,7 @@ const drawing = {
 
             let pointDict = {};
             let baseLat = null, baseLng = null;
-            const MAX_DEGREES_DISTANCE = 1.0; // ~100 km
+            const MAX_DEGREES_DISTANCE = 1.0; 
 
             for (let earfcn in points) {
                 pointDict[earfcn] = {};
@@ -319,8 +319,9 @@ const drawing = {
          * @param {*} beams Beam data (optional).
          * @param {boolean} check_box Whether to show checkboxes (true/false).
          */
-        drawAssocs(antdirs, assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns = null, pcis = null, beams = null, check_box = true) {
+        drawAssocs(antdirs, assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns = null, pcis = null, beams = null, check_box = true, tech) {
             this._assocLayer.clearLayers();
+            console.log("used technology in drawassoc is : ",tech);
 
             for (let cartoNum in assocs) {
                 let assocList = assocs[cartoNum];  
@@ -353,8 +354,8 @@ const drawing = {
 
                 
                 let popupContent = check_box
-                    ? this.drawAssocPopup(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams)
-                    : this.drawAssocPopupWithoutCheckbox(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams);
+                    ? this.drawAssocPopup(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams, tech)
+                    : this.drawAssocPopupWithoutCheckbox(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams, tech);
 
                 marker.bindPopup(popupContent, {
                     closeOnClick: true,
@@ -392,8 +393,11 @@ const drawing = {
             updateMethod,
             earfcns = null,
             pcis = null,
-            beams = null
+            beams = null,
+            tech
         ) {
+            console.log("used technology in popup is : ",tech);
+
             let popDiv = document.createElement('div');
 
             popDiv.innerHTML = `
@@ -436,7 +440,7 @@ const drawing = {
             for (let i = 0; i < earpcis.earfcns.length; i++) {
                 let pci = earpcis.pcis[i];
                 let earfcn = earpcis.earfcns[i];
-                let freq = Math.round(utils.earfcnToFreqLte(earfcn));
+                let freq = Math.round(utils.tofreq(earfcn,tech));
 
                 if (!groupedByPci[pci]) groupedByPci[pci] = [];
                 groupedByPci[pci].push({ earfcn, freq });
@@ -566,7 +570,8 @@ const drawing = {
             updateMethod,
             earfcns = null,
             pcis = null,
-            beams = null
+            beams = null,
+            tech
             ) {
             // Create the main container
             let popDiv = document.createElement('div');
@@ -615,10 +620,11 @@ const drawing = {
 
             // Group EARFCNs by PCI
             let groupedByPci = {};
+            console.log("used technology in popup before to freq is : ",tech);
             for (let i = 0; i < earpcis.earfcns.length; i++) {
                 let pci = earpcis.pcis[i];
                 let earfcn = earpcis.earfcns[i];
-                let freq = Math.round(utils.earfcnToFreqLte(earfcn));
+                let freq = Math.round(utils.tofreq(earfcn,tech));
 
                 if (!groupedByPci[pci]) groupedByPci[pci] = [];
                 groupedByPci[pci].push({ earfcn, freq });
@@ -1154,7 +1160,6 @@ const drawing = {
          * @function
          */
         setpciTooltip(b) {
-            console.log("i am here in setpci");
             this._setLayerVisibility(this._pciTooltipLayer, b);
         }
         /**
@@ -1195,7 +1200,7 @@ const drawing = {
          *
          * @function
          */
-        drawSelectors(earfcns, pcis, pciNb) {
+        drawSelectors(earfcns, pcis, pciNb, tech) {
             // Getting selector elements.
             let pciSelector = document.querySelector('#pci-select');
             let earSelector = document.querySelector('#EARFCN_select');
@@ -1220,7 +1225,7 @@ const drawing = {
                         // Creating option element.
                         let option = document.createElement('option');
                         option.setAttribute('value', earfcn);
-                        const freq = Math.round(utils.earfcnToFreqLte(earfcn));
+                        const freq = Math.round(utils.tofreq(earfcn,tech));
                         option.innerHTML = `${earfcn}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(${freq} MHz)`;
                         // Adding it.
                         earSelector.append(option);
