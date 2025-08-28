@@ -434,7 +434,7 @@ const app = {
                 setTimeout(() => {
                     alertBox.style.display = "none";
                 }, 1500);
-                };
+            };
 
 
             // Theoritical cells checkbox.

@@ -67,18 +67,44 @@ const drawing = {
          * @function
          */
         drawCells(voronoi, antFeats, delFeats) {
-            if (this._cellLayer && this._map.hasLayer(this._cellLayer)) {
-                this._map.removeLayer(this._cellLayer);
-            }
+            console.log(delFeats); // Debug: show antenna features in the console
 
-            this._cellLayer = L.layerGroup().addTo(this._map);
+            // Initialize layers only once
+            if (!this._cellLayer) this._cellLayer = L.layerGroup().addTo(this._map);
+            if (!this._antLayer) this._antLayer = L.layerGroup().addTo(this._map);
 
-            const vorFeats = voronoi.features;
-            const vorLayer = L.geoJson(turf.featureCollection(vorFeats), styles.polyStyle(0.1, '000000'));
+            // Clear previous layers to avoid overlapping
+            this._cellLayer.clearLayers();
+            this._antLayer.clearLayers();
 
-            const delLayer = L.geoJson(turf.featureCollection(delFeats), styles.styleDelimiter());
-            delLayer.bringToBack(); 
+            // Get the Voronoi features
+            let vorFeats = voronoi.features;
 
+            // Layer for Voronoi cells
+            let vorLayer = L.geoJson(turf.featureCollection(vorFeats), styles.polyStyle(0.1, '000000'));
+
+            // Layer for cell delimiters (borders between cells)
+            let delLayer = L.geoJson(turf.featureCollection(delFeats), styles.styleDelimiter());
+            delLayer.bringToBack(); // Put delimiters behind other layers
+
+            // Optional: compute azimuths for debugging
+            delFeats.forEach((feature, featureIndex) => {
+                if (feature.geometry && feature.geometry.type === 'LineString') {
+                    const coords = feature.geometry.coordinates;
+                    for (let i = 0; i < coords.length - 1; i++) {
+                        const [lon1, lat1] = coords[i];
+                        const [lon2, lat2] = coords[i + 1];
+                        const azimuth = utils.calculateAzimuth(lat1, lon1, lat2, lon2);
+                        // console.log(`Delimiter Feature ${featureIndex}, segment ${i}: azimuth = ${azimuth.toFixed(2)}°`);
+                    }
+                }
+            });
+
+            // Add Voronoi cells and delimiters to the _cellLayer
+            vorLayer.addTo(this._cellLayer);
+            delLayer.addTo(this._cellLayer);
+
+            // Antenna layer with custom styling and popup behavior
             this._antLayer = L.geoJson(turf.featureCollection(antFeats), {
                 pointToLayer: function(feature, latlng) {
                     return L.circleMarker(latlng, styles.styleAntenna());
@@ -101,21 +127,24 @@ const drawing = {
                         </div>
                     `;
 
+                    // Bind popup to each antenna marker
                     layer.bindPopup(popupContent, {
                         closeOnClick: true,
                         autoClose: true
                     });
 
+                    // Change cursor on mouseover
                     layer.on('mouseover', function() {
                         this._path.style.cursor = 'pointer';
                     });
                 }
-            });
+            }).addTo(this._antLayer);
 
-            vorLayer.addTo(this._cellLayer);
-            delLayer.addTo(this._cellLayer);
-            this._antLayer.addTo(this._cellLayer);
+            // Update antenna layer visibility if needed
+            this.setAntLayer(true); 
         }
+
+
 
 
 
