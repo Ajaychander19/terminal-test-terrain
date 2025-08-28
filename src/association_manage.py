@@ -67,7 +67,7 @@ def _join_rows_short_merged(rows):
     items = []
     for r in rows:
         items.append(
-            f"{r['Cartoradio_Number']}/{r['Ant_Number']} -> {r['Azimuth']:.0f}° (S={r['Score']:.3f})"
+            f"{r['Cartoradio_Number']}/{r['Ant_Number']} -> {r['Azimuth']:.0f}° (S={format_score(r['Score'])})"
         )
 
     # Si plus de 3 items, afficher seulement 3 et indiquer le nombre restant
@@ -84,7 +84,7 @@ def _join_rows_short_cevcaa(rows):
     items = []
     for r in rows:
         items.append(
-            f"{r['Cartoradio_Number']}/{r['Ant_Number']} (S={r['Score']:.3f})"
+            f"{r['Cartoradio_Number']}/{r['Ant_Number']} (S={format_score(r['Score'])})"
         )
 
     # Si plus de 3 items, afficher seulement 3 et indiquer le nombre restant
@@ -367,7 +367,7 @@ def _write_cevcaa_with_assoc(assoc_rows, path_out):
                 str(r["CID"]),
                 str(r["EARFCN"]),
                 str(r["PCI"]),
-                f'{float(r["Score"]):.12f}'
+                f'{float(r["Score"])}'
             ]
             f.write("|".join(row) + "\n")
 
@@ -430,9 +430,8 @@ def manage_cevcaa(cevcaa_file, assoc_files, working_dir, parent=None):
     - Open a single window to choose actions
     - Apply choices and write final file
     """
-
     # Load data
-    cevcaa_rows = _read_cevcaa(cevcaa_file)
+    cevcaa_rows = _read_cevcaa(cevcaa_file) if cevcaa_file else []
     merged_rows = _merge_assoc_files(assoc_files)
 
     # Index by (PCI, EARFCN)
@@ -445,17 +444,13 @@ def manage_cevcaa(cevcaa_file, assoc_files, working_dir, parent=None):
     # All (PCI, EARFCN) keys
     all_keys = set(idx_cevcaa.keys()) | set(idx_merged.keys())
 
-    conflicts = []  # conflicts to resolve
-
-    # Update scores and collect conflicts/new associations
+    conflicts = []
     for (pci, earfcn) in sorted(
         all_keys,
         key=lambda x: (int(x[0]), int(x[1])) if x[0].isdigit() and x[1].isdigit() else x
     ):
-        # Get lists of rows for this (PCI, EARFCN)
         list_c = idx_cevcaa.get((pci, earfcn), [])
         list_m = idx_merged.get((pci, earfcn), [])
-
 
         if list_c and list_m:
             # score update for identical associations
@@ -465,7 +460,7 @@ def manage_cevcaa(cevcaa_file, assoc_files, working_dir, parent=None):
                         k = _same_assoc_key(rc)
                         cevcaa_by_key[k]["Score"] = float(rc["Score"]) * float(rm["Score"])
 
-            # c onflict if different sets of sites/antennas
+            # conflict if different sets of sites/antennas
             c_sites = {(r["Cartoradio_Number"], r["Ant_Number"]) for r in list_c}
             m_sites = {(r["Cartoradio_Number"], r["Ant_Number"]) for r in list_m}
             if c_sites != m_sites:
@@ -483,60 +478,49 @@ def manage_cevcaa(cevcaa_file, assoc_files, working_dir, parent=None):
             # Cancelled by user
             return
 
-        # Apply user choices
         for (pci, earfcn, list_c, list_m, mode) in conflicts:
             code = dlg.results.get((str(pci), str(earfcn)))
             if not code:
                 continue
 
             if mode == "conflict":
-
-                # don't change anything
                 if code == "keep_cevcaa":
-                    pass  
-
-                # remove all cevcaa associations for this (pci, earfcn)
+                    continue
                 elif code == "none":
                     for rc in list_c:
-                        cevcaa_by_key.pop(_same_assoc_key(rc), None) 
-
-                # replace by one of the merged associations
+                        cevcaa_by_key.pop(_same_assoc_key(rc), None)
                 elif code.startswith("use_assoc_"):
                     i = int(code.split("_")[-1])
                     chosen = list_m[i]
-                    
-                    # remove all cevcaa associations for this (pci, earfcn)
                     for rc in list_c:
                         cevcaa_by_key.pop(_same_assoc_key(rc), None)
-
-                    # add the chosen merged association
                     cevcaa_by_key[_same_assoc_key(chosen)] = dict(chosen)
 
-            # New association case
-            elif mode == "new":
-                if code.startswith("add_assoc_"):
-                    i = int(code.split("_")[-1])
-                    chosen = list_m[i]
-                    cevcaa_by_key[_same_assoc_key(chosen)] = dict(chosen)
-                # "skip" => nothing to do
+            elif mode == "new" and code.startswith("add_assoc_"):
+                i = int(code.split("_")[-1])
+                chosen = list_m[i]
+                cevcaa_by_key[_same_assoc_key(chosen)] = dict(chosen)
 
     # Write final cevcaa file
     # Sort by EARFCN, PCI, Cartoradio_Number, Ant_Number
     final_rows = list(cevcaa_by_key.values())
-    final_rows.sort(key=lambda r: (int(r["EARFCN"]), int(r["PCI"]),
-                                   r["Cartoradio_Number"], r["Ant_Number"]) if r["EARFCN"].isdigit() and r["PCI"].isdigit()
-                                   else (r["EARFCN"], r["PCI"], r["Cartoradio_Number"], r["Ant_Number"]))
+    final_rows.sort(key=lambda r: (
+        int(r["EARFCN"]), int(r["PCI"]),
+        r["Cartoradio_Number"], r["Ant_Number"]
+    ) if r["EARFCN"].isdigit() and r["PCI"].isdigit()
+      else (r["EARFCN"], r["PCI"], r["Cartoradio_Number"], r["Ant_Number"]))
 
-    base = os.path.splitext(os.path.basename(cevcaa_file))[0]
+    base = os.path.splitext(os.path.basename(cevcaa_file))[0] if cevcaa_file else "cevcaa"
     ts = time.strftime("%Y%m%d_%H%M%S")
     out_path = os.path.join(working_dir, f"{base}_updated_{ts}.csv")
     _write_cevcaa_with_assoc(final_rows, out_path)
 
-    # Summary message
-    msg = (f"Input cevcaa: {os.path.basename(cevcaa_file)}\n"
-           f"Assoc merged: {len(merged_rows)} lines (after merge by site/antenne identical)\n"
-           f"Output: {os.path.basename(out_path)}\n"
-           f"Total ASSOC written: {len(final_rows)}")
+    msg = (
+        (f"Input cevcaa: {os.path.basename(cevcaa_file)}\n" if cevcaa_file else "No cevcaa provided\n") +
+        f"Assoc merged: {len(merged_rows)} lines\n"
+        f"Output: {os.path.basename(out_path)}\n"
+        f"Total ASSOC written: {len(final_rows)}"
+    )
     print(msg)
     if parent:
         try:

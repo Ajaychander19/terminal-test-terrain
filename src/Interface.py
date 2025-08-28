@@ -422,12 +422,14 @@ class GUI(tkinter.Frame):
                     cevcaa_paths = [p for p in files if ('cevcaf' or 'cevcaa') in os.path.basename(p).lower()]
                     assoc_paths  = [p for p in files if 'assoc'  in os.path.basename(p).lower()]
 
-                    if len(cevcaa_paths) != 1:
-                        messagebox.showerror("Error", "Select exactly ONE cevcaa file.")
+                    if len(cevcaa_paths) > 1:
+                        messagebox.showerror("Error", "You can't choose more than ONE cevcaa file.")
                         return
-                    
-                    cevcaa_file = cevcaa_paths[0]
-                    manage_cevcaa(cevcaa_file, assoc_paths, self.working_directory, parent=self)
+                    elif len(cevcaa_paths) == 1:
+                        cevcaa_file = cevcaa_paths[0]
+                        manage_cevcaa(cevcaa_file, assoc_paths, self.working_directory, parent=self)
+                    else:
+                        manage_cevcaa(None, assoc_paths, self.working_directory, parent=self)
 
                     messagebox.showinfo("Done", "Association management completed.")
                 except Exception as e:
