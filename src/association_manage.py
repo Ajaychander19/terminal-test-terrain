@@ -4,30 +4,94 @@ import os, time # os for file operations, time for timestamping
 from collections import defaultdict # defaultdict for grouping list by keys automatically
 import tkinter as tk # Tkinter for GUI elements
 from tkinter import ttk, messagebox # ttk for themed widgets, messagebox for dialog boxes
+import math
 
 ASSOC_HEADER = ["ASSOC","Cartoradio_Number","Ant_Number","TAC","CID","EARFCN","PCI","Score"]
 
+# Rayon de la Terre en km
+R = 6371.0  
+
+def compute_azimutfh(lat0, lng0, lat1, lng1):
+    """
+    Calcule l'azimut (bearing absolu) entre un point de départ (lat0, lng0)
+    et un point destination (lat1, lng1), en suivant l'approximation 'flat earth'.
+
+    Arguments :
+        lat0, lng0 : latitude et longitude du support (point A0) en degrés
+        lat1, lng1 : latitude et longitude de destination (point A1) en degrés
+
+    Retour :
+        azimut en degrés dans [0 ; 360)
+    """
+
+    # Conversion degrés → radians
+    phi0 = math.radians(lat0)
+    phi1 = math.radians(lat1)
+    lambda0 = math.radians(lng0)
+    lambda1 = math.radians(lng1)
+
+    # Coordonnées relatives (cf. doc)
+    dN = (math.pi/180) * R * (lat1 - lat0)  # Nord
+    dE = (math.pi/180) * R * (lng1 - lng0) * math.cos(phi0)  # Est
+
+    # Calcul de l’azimut (bearing absolu)
+    azimuth_rad = math.atan2(dE, dN)  # attention : atan2(x, y) ici x=Est, y=Nord
+    if azimuth_rad < 0:
+        azimuth_rad += 2 * math.pi  # remettre dans [0, 2π]
+
+    # Conversion en degrés
+    return math.degrees(azimuth_rad)
+
+
+def format_score(score, decimals=3, sci_threshold=1e-3):
+    """
+    Formats score :
+        - in classic decimal with 'decimals' digits after the decimal point
+        - in scientific notation if the absolute value is non-zero
+        but < sci_threshold
+    """
+    if score != 0 and abs(score) < sci_threshold:
+        return f"{score:.{decimals}e}"
+    else:
+        return f"{score:.{decimals}f}"
 
 def _fmt_assoc_row(r):
-    """Formats a single association row for display."""
-    return f"Site {r['Cartoradio_Number']}  Ant {r['Ant_Number']}  Score={r['Score']:.4f}"
+    ant_or_azi = r["Azimuth"] if ("Azimuth" in r and r["Azimuth"] is not None) else r["Ant_Number"]
+    return f"Site {r['Cartoradio_Number']}  Ant {ant_or_azi}  Score={format_score(r['Score'])}"
 
-
-def _join_rows_short(rows):
+def _join_rows_short_merged(rows):
     """Join multiple association rows into a short string for display."""
     if not rows: 
         return "-"
     
-    # Build a list of formatted items
-    items = [f"{r['Cartoradio_Number']}/{r['Ant_Number']} (S={r['Score']:.3f})" for r in rows] 
+    items = []
+    for r in rows:
+        items.append(
+            f"{r['Cartoradio_Number']}/{r['Ant_Number']} -> {r['Azimuth']:.0f}° (S={r['Score']:.3f})"
+        )
 
-    # If more than 3 items, show first 3 and indicate how many more
+    # Si plus de 3 items, afficher seulement 3 et indiquer le nombre restant
     if len(items) > 3:
         return ", ".join(items[:3]) + f" … (+{len(items)-3})" 
     
-    # Otherwise, join all items
     return ", ".join(items)
 
+def _join_rows_short_cevcaa(rows):
+    """Join multiple association rows into a short string for display."""
+    if not rows: 
+        return "-"
+    
+    items = []
+    for r in rows:
+        items.append(
+            f"{r['Cartoradio_Number']}/{r['Ant_Number']} (S={r['Score']:.3f})"
+        )
+
+    # Si plus de 3 items, afficher seulement 3 et indiquer le nombre restant
+    if len(items) > 3:
+        return ", ".join(items[:3]) + f" … (+{len(items)-3})" 
+    
+    return ", ".join(items)
 
 class ScrollableTable(ttk.Frame):
     """
@@ -119,8 +183,8 @@ class ConflictTableDialog(tk.Toplevel):
         # Fill the table with conflicts/new associations
         for pci, earfcn, list_c, list_m, mode in conflicts:
             pci_s, earfcn_s = str(pci), str(earfcn) # Ensure strings
-            cevcaa_txt = _join_rows_short(list_c) # Short text for cevcaa rows
-            merged_txt = _join_rows_short(list_m) # Short text for merged rows
+            cevcaa_txt = _join_rows_short_cevcaa(list_c) # Short text for cevcaa rows
+            merged_txt = _join_rows_short_merged(list_m) # Short text for merged rows
 
             # Construct option map and labels for Combobox
             option_map = {} # label -> code
@@ -199,7 +263,10 @@ def _read_assoc_file(path, require_version=True, min_version=3.0):
     Invalid lines are skipped.  """
 
     rows = [] # List to hold valid rows
+    dict_azimuts = {} # Dictionary to store azimuths will be computed later
     boolean_version = False # Track if a valid VERSION line was found
+    boolean_bs_ant_header = 0 # Counter to ignore bs_ant_dir header
+
 
     with open(path, newline='', encoding='utf-8') as f:
         for raw in f:
@@ -218,6 +285,19 @@ def _read_assoc_file(path, require_version=True, min_version=3.0):
                     
                 except ValueError:
                     pass
+                continue
+
+            if line.upper().startswith("BS_ANT_DIR|"):
+                boolean_bs_ant_header += 1
+                if boolean_bs_ant_header > 1: # Ignore subsequent headers
+                    parts = line.split('|') # Split line into parts
+                    ant_num = parts[2].strip()
+                    lat0 = float(parts[3].strip())
+                    lng0 = float(parts[4].strip())  
+                    lat1 = float(parts[5].strip())
+                    lng1 = float(parts[6].strip())
+                    az = compute_azimutfh(lat0, lng0, lat1, lng1)
+                    dict_azimuts[ant_num] = az
                 continue
 
             # Process only ASSOC lines
@@ -243,10 +323,15 @@ def _read_assoc_file(path, require_version=True, min_version=3.0):
             except ValueError:
                 continue
 
+            ant_num = parts[2].strip()
+            # Récupérer l’azimut si dispo, sinon None
+            az = dict_azimuts.get(ant_num, None)
+
             # Add valid row to list
             rows.append({
                 "Cartoradio_Number": parts[1].strip(),
                 "Ant_Number":        parts[2].strip(),
+                "Azimuth":           az,  
                 "TAC":               parts[3].strip(),
                 "CID":               parts[4].strip(),
                 "EARFCN":            earfcn,
@@ -287,28 +372,27 @@ def _write_cevcaa_with_assoc(assoc_rows, path_out):
             f.write("|".join(row) + "\n")
 
 def _merge_assoc_files(paths):
-    """Merge multiple ASSOC files by multiplying scores for identical (EARFCN, PCI, Cartoradio_Number, Ant_Number).
-    Returns a list of merged assoc rows."""
+    """Merge multiple ASSOC files by multiplying scores for identical
+    (EARFCN, PCI, Cartoradio_Number, Ant_Number)."""
+    bucket = defaultdict(list)
 
-    bucket = defaultdict(list) # key = (EARFCN, PCI, Cartoradio_Number, Ant_Number) -> list of rows
-
-    # Read all files and group rows by key
     for p in paths:
-
-        # Read each assoc file
         for r in _read_assoc_file(p):
-            key = (r["EARFCN"], r["PCI"], r["Cartoradio_Number"], r["Ant_Number"]) # Grouping key
-            bucket[key].append(r) # Add row to corresponding group
+            key = (r["EARFCN"], r["PCI"], r["Cartoradio_Number"], r["Ant_Number"])
+            bucket[key].append(r)
 
-    merged = [] # List to hold merged rows
-
-    # For each group, multiply scores and create merged row
+    merged = []
     for key, lst in bucket.items():
         score = 1.0
         for r in lst:
-            score *= float(r["Score"]) # Multiply scores
+            score *= float(r["Score"])
+
         EARFCN, PCI, Carto, Ant = key
-        merged.append({
+
+        # take first available (non-None) azimuth if any
+        az_list = [r.get("Azimuth") for r in lst if r.get("Azimuth") is not None]
+
+        row = {
             "Cartoradio_Number": Carto,
             "Ant_Number": Ant,
             "TAC": lst[0]["TAC"],
@@ -316,8 +400,13 @@ def _merge_assoc_files(paths):
             "EARFCN": EARFCN,
             "PCI": PCI,
             "Score": score,
-            "_source": "+".join(sorted(set(r["_source"] for r in lst))) # Combine sources
-        })
+            "_source": "+".join(sorted(set(r["_source"] for r in lst))),
+        }
+        if az_list:
+            row["Azimuth"] = az_list[0]
+
+        merged.append(row)
+
     return merged
 
 def _index_by_pci_earfcn(rows):

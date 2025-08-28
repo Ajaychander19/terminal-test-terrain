@@ -89,7 +89,7 @@ class CellAssociator:
 
         'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
 
-        'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI', 'Score', 'Confidence_Score'],
+        'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI', 'Score'],
 
         'MEASURE_SERVING': ['Lat', 'Lng', 'TAC', 'CID', 'EARFCN', 'PCI', 'BEAM', 'RSRP', 'RSRQ', 'RSSI', 'CINR']
 
@@ -731,7 +731,7 @@ class CellAssociator:
                                 }, 1)
 
                                 print('Ant_number=', theta_argmax[1], '   (EARFCN,PCI)=(', theta_argmax[3][2], ',',
-                                    theta_argmax[3][3], ')  score=',theta_max)
+                                    theta_argmax[3][3], ')  v1score=',theta_max)
 
                             else:
                                 min_dist = theta_argmax[2]
@@ -758,7 +758,7 @@ class CellAssociator:
                                     }, 1)
 
                                     print('Ant_number=', theta_list[argmin_dist][1], '   (EARFCN,PCI)=(', theta_list[argmin_dist][3][2], ',',
-                                          theta_list[argmin_dist][3][3],')  score=',theta_max, 'Rem : closest')
+                                          theta_list[argmin_dist][3][3],')  v1score=',theta_max, 'Rem : closest')
 
                                 else:       # the ratio of distance is not large enough => choose the sector best theta value
 
@@ -775,7 +775,7 @@ class CellAssociator:
                                     }, 1)
 
                                     print('Ant_number=', theta_argmax[1], '   (EARFCN,PCI)=(', theta_argmax[3][2], ',',
-                                          theta_argmax[3][3],')  score=',theta_max)
+                                          theta_argmax[3][3],')  v1score=',theta_max)
 
         # identification for each Ant Number of all measurement groups associated
         # selection of the group with the highest score
@@ -801,7 +801,7 @@ class CellAssociator:
                                 self._assocsProp['Ant_Number'][j] = 0  # on force numero a 0 car doublon a ne pas reconsiderer
                         else:  # differents codes ARFCN
                             if self._assocsProp['PCI'][j] == self._assocsProp['PCI'][i]:  # meme code PCI => renforce credibilite association
-                                NoteMax = self._assocsProp['Score'][i] + self._assocsProp['Score'][j]  # on force note de chacune a somme des notes
+                                NoteMax = self._assocsProp['Score'][i] + self._assocsProp['Score'][j] - self._assocsProp['Score'][i] * self._assocsProp['Score'][j] # on force note de chacune a somme des notes
                                 self._assocsProp['Score'][i] = NoteMax
                                 self._assocsProp['Score'][j] = NoteMax
                             else:  # differents codes EARFCN et differents code PCI
@@ -823,7 +823,7 @@ class CellAssociator:
                         'CID': [self._assocsProp['CID'][i]],
                         'EARFCN':[self._assocsProp['EARFCN'][i]],
                         'PCI': [self._assocsProp['PCI'][i]],
-                        'Score': [self._assocsProp['Score'][i]]
+                        'Score': [1-self._assocsProp['Score'][i]]
                     }, 1)
 
         print(self._assocs)
@@ -841,7 +841,7 @@ class CellAssociator:
         # Initialize the associations dictionary
         self._assocs = {
             'Cartoradio_Number': [], 'Ant_Number': [], 'TAC': [], 'CID': [],
-            'EARFCN': [], 'PCI': [], 'Score': [], 'Confidence_Score': []
+            'EARFCN': [], 'PCI': [], 'Score': []
         }
 
         confidence_by_pair = {}
@@ -931,8 +931,8 @@ class CellAssociator:
                 confidence_score = np.exp(-K * max_distance * np.sqrt(N) / D_global)
                 print(f"Processing EARFCN={earfcn}, PCI={pci}, N={N}, max_distance={max_distance:.1f}m, confidence_score={confidence_score:.2f}")
             else:
-                confidence_score = None
-                print("[WARNING] No antennas detected in perimeter, confidence score cannot be calculated.")
+                confidence_score = 1
+                print("[WARNING] No antennas detected in perimeter")
             
             confidence_by_pair[(earfcn, int(pci))] = confidence_score
 
@@ -1087,11 +1087,7 @@ class CellAssociator:
             self._assocs['CID'].append(int(sample.get('CID', 0)))
             self._assocs['EARFCN'].append(earfcn)
             self._assocs['PCI'].append(best_pci)
-            self._assocs['Score'].append(best_score)
-            self._assocs['Confidence_Score'].append(
-                confidence_by_pair.get((earfcn, int(best_pci)), np.nan)
-            )
-
+            self._assocs['Score'].append(confidence_by_pair.get((earfcn, int(best_pci)), np.nan))
 
 
     def _write_output(self, out_wr: csvt.CSVWriter):
@@ -1121,8 +1117,7 @@ class CellAssociator:
         for i in range(len(self._assocs['Cartoradio_Number'])):
             out_wr.write_row([
                 'ASSOC', self._assocs['Cartoradio_Number'][i], self._assocs['Ant_Number'][i], self._assocs['TAC'][i],
-                self._assocs['CID'][i], self._assocs['EARFCN'][i], self._assocs['PCI'][i], self._assocs['Score'][i],
-                self._assocs['Confidence_Score'][i] if 'Confidence_Score' in self._assocs else None
+                self._assocs['CID'][i], self._assocs['EARFCN'][i], self._assocs['PCI'][i], self._assocs['Score'][i]
             ])
 
         # Writing points.
