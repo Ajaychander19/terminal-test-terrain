@@ -21,6 +21,8 @@ var csvreadv2 = {
         _freader
         //technology 4G/5G
         _techno
+        // version
+        _version
 
         // Measurements columns.
         _earfcns
@@ -81,6 +83,7 @@ var csvreadv2 = {
             this._assocs = {};
             this._antDirs = [];
             this._techno = [];
+            this._version= [];
             this._sectDels = [];
             this._antennas = {};
             this._antennasV2 = {};
@@ -253,18 +256,14 @@ var csvreadv2 = {
                     antNum: +line['Ant_Number'],
                     latA: +line['Support_Lat'],
                     lngA: +line['Support_Lng'],
-                    latB: +line['Dest_Lng'], // (laisse inchangé comme demandé)
-                    lngB: +line['Dest_Lat']  // (laisse inchangé comme demandé)
+                    latB: +line['Dest_Lng'], 
+                    lngB: +line['Dest_Lat']  
                 };
 
                 this._antDirs.push(antVect);
             });
 
-            // ====== TECHNO (corrigé) ======
-            // Le fichier a une première ligne d'en-tête "TECHNO  Techno",
-            // puis une ligne de contenu "TECHNO  4G" (ou "5G").
-            // On privilégie la colonne 'Techno' si présente, sinon on retombe sur 'TECHNO'.
-            // On filtre également les valeurs vides et on exclut la chaîne 'TECHNO' (en-tête).
+           
             parsedResult.TECHNO.forEach((line) => {
                 const raw = (line['Techno'] !== undefined && line['Techno'] !== null && String(line['Techno']).trim() !== '')
                     ? String(line['Techno']).trim()
@@ -274,7 +273,15 @@ var csvreadv2 = {
                     this._techno.push({ technology: raw });
                 }
             });
-            // ====== /TECHNO ======
+            
+            parsedResult.VERSION.forEach((line) => {
+                const raw = (line?.Version ?? line?.VERSION ?? '').trim();
+
+                if (raw && raw.toUpperCase() !== 'VERSION') {
+                    this._version.push({ version: raw });
+                }
+            });
+
 
             parsedResult.ASSOC.forEach((line) =>{
                 let carto = +line['Cartoradio_Number'];
@@ -416,6 +423,13 @@ var csvreadv2 = {
         get measurementTechno() { return utils.deepCopy(this._techno); }
 
         /**
+         * @returns version
+         *
+         * @function
+         */
+        get measurementVersion() { return utils.deepCopy(this._version); }
+
+        /**
          * @return Antennas data, and sector delimiters data.
          *
          * @function
@@ -454,6 +468,7 @@ var csvreadv2 = {
                 measurement: [],
                 bsAntDir: [],
                 techno: [],
+                version: [],
                 assoc:[],
                 others:[],
             };
@@ -475,6 +490,8 @@ var csvreadv2 = {
                     currentHeaderType = 'bsAntDir';
                 } else if (line[0] === 'TECHNO') {
                     currentHeaderType = 'techno';
+                } else if (line[0] === 'VERSION') {
+                    currentHeaderType = 'version';
                 } else if (line[0] === 'MEASUREMENT') {
                     currentHeaderType = 'measurement';
                 } else if (line[0] === 'ASSOC') {
@@ -502,6 +519,7 @@ var csvreadv2 = {
             const parsedDelimiter = Papa.parse(parsedData.delimiter.join('\n'), { header: true });
             const parsedAssoc = Papa.parse(parsedData.assoc.join('\n'), { header: true });
             const parsedTechno = Papa.parse(parsedData.techno.join('\n'), { header: true });
+            const parsedVersion = Papa.parse(parsedData.version.join('\n'), { header: true });
             const parsedOthers = Papa.parse(parsedData.others.join('\n'), { header: true });
 
             return {
@@ -515,6 +533,7 @@ var csvreadv2 = {
                 DELIMITER : parsedDelimiter.data,
                 BS_ANT_DIR : parsedBsAntDir.data,
                 TECHNO : parsedTechno.data,
+                VERSION : parsedVersion.data,
                 OTHERS: parsedOthers.data
             };
         }

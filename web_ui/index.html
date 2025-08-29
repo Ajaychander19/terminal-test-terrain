@@ -110,11 +110,16 @@
 			<div id="tool-div" class="col-sm-3">
 				<div class="panel panel-success">
 					<button type="button" id="fileSelect" class="btn btn-success  btn-block">Select Association File</button>
+					<div class="alert_div" 
+						style="display: flex; align-items: center; gap: 10px;">
+					<span id="technoLabel" style="font-weight: bold; display:none;">Technology:</span>
+					<img id="technoImg" src="" alt="" 
+						style="width:40px; height:40px; display:none;">
+					<div id="alert-success" class="alert-success-message"></div>
+					<div id="processing" class="processing-message"></div>
+					</div>
 				</div>
-				<div class="alert_div">
-				  <div id="alert-success" class="alert-success-message"></div>
-				  <div id="processing" class="processing-message"></div>
-				</div>
+				
 
 				<!-- <div class="panel panel-success">
 					<button type="button" id="Base Station" class="btn btn-primary  btn-block " >Load Base Stations</button>
@@ -203,13 +208,31 @@
 				<!--<div class="panel panel-success visu-params">
 					<button type="button" id="clear-all" class="btn btn-primary  btn-block " >Clear All</button>
 				</div>-->
-				<div class="panel panel-success visu-params">
-					<button type="button" id="Heatmap_Legend" class="btn btn-primary  btn-block " >Heatmap Legend</button>
+				<div class="panel panel-success visu-params" 
+					style="display: flex; gap: 10px; justify-content: space-between;">
+				<button type="button" id="Heatmap_Legend" 
+						class="btn btn-primary" style="flex:1;">
+					Heatmap Legend
+				</button>
+				<button type="button" id="Measurement_info" 
+						class="btn btn-primary" style="flex:1;">
+					Measurement info
+				</button>
 				</div>
+
 				
 				<div class="panel panel-success visu-params">
 					<button type="button" id="showMapBtn" class="btn btn-success btn-block">Show Map</button>
 					<button type="button" id="showStatsBtn" class="btn btn-warning btn-block">Show Statistics</button>
+				</div>
+				<div id="measurementPopup" class="popup-overlay">
+					<div class="popup-content">
+						<span id="popupClose" class="popup-close">&times;</span>
+						<h3>Measurement Information</h3>
+						<p><strong>Technology:</strong> <span id="popup-techno">-</span></p>
+						<p><strong>Version:</strong> <span id="popup-version">-</span></p>
+						<!--<p><strong>Date of Measurement:</strong> <span id="popup-date">-</span></p-->
+					</div>
 				</div>
 				
 

@@ -14,6 +14,7 @@ const app = {
         _drawingMap                 // Map object to wrap the Leaflet map.
         _fileReader                 // CSVReader object.
         _technology                 // 4G/5G NR
+        _version
 
         _earfcnOnServing = true;    // true if "Serving EARFCN" is selected.
         _pciOnServing = true;       // true if "Serving PCI" is selected.
@@ -279,7 +280,7 @@ const app = {
         enableInputs(b) {
 
             //let visuInputs = document.querySelectorAll('.visu-params input, .visu-params select, #clear-all');
-            let visuInputs = document.querySelectorAll('.visu-params input, .visu-params select, #Heatmap_Legend',);
+            let visuInputs = document.querySelectorAll('.visu-params input, .visu-params select, #Heatmap_Legend, #Measurement_info, #showStatsBtn');
             
             visuInputs.forEach((input) => input.disabled = !b);
 
@@ -373,37 +374,34 @@ const app = {
             // Asynchronous method due to the asynchronous file reading.
             document.querySelector('#fileElem').onchange = async (evt) => {
                 // Show loader overlay
-                document.getElementById('loader-overlay').classList.add('active');;
+                document.getElementById('loader-overlay').classList.add('active');
 
-                // Force UI update before starting readFile()
                 await new Promise(resolve => setTimeout(resolve, 50));
 
-                // Read the file asynchronously
                 let file = evt.target.files[0];
                 this._fileReader = new csvreadv2.CSVReader(file);
                 await this._fileReader.readFile();
-                
 
-                // Hide loader, show success alert, force UI update before heavy processing
-                document.getElementById('loader-overlay').classList.remove('active');;
+                document.getElementById('loader-overlay').classList.remove('active');
                 const alertBox = document.getElementById("alert-success");
                 alertBox.textContent = "✅ The file has been read successfully!";
                 alertBox.style.display = "block";
 
-                // Force UI update so alert appears before heavy processing
                 await new Promise(resolve => setTimeout(resolve, 50));
 
-                // Heavy processing part - blocking operations
                 let antennas = this._fileReader.antennas;
                 let vor = processing.calcVoronoi(antennas);
                 let dels = processing.calcDelimiters(vor, antennas);
                 let ants = processing.calcAntennas(this._fileReader.antennaDirections);
-                this._technology=processing.getTechnologies(this._fileReader.measurementTechno);
-                console.log("i am here!!");
-                console.log("technology is: "+ this._technology);
+                this._technology = processing.getTechnologies(this._fileReader.measurementTechno);
+                this._version = processing.getVersions(this._fileReader.measurementVersion);
+
+
+                console.log("technology is: " + this._technology);
+                console.log("version is: " + this._version);
+
                 const heading = document.getElementById('earfcn-heading');
                 const select = document.getElementById('EARFCN_select');
-
                 
 
                 let earfcns = this._fileReader.earfcns;
@@ -412,30 +410,64 @@ const app = {
 
                 this._drawingMap.drawCells(vor, ants, dels);
                 this.updateAssocs();
-
                 this._drawingMap.setAntLayer(true);
                 this._drawingMap.setAssocLayer(true);
                 this._drawingMap.drawSelectors(earfcns, pcis, pciNb, this._technology);
-
                 this.enableInputs(true);
-
                 this.update();
+
+                const technoImg = document.getElementById("technoImg");
+                const technoLabel = document.getElementById("technoLabel");
+                const popup = document.getElementById("measurementPopup");
+                const btn = document.getElementById("Measurement_info");
+                const closeBtn = document.getElementById("popupClose");
+
                 if (this._technology.at(-1) === "5G NR") {
                     heading.textContent = 'NRARFCN';
                     select.options[0].text = 'Serving NRARFCN';
                     select.options[1].text = 'All NRARFCNs';
-                } else { 
+
+                    technoImg.src = "img/5G.png";
+                    technoImg.style.display = "inline-block";
+                    technoLabel.style.display = "inline-block";
+                    technoLabel.textContent = "Technology:";
+                } else {
                     heading.textContent = 'EARFCN';
                     select.options[0].text = 'Serving EARFCN';
                     select.options[1].text = 'All EARFCNs';
-                }
 
-                // Hide alert after delay
+                    technoImg.src = "img/4G.png";
+                    technoImg.style.display = "inline-block";
+                    technoLabel.style.display = "inline-block";
+                    technoLabel.textContent = "Technology:";
+                }
+                
+                btn.addEventListener("click", () => {
+                // Remplir les infos dynamiquement
+                document.getElementById("popup-techno").textContent = this._technology?.at(-1) || "N/A";
+                document.getElementById("popup-version").textContent = "v"+this._version+".0"
+                //document.getElementById("popup-date").textContent = this._fileReader?.measurementDate || new Date().toLocaleDateString();
+
+                
+                popup.style.display = "flex";
+                });
+
+                
+                closeBtn.addEventListener("click", () => {
+                popup.style.display = "none";
+                });
+
+                
+                window.addEventListener("click", (event) => {
+                if (event.target === popup) {
+                    popup.style.display = "none";
+                }
+                });
+
                 setTimeout(() => {
                     alertBox.style.display = "none";
                 }, 1500);
             };
-
 
             // Theoritical cells checkbox.
             document.querySelector('#Theory_Cell').onclick = (evt) => {
