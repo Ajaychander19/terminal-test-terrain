@@ -12,7 +12,9 @@ import xcalyzer
 import cartoradio
 import association
 from viavianalyzer import Viavilyzer
-
+import gmonyzer
+from association_manage import manage_cevcaa
+import time
 
 # Add path to COMET source dir to be able to find its modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../COMET/src')))
@@ -87,6 +89,15 @@ class GUI(tkinter.Frame):
                                                  "Choose the Field-test Accuver Xcal files "
                                                  "to produce a measurement file that can be used by the Association "
                                                  " process, produce a pcap file if only 1 file is selected")
+        
+        self.cellgmonpro_conversion = tkinter.Button(self, command=lambda: self.button_click(9),
+                                               text="GMon Pro file Processing",
+                                               font=boldFont, background='light green')
+        CreateToolTip(self.cellgmonpro_conversion,
+                      "Choose a GMoN-Pro measurements file to convert it to a 'csv' measurement file that can be "
+                      "used by the Association process")
+        self.cellgmonpro_conversion.configure(height=2, width=25)
+        self.cellgmonpro_conversion.pack(padx=5, pady=5)
 
         # Comet converter button
         self.comet_converter = tkinter.Button(self, command=lambda: self.button_click(8),
@@ -129,11 +140,28 @@ class GUI(tkinter.Frame):
         self.visualizaion.configure(height=2, width=25)
         self.visualizaion.pack(padx=5, pady=5)
 
+        self.association = tkinter.Button(self, command=lambda: self.button_click(10),
+                                          text="Cell Association Processing TA", font=boldFont, background='light green')
+        self.association.configure(height=2, width=25)
+        self.association.pack(padx=5, pady=5)
+        self.association_ttp = CreateToolTip(
+            self.association,
+            "Choose the .csv site file created from the 'Cartoradio File Conversion' and the .csv measurement file")
+
+        self.association = tkinter.Button(self, command=lambda: self.button_click(11),
+                                          text="Manage association", font=boldFont, background='light green')
+        self.association.configure(height=2, width=25)
+        self.association.pack(padx=5, pady=5)
+        self.association_ttp = CreateToolTip(
+            self.association,
+            "Choose the .csv site file created from the 'Cartoradio File Conversion' and the .csv measurement file")
+        
         self.canvas = Canvas(self, height=20)
         self.canvas.pack()
         self.color = 'green'
         self.rec = self.canvas.create_rectangle(10000, 20, 20, 2,
                                                 outline="#fb0", fill=self.color)
+        
 
     def change_color(self, color):
         self.canvas.itemconfig(self.rec, fill=color)
@@ -164,16 +192,19 @@ class GUI(tkinter.Frame):
                     # csvtoPcap(files,self.working_directory)
 
                     for f in files:
+                        start_time = time.perf_counter()
                         conv = xcalyzer.XcalConverter(f)
                         conv.process(self.working_directory)
-
+                        elapsed = time.perf_counter() - start_time
+                        print(f"Conversion duration: {elapsed:.6f} seconds")
+                        
                     # Removing temporary files.
                     filelist = [f for f in os.listdir(getPathText(""))]
                     for f in filelist:
                         os.remove(os.path.join(getPathText(""), f))
 
                 else:
-                    messagebox.showinfo("Warning", "Select at least one file")
+                    return
 
                 self.change_color('green')
 
@@ -182,8 +213,11 @@ class GUI(tkinter.Frame):
                 self.change_color('red')
                 files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',
                                                     filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
-                if len(files) != 2:
-                    messagebox.showerror("Error", "Two files are expected.")
+                if len(files) == 0:
+                    return
+                
+                elif len(files) != 2:
+                    messagebox.showerror("Error", "Two files expected.")
                 else:
                     # createSite_json(files,self.working_directory)
                     site_file = files[0] if 'Sites' in files[0] else files[1]
@@ -201,7 +235,10 @@ class GUI(tkinter.Frame):
                                                     title='Choose measurement file and operator sites file',
                                                     filetypes=(("cev CSV file", "cev*.csv"), ("all files", "*.*")))
 
-                if len(files) != 2:
+                if len(files) == 0:
+                    return
+                
+                elif len(files) != 2:
                     messagebox.showerror("Error", "Two files expected.")
                 else:
 
@@ -217,6 +254,36 @@ class GUI(tkinter.Frame):
 
                 self.change_color('green')
 
+            elif number == 10:  # association with TA
+
+                self.change_color('red')
+                files = filedialog.askopenfilenames(initialdir=self.working_directory,
+                                                    title='Choose measurement file and operator sites file',
+                                                    filetypes=(("cev CSV file SFR", "cevSFR*.csv"),
+                                                               ("cev CSV file Orange", "cevOrange*.csv"),
+                                                                ("all files", "*.*")))
+                if len(files) == 0:
+                    return
+                
+                elif len(files) != 2:
+                    messagebox.showerror("Error", "Two files expected.")
+                else:
+
+                    # Associate_cell(files, self.working_directory)
+                    site_file = files[0] if 'sites' in files[0] else files[1]
+                    meas_file = files[1] if 'sites' in files[0] else files[0]
+
+                    start_time = time.perf_counter()
+                    association.CellAssociator(
+                        meas_file,
+                        site_file,
+                        self.working_directory
+                    ).calculate_association_TA()
+                    elapsed = time.perf_counter() - start_time
+                    print(f"Conversion duration: {elapsed:.6f} seconds")
+
+                self.change_color('green')
+
             elif number == 5:  # viavi file processing
                 self.change_color('red')
                 files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',
@@ -225,18 +292,60 @@ class GUI(tkinter.Frame):
                     for f in files:
                         conv = Viavilyzer.produces_csv_op_files(f, self.working_directory)
                 else:
-                    messagebox.showinfo("Warning", "Select at least one file")
+                    return
 
                 self.change_color('green')
+            
+            elif number == 9:  # GMon Pro measurements conversion
+                self.change_color('red')
+
+                file_paths = filedialog.askopenfilenames(
+                    initialdir=self.working_directory,
+                    title='Choose G-MoNPro file(s)',
+                    filetypes=(("gmonpro SFR CSV file", ("gmonpro*20810*.csv")), 
+                               ("gmonpro Orange CSV file", ("gmonpro*20801*.csv")),
+                               ("all files", "*.*"))
+                )
+
+                nbfiles = len(file_paths)
+                if nbfiles == 0:
+                    return
+                else:
+                    try:
+                        if nbfiles > 1:
+                            # Merge files
+                            merger = gmonyzer.GMonProMerger()
+                            merged_file = merger.merge(self.working_directory, file_paths)
+
+                            # Convert merged file
+                            print(f"Merged file created: {merged_file}")
+                            gmonyzer.GMonProConverter(merged_file, self.working_directory).process()
+
+                        else:
+                            # Convert single file
+                            f = file_paths[0]
+                            print(f"Processing file: {f}")
+                            start_time = time.perf_counter()
+                            gmonyzer.GMonProConverter(f, self.working_directory).process()
+                            elapsed = time.perf_counter() - start_time
+                            print(f"Conversion duration: {elapsed:.6f} seconds")
+
+                    except Exception as e:
+                        messagebox.showerror("Processing Error", str(e))
+
+                self.change_color('green')
+
 
             elif number == 6:  # use an existing association
                 self.change_color('red')
                 files = filedialog.askopenfilenames(initialdir=self.working_directory,
                                                     title='Choose measurement file, operator sites file and association file',
-                                                    filetypes=(("cev CSV file", "cev*.csv"), ("all files", "caf*.*")))
-
+                                                    filetypes=(("cev CSV file", "cev*.csv"), ("all files", "*.*")))
+                if len(files) == 0:
+                    return
+                
                 # Associate_cell(files, self.working_directory)
-                if len(files) != 3:
+                elif len(files) != 3:
                     messagebox.showerror("Error", "3 files expected.")
                 else:
                     if 'sites' in files[0]:
@@ -266,8 +375,6 @@ class GUI(tkinter.Frame):
                     else:
                         messagebox.showerror("Error", "No file converted from Cartoradio.")
 
-                    print("coucou")
-
                     association.CellAssociator(
                         meas_file,
                         site_file,
@@ -296,6 +403,39 @@ class GUI(tkinter.Frame):
                         converter.process()
 
                 self.change_color('green')
+
+            elif number == 11:  # Manage cevcaa file
+                self.change_color('red')
+                try:
+                    files = filedialog.askopenfilenames(
+                        initialdir=self.working_directory,
+                        title='Choose cevcaa/cevcaf and one or more assoc files',
+                        filetypes=[
+                            ("SFR cevcaf/assoc", ("cevcaaSFR*.csv", "cevcafSFR*.csv", "assoc_SFR*.csv")),
+                            ("Orange cevcaf/assoc", ("cevcaaOrange*.csv", "cevcafOrange*.csv", "assoc_Orange*.csv")),
+                            ("All files", "*.*"),
+                        ]
+                    )
+                    if not files:
+                        return
+
+                    cevcaa_paths = [p for p in files if ('cevcaf' or 'cevcaa') in os.path.basename(p).lower()]
+                    assoc_paths  = [p for p in files if 'assoc'  in os.path.basename(p).lower()]
+
+                    if len(cevcaa_paths) > 1:
+                        messagebox.showerror("Error", "You can't choose more than ONE cevcaa file.")
+                        return
+                    elif len(cevcaa_paths) == 1:
+                        cevcaa_file = cevcaa_paths[0]
+                        manage_cevcaa(cevcaa_file, assoc_paths, self.working_directory, parent=self)
+                    else:
+                        manage_cevcaa(None, assoc_paths, self.working_directory, parent=self)
+
+                    messagebox.showinfo("Done", "Association management completed.")
+                except Exception as e:
+                    messagebox.showerror("Runtime Error", f"An error occurred:\n {e}")
+                finally:
+                    self.change_color('green')
 
         except Exception as e:
             messagebox.showerror("Runtime Error", "An error occured:\n {}".format(str(e)))

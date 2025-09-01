@@ -1,5 +1,6 @@
 """This module is dedicated to the analysis of AOF files produced by Accuver Xcal."""
 
+import subprocess
 from constantPath import getPathText, getfileName, getOperatorname
 from dictutils import extract_int, insert_data, fill_data
 
@@ -9,6 +10,8 @@ import shutil
 
 import pcaputils
 import csvtools
+import datetime
+
 
 # Constants
 _DICT_DISSECTOR = {
@@ -160,12 +163,13 @@ class XcalConverter:
         self._earfcns = []
         self._pcis = []
         self._nbsamples = []
+        self._date = []
 
         self._data_dict = {
             'name': [], 'timestamp': [], 'lat': [], 'lng': [],                          # Common fields
             'earfcn': [], 'pci': [],  'rsrp': [], 'rsrq': [], 'rssi': [], 'cinr': [],   # Serving Cell
             'tac': [], 'cid': [], 'mcc': [], 'mnc': [],                                 # Cell information
-            'meas_name': []                                                             # Measurement
+            'meas_name': [], 'ta': []                                                   # Measurement
         }
 
         self._mcc = None
@@ -258,34 +262,6 @@ class XcalConverter:
         self.produce_csv_file()
         print('CSV file produced.')
 
-    def parse_aof(self):
-        """Parses the associated AOF file.
-
-        The parsing produce temporary files .txt files, one for each Wireshark
-        dissector. These files can be used by text2pcap.
-
-        The first output CSV file is also produced by this function ; firstly, the AOF file syntax is checked.
-        The lengths of messages and the structure of the different sections of the file are checked. EARFCN / PCIs
-        couples are also referenced during this step. Then, during the second step, the file is re-read, and all
-        data inside it are processed, to make the EARFCNs and PCIs / Measurements tables.
-
-        The output file produced is written in CSV, with a syntax based on the AOF format.
-
-        Raises:
-            RuntimeError: if an error occurred during the analysis of the AOF file.
-        """
-
-        print('Parsing AOF file...')
-        self.first_read()
-        print('AOF file parsing done.')
-
-        print('Data processing...')
-        self.second_read()
-        print('Data processing done.')
-
-        print('Producing CSV file...')
-        self.produce_csv_file()
-        print('CSV file produced.')
 
     def first_read(self):
         """Does the first reading of the AOF file.
@@ -434,6 +410,8 @@ class XcalConverter:
                                 syntax_error(line_num, "16 columns expected, {} found.".format(l_len))
 
                             # Store serving EARFCN/PCI couple for the step two.
+                            dt = datetime.datetime.strptime(line[1], "%Y-%m-%d %H:%M:%S.%f")
+                            self._date.append(dt)
                             serving_earfcn = int(line[2])
                             serving_pci = int(line[4])
 
@@ -529,6 +507,7 @@ class XcalConverter:
 
             # Goto content start.
             # The file structure had been checked a first time, so we don't need of the Description part.
+            last_serving_index = -1
             for i in range(self._content_start + 1):
                 aof.readline()
 
@@ -570,11 +549,13 @@ class XcalConverter:
                     insert_data(self._data_dict, {
                         'name': ['MEASURE_SERVING'], 'timestamp': [tstamp], 'lat': [None], 'lng': [None],
                         'earfcn': [serving_earfcn], 'pci': [serving_pci], 'rsrp': [serving_rsrp],
-                        'rsrq': [serving_rsrq], 'rssi': [serving_rssi], 'cinr': [serving_cinr]
+                        'rsrq': [serving_rsrq], 'rssi': [serving_rssi], 'cinr': [serving_cinr],
+                        'ta': ['']
                     }, 1)
 
+                    last_serving_index = index
                     index += 1
-
+                     
                     # Inserting measurement data.
                     to_insert = {
                         'name': ['MEASUREMENT'] * 3, 'timestamp': [tstamp] * 3, 'lat': [None] * 3, 'lng': [None] * 3,
@@ -653,6 +634,12 @@ class XcalConverter:
                         index += 3
                         last_meas_tstamp = tstamp
 
+                elif first == 'QCLTE_PTA':
+                    if l_len >= 3 and last_serving_index >= 0:
+                        serving_ta = float(line[2])
+                        # Add the TA to the last serving cell measurement
+                        self._data_dict['ta'][last_serving_index] = serving_ta
+
                 elif first == 'QCLTE_CELLINFO':
 
                     insert_data(self._data_dict, {
@@ -698,7 +685,8 @@ class XcalConverter:
         n = len(self._earfcns)
         csv_header = {
             'VERSION': ['Version'],
-            'DATE': ['Date'],
+            'START_DATE': ['Date'],
+            'END_DATE': ['Date'],
             'TECHNO': ['Techno'],
             'MEAS_EARFCNS': ['NA', 'NA', 'NA', 'NA'] + ['EARFCN_{}'.format(i) for i in range(n)],
             'MEAS_PCIS': ['NA', 'NA', 'NA', 'NA'] + ['PCI_{}'.format(i) for i in range(n)],
@@ -707,7 +695,7 @@ class XcalConverter:
             'CELLINFO': ['Timestamp', 'Lat', 'Lng', 'EARFCN', 'PCI', 'TAC', 'CID', 'MCC', 'MNC'],
             'MEASURE_SERVING': [
                 'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI',
-                'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR'
+                'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR', 'Serving_TA'
             ],
             'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
         }
@@ -717,8 +705,17 @@ class XcalConverter:
 
         with csvtools.CSVWriter(getPathText('csv_tmp.csv'), csv_header) as csv_out:
 
-            csv_out.write_row(['VERSION'] + ['2.0'])
-            csv_out.write_row(['DATE'] + ['NULL'])
+            csv_out.write_row(['VERSION'] + ['3.0'])
+            if self._date:
+                start = min(self._date)
+                end = max(self._date)
+                csv_out.write_row(['START_DATE', start.strftime('%Y-%m-%d %H:%M:%S')])
+                csv_out.write_row(['END_DATE', end.strftime('%Y-%m-%d %H:%M:%S')])
+
+                # Checking the date range
+                if (end - start).days > 180:
+                    print(f"[WARNING] Date range is more than 6 months: {start} to {end}")
+
             csv_out.write_row(['TECHNO'] + ['4G'])
 
             # List of EARFCN/PCI/NB of samples just for writing the file (not used later)
@@ -754,7 +751,8 @@ class XcalConverter:
                 elif name == 'MEASURE_SERVING':     # Serving cell information fields.
                     to_write.extend([
                         self._data_dict['earfcn'][i], self._data_dict['pci'][i], self._data_dict['rsrp'][i],
-                        self._data_dict['rsrq'][i], self._data_dict['rssi'][i], self._data_dict['cinr'][i]
+                        self._data_dict['rsrq'][i], self._data_dict['rssi'][i], self._data_dict['cinr'][i],
+                        self._data_dict['ta'][i] if i < len(self._data_dict['ta']) else ''
                     ])
                 elif name == 'MEASUREMENT':         # Measurement field.
                     to_write.append(self._data_dict['meas_name'][i])
@@ -763,20 +761,22 @@ class XcalConverter:
                 csv_out.write_row(to_write)
 
     def produce_pcaps(self):
-        """Produce PCAP files for each dissector from produced TXT files using text2pcap.
-
-        Raises:
-            CalledProcessError: if text2pcap produces an error.
-        """
-        # Controlling fkey.
-        # if fkey not in self.DICT_FILES_NAMES.keys():
-        #    raise RuntimeError('Error : invalid file key : {}.'.format(fkey))
+        """Produce PCAP files for each dissector from produced TXT files using text2pcap."""
 
         for fkey in self.DICT_FILES_NAMES.keys():
             input_txt = getPathText(self.get_file_name(fkey, 'txt'))
             output_pcap = getPathText(self.get_file_name(fkey, 'pcap'))
 
-            pcaputils.produce_pcap(input_txt, output_pcap, _DICT_DISSECTOR[fkey])
+            try:
+                pcaputils.produce_pcap(input_txt, output_pcap, _DICT_DISSECTOR[fkey])
+            except FileNotFoundError:
+                print("[ERREUR] text2pcap (Wireshark) n’est pas installé ou introuvable dans le PATH.")
+                print("Veuillez installer Wireshark et vérifier que ses outils en ligne de commande sont accessibles.")
+                raise
+            except subprocess.CalledProcessError as e:
+                print(f"[ERREUR] Échec lors de l’exécution de text2pcap : {e}")
+                raise
+
 
     def merge_pcaps(self):
         """Merges temporary PCAP files into the file 'final_tmp.pcap'.

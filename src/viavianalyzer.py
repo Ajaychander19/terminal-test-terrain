@@ -302,7 +302,7 @@ class Viavilyzer:
 
         #write the output file
         with csvtools.CSVWriter(output_name, csv_header) as csv_out:
-            csv_out.write_row(['VERSION'] + ['2.0'])
+            csv_out.write_row(['VERSION'] + ['3.0'])
             csv_out.write_row(['DATE'] + [date])
             csv_out.write_row(['TECHNO'] + [techno])
             csv_out.write_row(['MEAS_EARFCNS'] + [''] * 4 + [epb[0] for epb in l])

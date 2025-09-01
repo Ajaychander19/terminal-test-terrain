@@ -59,6 +59,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str, t
 
     # Output CSV file header
     header = {
+        'VERSION': ['Version'],
         'BS_ANTENNA': [
             'Support_Number', 'Cartoradio_Number', 'Lat', 'Lng', 'Height', 'Info_Addr', 'Info_Municipality',
             'Ant_Number', 'Dest_Lat', 'Dest_Lng', 'Azimuth', 'AzimuthMin', 'AzimuthMax', 'MinFreq', 'MaxFreq'
@@ -82,6 +83,8 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str, t
 
             # Grouping by base station.
             station_groups = op_group.groupby('Numéro de support')
+
+            out_file.write_row(['VERSION', '3.0'])  # Writing version of the file.
 
             # For each base station found...
             for sta in station_groups.groups.keys():
@@ -155,7 +158,7 @@ def process_cartoradio(sitefile_path: str, antfile_path: str, output_dir: str, t
                 for i in range(len(station_group_dict['Numéro Cartoradio'])):
 
                     # Current Cartoradio Number.
-                    carto_num = station_group_dict['Numéro Cartoradio'][i]
+                    carto_num = station_group_dict['Numéro de support'][i]
 
                     # Current antenna azimuth.
                     ant_az = station_group_dict['Azimut'][i]
