@@ -1,5 +1,6 @@
 """This module defines CellAssociator class and methods to associate base stations / antennas to each measurement."""
 
+from collections import defaultdict
 import math
 import os.path
 import pathlib
@@ -884,6 +885,9 @@ class CellAssociator:
         }
 
         confidence_by_pair = {}
+        coef1_counts = defaultdict(int)            # (earfcn, pci, site) -> count
+        total_meas_per_pair = defaultdict(int)     # (earfcn, pci) -> count
+        ratios_rows = []                            # sorties "tous sites"
 
         # Load measurement and antenna data
         df_meas = self._measure_point.copy()
@@ -950,6 +954,8 @@ class CellAssociator:
 
         # Loop through each group of measurements with same EARFCN and PCI
         for (earfcn, pci), sub_df in grouped:
+
+            seen_sites = set()
 
             # Create table of coordinates for the measurements
             coords_xy = np.array([latlng_to_xy(lat, lng) for lat, lng in zip(sub_df['Lat'], sub_df['Lng'])])
@@ -1035,6 +1041,7 @@ class CellAssociator:
                 # the coefficient is
                 with np.errstate(divide='ignore', invalid='ignore'):
                     error = L - distances
+                    inside_ring = np.abs(error) <= delta  # bool -> dans l’anneau
                     coefs = np.where(
                         error == 0,  # Perfect match
                         1,
@@ -1042,6 +1049,18 @@ class CellAssociator:
                     )
                     coefs[np.isnan(coefs)] = 0
 
+                # Count total measurements for the pair (EARFCN, PCI)
+                key_pair = (int(earfcn), int(pci))
+                total_meas_per_pair[key_pair] += 1
+
+                is_one_mask = coefs >= 1
+
+                # Count coef1 occurrences for the pair (EARFCN, PCI) per site
+                for idx, is_one in enumerate(is_one_mask):
+                    site_key = int(site_ids[idx])
+                    seen_sites.add(site_key)
+                    if is_one:
+                        coef1_counts[(key_pair[0], key_pair[1], site_key)] += 1
 
                 # Score by site with cartoradio number as key
                 for idx, coef in enumerate(coefs):
@@ -1054,6 +1073,21 @@ class CellAssociator:
 
                 if pci == 54:  # ou ton filtre
                     log_scores_group(lat_m, lng_m, earfcn, pci, score_data, site_ids=[246908, 2625003])
+
+            # Generate ratios of coef1 counts to total measurements for the pair (EARFCN, PCI) per site
+            denom = total_meas_per_pair[key_pair]
+            if denom > 0:
+                for site_key in seen_sites:
+                    num = coef1_counts.get((key_pair[0], key_pair[1], site_key), 0)
+                    ratio = num / denom
+                    ratios_rows.append({
+                        "EARFCN": key_pair[0],
+                        "PCI": key_pair[1],
+                        "Cartoradio_Number": site_key,
+                        "Coef1_Ratio": ratio,
+                        "Coef1_Count": num,
+                        "Total_Meas": denom
+                    })
 
             if not vote_scores:
                 continue
@@ -1137,6 +1171,19 @@ class CellAssociator:
             self._assocs['EARFCN'].append(earfcn)
             self._assocs['PCI'].append(best_pci)
             self._assocs['Score'].append(confidence_by_pair.get((earfcn, int(best_pci)), np.nan))
+
+        # Write the ratios coef to 1 on all coef for a site for a couple EARFCN/PCI to a CSV file for analysis
+        # filtering of ratios for easier analysis
+        FILTER_PCI  = {54, 123}
+        FILTER_SITE = {246908, 2625003}
+
+        rows_out = []
+        for row in ratios_rows:
+            if (not FILTER_PCI or row["PCI"] in FILTER_PCI) and (not FILTER_SITE or row["Cartoradio_Number"] in FILTER_SITE):
+                rows_out.append(row)
+
+        df_ratios = pd.DataFrame(rows_out).sort_values(["EARFCN", "PCI", "Cartoradio_Number"])
+        df_ratios.to_csv("coef1_ratios_filtrés.csv", index=False)
 
 
     def _write_output(self, out_wr: csvt.CSVWriter):
