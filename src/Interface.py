@@ -212,7 +212,8 @@ class GUI(tkinter.Frame):
 
                 self.change_color('red')
                 files = filedialog.askopenfilenames(initialdir=self.working_directory, title='Choose a file',
-                                                    filetypes=(("CSV file", "*.csv"), ("all files", "*.*")))
+                                                    filetypes=[("Cartoradio files", ("Antennes_Emetteurs_Bandes_Cartoradio*.csv", "Sites_Cartoradio*.csv")),
+                                                            ("All files", "*.*")])
                 if len(files) == 0:
                     return
                 

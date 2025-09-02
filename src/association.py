@@ -10,6 +10,41 @@ import shapely.geometry as geom
 import scipy.spatial as sp
 from dictutils import insert_data
 from scipy.spatial.distance import pdist
+import csv
+from datetime import datetime
+
+# fichier où l'on log
+CSV_LOG_FILE = "scores_log.csv"
+
+# Initialisation du fichier avec en-tête si pas encore créé
+def init_csv_log(site_ids=[246908, 2625003]):
+    with open(CSV_LOG_FILE, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        header = ["lat_m", "lng_m", "earfcn", "pci"]
+        for site in site_ids:
+            header.append(f"score_ajoute_site_{site}")
+            header.append(f"score_total_site_{site}")
+            header.append(f"L_site_{site}")
+            header.append(f"Distance_site_{site}")
+        writer.writerow(header)
+
+# Écriture d'une ligne de log
+def log_scores_group(lat_m, lng_m, earfcn, pci, score_data, site_ids=[246908, 2625003]):
+    """
+    score_data = {site: (score_ajoute, score_total), ...}
+    """
+    with open(CSV_LOG_FILE, mode="a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+
+        row = [lat_m, lng_m, earfcn, pci]
+        for site in site_ids:
+            if site in score_data:
+                score_ajoute, score_total, L, dist = score_data[site]
+                row.extend([f"{score_ajoute:.6f}", f"{score_total:.6f}", f"{dist:.1f}", f"{L:.1f}"])
+            else:
+                row.extend(["0.000000", "0.000000"])  # site non concerné
+        writer.writerow(row)
+
 
 class CellAssociator:
 
@@ -836,7 +871,11 @@ class CellAssociator:
         margin = 1  # Margin in km for bounding box
         threshold = 6  # Minimum score to consider an association valid
         distance_threshold = 50  # Minimum distance in meters between two values to consider a couple earfcns/pcis
+        fact_rayon_terre = np.pi/180*6371  # conversion lat/lon to meters on earth surface: with theta in radian, multiply by this factor to have the distance in kilometers
+        K = 1.0 # Set a constant K for confidence score calculation to convert to a 0-1 scale
+
         # print(f"Using delta: {delta}, alpha: {alpha}, margin: {margin} km, threshold: {threshold}")
+        init_csv_log()
 
         # Initialize the associations dictionary
         self._assocs = {
@@ -885,8 +924,8 @@ class CellAssociator:
         lng_max_all = df_meas['Lng'].max()
 
         # Area of the global rectangle
-        dy_km_all = (lat_max_all - lat_min_all) * 111
-        dx_km_all = (lng_max_all - lng_min_all) * 111 * np.cos(np.radians((lat_min_all + lat_max_all) / 2))
+        dy_km_all = (lat_max_all - lat_min_all) * fact_rayon_terre
+        dx_km_all = (lng_max_all - lng_min_all) * fact_rayon_terre * np.cos(np.radians((lat_min_all + lat_max_all) / 2))
         S_rect_all = abs(dx_km_all * dy_km_all * 1e6) #km² to m²
 
         # Sites in global rectangle
@@ -901,9 +940,6 @@ class CellAssociator:
             D_global = np.sqrt(S_cell_all * 8.0 / (3.0 * np.sqrt(3.0)))
         else:
             D_global = -1.0  # No antennas found
-
-        # Set a constant K for confidence score calculation
-        K = 1.0
 
         # Convert to integer juste for printing
         antenna_keys = [(int(e), int(s), int(a)) for (e, s, a) in antenna_keys] 
@@ -947,8 +983,8 @@ class CellAssociator:
             # Calculate the bounding box for the measurements: add a margin of 5 km
             lat_min, lat_max = sub_df['Lat'].min(), sub_df['Lat'].max()
             lng_min, lng_max = sub_df['Lng'].min(), sub_df['Lng'].max()
-            margin_lat = margin / 111
-            margin_lng = margin / (111 * np.cos(np.radians((lat_min + lat_max) / 2)))
+            margin_lat = margin / fact_rayon_terre
+            margin_lng = margin / (fact_rayon_terre * np.cos(np.radians((lat_min + lat_max) / 2)))
             lat_min -= margin_lat
             lat_max += margin_lat
             lng_min -= margin_lng
@@ -956,18 +992,24 @@ class CellAssociator:
             # print(f"Processing EARFCN: {earfcn}, PCI: {pci}, Bounding Box: ({lat_min}, {lng_min}) to ({lat_max}, {lng_max})")
 
             # Antennas within the bounding box
+            # Antennas within the bounding box
             nearby_ants = df_ant[
                 (df_ant['Lat'] >= lat_min) & (df_ant['Lat'] <= lat_max) &
                 (df_ant['Lng'] >= lng_min) & (df_ant['Lng'] <= lng_max)
             ]
-            if nearby_ants.empty:
-                continue
+
+            # Garder une seule antenne par site (ici : la première)
+            nearby_sites = nearby_ants.drop_duplicates(subset="Cartoradio_Number")
+
+            print(f"Found {len(nearby_sites)} sites in bounding box")
 
             # Convert antenna coordinates to cartesian coordinates
-            ant_coords = np.array([latlng_to_xy(lat, lng) for lat, lng in zip(nearby_ants['Lat'], nearby_ants['Lng'])])
+            ant_coords = np.array([latlng_to_xy(lat, lng) for lat, lng in zip(nearby_sites['Lat'], nearby_sites['Lng'])])
 
-            # Save antenna IDs for scoring
-            site_ids = nearby_ants['Cartoradio_Number'].values
+            # Save site IDs for scoring
+            site_ids = nearby_sites['Cartoradio_Number'].values
+
+            score_data = {}
 
             # Loop through each measurement in the group
             for _, meas in sub_df.iterrows():
@@ -1005,6 +1047,13 @@ class CellAssociator:
                 for idx, coef in enumerate(coefs):
                     site_key = site_ids[idx]
                     vote_scores[site_key] = vote_scores.get(site_key, 0) + coef
+                    score_data[site_key] = (coef, vote_scores[site_key], L, distances[idx])
+                    
+                    if pci==54 and site_key in [246908, 2625003]:
+                        print(f"EARFCN: {earfcn}, PCI: {pci}, Site: {site_key}, Meas({lat_m}, {lng_m}), L: {L:.1f}m, Dist: {distances[idx]:.1f}m, Coef: {coef:.3f}, Vote Score: {vote_scores[site_key]:.3f}")
+
+                if pci == 54:  # ou ton filtre
+                    log_scores_group(lat_m, lng_m, earfcn, pci, score_data, site_ids=[246908, 2625003])
 
             if not vote_scores:
                 continue
