@@ -16,32 +16,35 @@ from datetime import datetime
 
 # fichier où l'on log
 CSV_LOG_FILE = "scores_log.csv"
+debug = False
+# if debug = true créer csv qui donne valeur de ta, distance pour chaque point le meilleur site et les 2 suivants, retirer delta/2 si tjrs sup
 
 # Initialisation du fichier avec en-tête si pas encore créé
-def init_csv_log(site_ids=[246908, 2625003]):
-    with open(CSV_LOG_FILE, mode="w", newline="", encoding="utf-8") as f:
+def init_csv_log(csv_log_file, site_ids):
+    with open(csv_log_file, mode="w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         header = ["lat_m", "lng_m", "earfcn", "pci"]
         for site in site_ids:
             header.append(f"score_ajoute_site_{site}")
             header.append(f"score_total_site_{site}")
-            header.append(f"L_site_{site}")
             header.append(f"Distance_site_{site}")
+            header.append(f"L_site_{site}")
+            header.append(f"TA_site_{site}")
         writer.writerow(header)
 
 # Écriture d'une ligne de log
-def log_scores_group(lat_m, lng_m, earfcn, pci, score_data, site_ids=[246908, 2625003]):
+def log_scores_group(csv_log_file, lat_m, lng_m, earfcn, pci, score_data, site_ids):
     """
     score_data = {site: (score_ajoute, score_total), ...}
     """
-    with open(CSV_LOG_FILE, mode="a", newline="", encoding="utf-8") as f:
+    with open(csv_log_file, mode="a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
 
         row = [lat_m, lng_m, earfcn, pci]
         for site in site_ids:
             if site in score_data:
-                score_ajoute, score_total, L, dist = score_data[site]
-                row.extend([f"{score_ajoute:.6f}", f"{score_total:.6f}", f"{dist:.1f}", f"{L:.1f}"])
+                score_ajoute, score_total, ta, L, dist = score_data[site]
+                row.extend([f"{score_ajoute:.6f}", f"{score_total:.6f}", f"{dist:.1f}", f"{L:.1f}", f"{ta}"])
             else:
                 row.extend(["0.000000", "0.000000"])  # site non concerné
         writer.writerow(row)
@@ -874,9 +877,12 @@ class CellAssociator:
         distance_threshold = 50  # Minimum distance in meters between two values to consider a couple earfcns/pcis
         fact_rayon_terre = np.pi/180*6371  # conversion lat/lon to meters on earth surface: with theta in radian, multiply by this factor to have the distance in kilometers
         K = 1.0 # Set a constant K for confidence score calculation to convert to a 0-1 scale
+        site_ids_csv=[444333, 750433]
+        pci_csv=[81, 82]
 
         # print(f"Using delta: {delta}, alpha: {alpha}, margin: {margin} km, threshold: {threshold}")
-        init_csv_log()
+        csv_log_file = f"log__pci{[pci for pci in pci_csv]}_site{[site for site in site_ids_csv]}.csv"
+        init_csv_log( csv_log_file, site_ids_csv)
 
         # Initialize the associations dictionary
         self._assocs = {
@@ -1023,9 +1029,7 @@ class CellAssociator:
                 lat_m, lng_m, ta = meas['Lat'], meas['Lng'], meas['TA']
                 try:
                     # Calculate the theorical distance to each antenna using Timing Advance
-                    # Multiply by 0.5208 to convert TA to meters (assuming 300 km/s speed of light)
-                    # and divide by 2 to get the one-way distance
-                    L = (ta * 0.5208 * 300) / 2 
+                    L = compute_distance_with_TA(ta, 'LTE')
                 except:
                     continue
 
@@ -1035,19 +1039,8 @@ class CellAssociator:
                 dy = y_m - ant_coords[:, 1]
                 distances = np.sqrt(dx**2 + dy**2)
 
-                # Calculate coefficients based on the distance and delta
-                # If the antenna is inside the ring then the coefficient is one and the further 
-                # the antenna is from the ring defined by the calculated L +/- delta the smaller 
-                # the coefficient is
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    error = L - distances
-                    inside_ring = np.abs(error) <= delta  # bool -> dans l’anneau
-                    coefs = np.where(
-                        error == 0,  # Perfect match
-                        1,
-                        np.minimum(1, (np.abs(delta / error) / 2) ** alpha)
-                    )
-                    coefs[np.isnan(coefs)] = 0
+                # Calculate coefficients
+                coefs = compute_coefs(L, distances, delta, alpha)
 
                 # Count total measurements for the pair (EARFCN, PCI)
                 key_pair = (int(earfcn), int(pci))
@@ -1066,13 +1059,13 @@ class CellAssociator:
                 for idx, coef in enumerate(coefs):
                     site_key = site_ids[idx]
                     vote_scores[site_key] = vote_scores.get(site_key, 0) + coef
-                    score_data[site_key] = (coef, vote_scores[site_key], L, distances[idx])
+                    score_data[site_key] = (coef, vote_scores[site_key], ta, L, distances[idx])
                     
-                    if pci==54 and site_key in [246908, 2625003]:
+                    if pci in pci_csv and site_key in site_ids_csv: 
                         print(f"EARFCN: {earfcn}, PCI: {pci}, Site: {site_key}, Meas({lat_m}, {lng_m}), L: {L:.1f}m, Dist: {distances[idx]:.1f}m, Coef: {coef:.3f}, Vote Score: {vote_scores[site_key]:.3f}")
 
-                if pci == 54:  # ou ton filtre
-                    log_scores_group(lat_m, lng_m, earfcn, pci, score_data, site_ids=[246908, 2625003])
+                if pci in pci_csv:  # ou ton filtre
+                    log_scores_group(csv_log_file, lat_m, lng_m, earfcn, pci, score_data, site_ids_csv)
 
             # Generate ratios of coef1 counts to total measurements for the pair (EARFCN, PCI) per site
             denom = total_meas_per_pair[key_pair]
@@ -1174,16 +1167,16 @@ class CellAssociator:
 
         # Write the ratios coef to 1 on all coef for a site for a couple EARFCN/PCI to a CSV file for analysis
         # filtering of ratios for easier analysis
-        FILTER_PCI  = {54, 123}
-        FILTER_SITE = {246908, 2625003}
 
         rows_out = []
         for row in ratios_rows:
-            if (not FILTER_PCI or row["PCI"] in FILTER_PCI) and (not FILTER_SITE or row["Cartoradio_Number"] in FILTER_SITE):
+            if (not pci_csv or row["PCI"] in pci_csv) and (not site_ids_csv or row["Cartoradio_Number"] in site_ids_csv):
                 rows_out.append(row)
 
         df_ratios = pd.DataFrame(rows_out).sort_values(["EARFCN", "PCI", "Cartoradio_Number"])
-        df_ratios.to_csv("coef1_ratios_filtrés.csv", index=False)
+
+        path_name = f"coef1_ratios_pci{[pci for pci in pci_csv]}_sites{[site for site in site_ids_csv]}.csv"
+        df_ratios.to_csv(path_name, index=False)
 
 
     def _write_output(self, out_wr: csvt.CSVWriter):
@@ -1397,3 +1390,27 @@ def compute_bearing(lat1, lon1, lat2, lon2):
     bearing = np.arctan2(x, y)
     return (np.degrees(bearing) + 360) % 360  # Normalize to [0, 360)
 
+def compute_coefs(L, distances, delta, alpha):
+    """Compute coefficients  based on the distance and delta
+        If the antenna is inside the ring then the coefficient is one and the further 
+        the antenna is from the ring defined by the calculated L +/- delta the smaller 
+        the coefficient is"""
+    with np.errstate(divide='ignore', invalid='ignore'):
+        error = L - distances
+        coefs = np.where(
+            error == 0,  # Perfect match
+            1,
+            np.minimum(1, (np.abs(delta / error) / 2) ** alpha)
+        )
+        coefs[np.isnan(coefs)] = 0
+    return coefs
+
+def compute_distance_with_TA(ta, techno):
+    """Compute the distance in meters from the Timing Advance value.
+        Multiply by 0.5208 to convert TA to meters (assuming 300 km/s speed of light)
+        and divide by 2 to get the one-way distance"""
+    if techno == 'LTE':
+        return (ta * 0.5208 * 300) / 2
+    elif techno == 'NR':
+        return
+    
