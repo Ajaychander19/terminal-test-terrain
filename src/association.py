@@ -16,38 +16,42 @@ from datetime import datetime
 
 # fichier où l'on log
 CSV_LOG_FILE = "scores_log.csv"
-debug = False
+debug = True
 # if debug = true créer csv qui donne valeur de ta, distance pour chaque point le meilleur site et les 2 suivants, retirer delta/2 si tjrs sup
 
-# Initialisation du fichier avec en-tête si pas encore créé
-def init_csv_log(csv_log_file, site_ids):
-    with open(csv_log_file, mode="w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        header = ["lat_m", "lng_m", "earfcn", "pci"]
-        for site in site_ids:
-            header.append(f"score_ajoute_site_{site}")
-            header.append(f"score_total_site_{site}")
-            header.append(f"Distance_site_{site}")
-            header.append(f"L_site_{site}")
-            header.append(f"TA_site_{site}")
-        writer.writerow(header)
+TOP3_CSV_FILE = "top3_sites_par_point.csv"
 
-# Écriture d'une ligne de log
-def log_scores_group(csv_log_file, lat_m, lng_m, earfcn, pci, score_data, site_ids):
-    """
-    score_data = {site: (score_ajoute, score_total), ...}
-    """
-    with open(csv_log_file, mode="a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
+def init_csv_top3(csv_path=TOP3_CSV_FILE):
+    with open(csv_path, mode="w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f, delimiter=';')
+        header = ["pci", "earfcn", "lat", "lng"]
+        for k in (1, 2, 3):
+            header += [
+                f"best_site_{k}", f"dist_{k}", f"L_{k}", f"ta_{k}",
+                f"score_ajt_{k}", f"score_cumule_{k}"
+            ]
+        w.writerow(header)
 
-        row = [lat_m, lng_m, earfcn, pci]
-        for site in site_ids:
-            if site in score_data:
-                score_ajoute, score_total, ta, L, dist = score_data[site]
-                row.extend([f"{score_ajoute:.6f}", f"{score_total:.6f}", f"{dist:.1f}", f"{L:.1f}", f"{ta}"])
+def log_top3_row(pci, earfcn, lat, lng, top3_data, csv_path=TOP3_CSV_FILE):
+    """
+    top3_data = list of 3 elements (or fewer):
+    [(site, dist, L, ta, score_ajt, score_cumule), ...]
+    Missing spaces are filled with zeros.
+    """
+    with open(csv_path, mode="a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f, delimiter=';')
+        row = [pci, earfcn, f"{lat:.6f}", f"{lng:.6f}"]
+        for k in range(3):
+            if k < len(top3_data):
+                site, dist, L, ta, s_ajt, s_cum = top3_data[k]
+                row += [
+                    site,
+                    f"{dist:.1f}", f"{L:.1f}", ta,
+                    f"{s_ajt:.6f}", f"{s_cum:.6f}"
+                ]
             else:
-                row.extend(["0.000000", "0.000000"])  # site non concerné
-        writer.writerow(row)
+                row += ["", "0.0", "0.0", "", "0.000000", "0.000000"]
+        w.writerow(row)
 
 
 class CellAssociator:
@@ -877,12 +881,10 @@ class CellAssociator:
         distance_threshold = 50  # Minimum distance in meters between two values to consider a couple earfcns/pcis
         fact_rayon_terre = np.pi/180*6371  # conversion lat/lon to meters on earth surface: with theta in radian, multiply by this factor to have the distance in kilometers
         K = 1.0 # Set a constant K for confidence score calculation to convert to a 0-1 scale
-        site_ids_csv=[444333, 750433]
-        pci_csv=[81, 82]
 
         # print(f"Using delta: {delta}, alpha: {alpha}, margin: {margin} km, threshold: {threshold}")
-        csv_log_file = f"log__pci{[pci for pci in pci_csv]}_site{[site for site in site_ids_csv]}.csv"
-        init_csv_log( csv_log_file, site_ids_csv)
+        if debug:
+            init_csv_top3()
 
         # Initialize the associations dictionary
         self._assocs = {
@@ -891,9 +893,9 @@ class CellAssociator:
         }
 
         confidence_by_pair = {}
-        coef1_counts = defaultdict(int)            # (earfcn, pci, site) -> count
-        total_meas_per_pair = defaultdict(int)     # (earfcn, pci) -> count
-        ratios_rows = []                            # sorties "tous sites"
+        # coef1_counts = defaultdict(int)            # (earfcn, pci, site) -> count
+        # total_meas_per_pair = defaultdict(int)     # (earfcn, pci) -> count
+        # ratios_rows = []                            # sorties "tous sites"
 
         # Load measurement and antenna data
         df_meas = self._measure_point.copy()
@@ -992,6 +994,9 @@ class CellAssociator:
             # Initialize a dictionary to hold vote scores for each site
             vote_scores = {}
 
+            # we store for EACH point a dict: site -> (score_ajt, score_cumule, ta, L, dist)
+            points_buffer = []
+
             # Calculate the bounding box for the measurements: add a margin of 5 km
             lat_min, lat_max = sub_df['Lat'].min(), sub_df['Lat'].max()
             lng_min, lng_max = sub_df['Lng'].min(), sub_df['Lng'].max()
@@ -1003,7 +1008,6 @@ class CellAssociator:
             lng_max += margin_lng
             # print(f"Processing EARFCN: {earfcn}, PCI: {pci}, Bounding Box: ({lat_min}, {lng_min}) to ({lat_max}, {lng_max})")
 
-            # Antennas within the bounding box
             # Antennas within the bounding box
             nearby_ants = df_ant[
                 (df_ant['Lat'] >= lat_min) & (df_ant['Lat'] <= lat_max) &
@@ -1020,8 +1024,9 @@ class CellAssociator:
 
             # Save site IDs for scoring
             site_ids = nearby_sites['Cartoradio_Number'].values
-
-            score_data = {}
+            
+            # current cumulative total per site while browsing the points
+            cumul_courant = {int(s): 0.0 for s in site_ids}
 
             # Loop through each measurement in the group
             for _, meas in sub_df.iterrows():
@@ -1042,45 +1047,55 @@ class CellAssociator:
                 # Calculate coefficients
                 coefs = compute_coefs(L, distances, delta, alpha)
 
-                # Count total measurements for the pair (EARFCN, PCI)
-                key_pair = (int(earfcn), int(pci))
-                total_meas_per_pair[key_pair] += 1
+                per_site_stats = {}  # dict for one point
 
-                is_one_mask = coefs >= 1
+                if debug:
+                    for site, coef, dist in zip(site_ids, coefs, distances):
+                        site = int(site)
+                        c = float(coef)
 
-                # Count coef1 occurrences for the pair (EARFCN, PCI) per site
-                for idx, is_one in enumerate(is_one_mask):
-                    site_key = int(site_ids[idx])
-                    seen_sites.add(site_key)
-                    if is_one:
-                        coef1_counts[(key_pair[0], key_pair[1], site_key)] += 1
+                        # Update overall group total AND current total "after this point"
+                        vote_scores[site] = vote_scores.get(site, 0.0) + c
+                        cumul_courant[site] = cumul_courant.get(site, 0.0) + c
+
+                        # we keep for this point: add (=c), cumul_apres, ta, L, dist
+                        per_site_stats[site] = (c, cumul_courant[site], ta, L, dist)
+
+                    # buffer the line at this point
+                    points_buffer.append( (lat_m, lng_m, per_site_stats) )
+
+                # # Count total measurements for the pair (EARFCN, PCI)
+                # key_pair = (int(earfcn), int(pci))
+                # total_meas_per_pair[key_pair] += 1
+
+                # is_one_mask = coefs >= 1
+
+                # # Count coef1 occurrences for the pair (EARFCN, PCI) per site
+                # for idx, is_one in enumerate(is_one_mask):
+                #     site_key = int(site_ids[idx])
+                #     seen_sites.add(site_key)
+                #     if is_one:
+                #         coef1_counts[(key_pair[0], key_pair[1], site_key)] += 1
 
                 # Score by site with cartoradio number as key
                 for idx, coef in enumerate(coefs):
                     site_key = site_ids[idx]
                     vote_scores[site_key] = vote_scores.get(site_key, 0) + coef
-                    score_data[site_key] = (coef, vote_scores[site_key], ta, L, distances[idx])
-                    
-                    if pci in pci_csv and site_key in site_ids_csv: 
-                        print(f"EARFCN: {earfcn}, PCI: {pci}, Site: {site_key}, Meas({lat_m}, {lng_m}), L: {L:.1f}m, Dist: {distances[idx]:.1f}m, Coef: {coef:.3f}, Vote Score: {vote_scores[site_key]:.3f}")
-
-                if pci in pci_csv:  # ou ton filtre
-                    log_scores_group(csv_log_file, lat_m, lng_m, earfcn, pci, score_data, site_ids_csv)
 
             # Generate ratios of coef1 counts to total measurements for the pair (EARFCN, PCI) per site
-            denom = total_meas_per_pair[key_pair]
-            if denom > 0:
-                for site_key in seen_sites:
-                    num = coef1_counts.get((key_pair[0], key_pair[1], site_key), 0)
-                    ratio = num / denom
-                    ratios_rows.append({
-                        "EARFCN": key_pair[0],
-                        "PCI": key_pair[1],
-                        "Cartoradio_Number": site_key,
-                        "Coef1_Ratio": ratio,
-                        "Coef1_Count": num,
-                        "Total_Meas": denom
-                    })
+            # denom = total_meas_per_pair[key_pair]
+            # if denom > 0:
+            #     for site_key in seen_sites:
+            #         num = coef1_counts.get((key_pair[0], key_pair[1], site_key), 0)
+            #         ratio = num / denom
+            #         ratios_rows.append({
+            #             "EARFCN": key_pair[0],
+            #             "PCI": key_pair[1],
+            #             "Cartoradio_Number": site_key,
+            #             "Coef1_Ratio": ratio,
+            #             "Coef1_Count": num,
+            #             "Total_Meas": denom
+            #         })
 
             if not vote_scores:
                 continue
@@ -1089,6 +1104,26 @@ class CellAssociator:
             # If multiple sites have the same score, the max function will return one of them
             selected_site, best_score = max(vote_scores.items(), key=lambda x: x[1])
 
+            if debug: 
+                top3_sites = sorted(vote_scores.items(), key=lambda x: x[1], reverse=True)[:3]
+                top3_ids = [sid for sid, _ in top3_sites]
+
+                # writting CSV: one line per point, keeping only 3 sites
+                for (lat_m, lng_m, per_site_stats) in points_buffer:
+                    top3_data_for_point = []
+                    for sid in top3_ids:
+                        if sid in per_site_stats:
+                            s_ajt, s_cum, ta, L, dist = per_site_stats[sid]
+                            top3_data_for_point.append( (sid, dist, L, ta, s_ajt, s_cum) )
+                        else:
+                            # if point don't have site
+                            top3_data_for_point.append( (sid, 0.0, 0.0, "", 0.0, 0.0) )
+
+                    # write
+                    log_top3_row(pci=int(pci), earfcn=int(earfcn),
+                                lat=lat_m, lng=lng_m,
+                                top3_data=top3_data_for_point)
+                
             if best_score < threshold:
                 print(f"[WARNING] No suitable site found for EARFCN: {earfcn}, PCI: {pci} with score {best_score}.")
                 continue
@@ -1168,15 +1203,15 @@ class CellAssociator:
         # Write the ratios coef to 1 on all coef for a site for a couple EARFCN/PCI to a CSV file for analysis
         # filtering of ratios for easier analysis
 
-        rows_out = []
-        for row in ratios_rows:
-            if (not pci_csv or row["PCI"] in pci_csv) and (not site_ids_csv or row["Cartoradio_Number"] in site_ids_csv):
-                rows_out.append(row)
+        # rows_out = []
+        # for row in ratios_rows:
+        #     if (not pci_csv or row["PCI"] in pci_csv) and (not site_ids_csv or row["Cartoradio_Number"] in site_ids_csv):
+        #         rows_out.append(row)
 
-        df_ratios = pd.DataFrame(rows_out).sort_values(["EARFCN", "PCI", "Cartoradio_Number"])
+        # df_ratios = pd.DataFrame(rows_out).sort_values(["EARFCN", "PCI", "Cartoradio_Number"])
 
-        path_name = f"coef1_ratios_pci{[pci for pci in pci_csv]}_sites{[site for site in site_ids_csv]}.csv"
-        df_ratios.to_csv(path_name, index=False)
+        # path_name = f"coef1_ratios_pci{[pci for pci in pci_csv]}_sites{[site for site in site_ids_csv]}.csv"
+        # df_ratios.to_csv(path_name, index=False)
 
 
     def _write_output(self, out_wr: csvt.CSVWriter):
