@@ -875,7 +875,7 @@ class CellAssociator:
         """Associate EARFCN/PCI pairs to antennas using Timing Advance and Azimuth to choose antenna within selected site."""
 
         delta = 80  # Tolerance in meters
-        alpha = 1.5 # Exponent for distance weighting
+        alpha = 0.5 # Exponent for distance weighting
         margin = 1  # Margin in km for bounding box
         threshold = 6  # Minimum score to consider an association valid
         distance_threshold = 50  # Minimum distance in meters between two values to consider a couple earfcns/pcis
@@ -970,6 +970,7 @@ class CellAssociator:
 
             # Skip groups with less than 2 measurements
             if len(coords_xy) < 2:
+                print(f"[WARNING ]{earfcn}/{pci} ignored because points are too close")
                 continue 
 
             # Compute the maximum distance between points in the group
@@ -1431,7 +1432,7 @@ def compute_coefs(L, distances, delta, alpha):
         the antenna is from the ring defined by the calculated L +/- delta the smaller 
         the coefficient is"""
     with np.errstate(divide='ignore', invalid='ignore'):
-        error = L - distances
+        error = L - distances - delta/2
         coefs = np.where(
             error == 0,  # Perfect match
             1,
