@@ -16,7 +16,7 @@ from datetime import datetime
 
 # fichier où l'on log
 CSV_LOG_FILE = "scores_log.csv"
-debug = True
+debug = False
 # if debug = true créer csv qui donne valeur de ta, distance pour chaque point le meilleur site et les 2 suivants, retirer delta/2 si tjrs sup
 
 TOP3_CSV_FILE = "top3_sites_par_point.csv"
@@ -287,6 +287,125 @@ class CellAssociator:
             
             self._write_output(out_wr)
 
+    def _has_ta_values(self) -> bool:
+        """Returns True if at least one TA value is present in the measurement file."""
+        try:
+            with csvt.CSVReader(self._in_meas) as meas:
+                line = meas.read_line()
+                while line != ['']:
+                    if line and line[0] == 'MEASURE_SERVING':
+                        # TA expected in column 11 if present.
+                        if len(line) > 10 and str(line[10]).strip() not in ('', 'NA'):
+                            return True
+                    line = meas.read_line()
+        except Exception:
+            pass
+        return False
+
+
+    def _to_int_token(x: str) -> int:
+        s = str(x).strip()
+        if s in ("", "NA"):
+            raise ValueError(f"Empty integer field or NA: {x!r}")
+        try:
+            return int(s)
+        except ValueError:
+            try:
+                return int(round(float(s)))
+            except ValueError:
+                if "." in s and s.split(".", 1)[0].isdigit():
+                    return int(s.split(".", 1)[0])
+                raise
+
+    def _fusion_association_files(self, file_assoc_no_ta: str, file_assoc_ta: str) -> str:
+        # 1) Keys present in the _TA file
+        ta_keys = set()
+        with csvt.CSVReader(file_assoc_ta) as rdr:
+            line = rdr.read_line()
+            while line != ['']: 
+                if line and line[0] == 'ASSOC':
+                    try:
+                        key = tuple(CellAssociator._to_int_token(v) for v in line[1:7])  # CNR, Ant, TAC, CID, EARFCN, PCI
+                        ta_keys.add(key)
+                    except ValueError as e:
+                        print(f"[WARN] ASSOC TA ignorée: {line} ({e})")
+                line = rdr.read_line()
+
+        fused_name = os.path.join(
+            self._outdir,
+            'assoc_{0}_{1}_FUSION.csv'.format(
+                pathlib.Path(self._in_meas).stem.replace("cev",""),
+                pathlib.Path(self._in_sites).stem.replace("cev",""),
+            )
+        )
+
+        # 2) RAW copy of the base file preserving the entire header (DEFINE ... CONTENT)
+        with open(file_assoc_no_ta, 'r', encoding='utf-8', errors='ignore') as fin:
+            lines = fin.read().splitlines(True)  # keep the \n
+
+        with open(fused_name, 'w', encoding='utf-8', newline='\n') as fout:
+            in_content = False
+            for raw in lines:
+                line = raw.rstrip('\n')
+                tag = line.split('|', 1)[0] if line else ''
+
+                if not in_content:
+                    fout.write(raw)
+                    if tag.upper() == 'CONTENT':
+                        in_content = True
+                    continue
+
+                # Once in the CONTENT part -> filter only the ASSOC data lines
+                if tag == 'ASSOC':
+                    parts = line.split('|')
+                    try:
+                        key = tuple(CellAssociator._to_int_token(v) for v in parts[1:7])
+                    except ValueError:
+                        key = None
+                    if key is not None and key in ta_keys:
+                        fout.write(raw)  # keep
+                    # Otherwise: skip
+                else:
+                    fout.write(raw)      # Rewrite without modification
+
+        return fused_name
+
+
+
+
+    def fuse_associations(self, mode: int = 1, assoc_file: str | None = None) -> str:
+        """
+        1) Detects the presence of TA in the measurement file.
+        2) If no TA -> launches calculate_association then returns the path to the generated file.
+        3) If TA -> launches calculate_association_TA then calculate_association,
+        then creates a FUSION file filtering out the ASSOCs missing from the TA result.
+        Returns the path to the FUSION file.
+        """
+        has_ta = self._has_ta_values()
+
+        # Expected names of standard outputs
+        base_name = 'assoc_{0}_{1}.csv'.format(
+            pathlib.Path(self._in_meas).stem.replace("cev",""),
+            pathlib.Path(self._in_sites).stem.replace("cev",""),
+        )
+        base_path = os.path.join(self._outdir, base_name)
+
+        ta_name = 'assoc_{0}_{1}_TA.csv'.format(
+            pathlib.Path(self._in_meas).stem.replace("cev",""),
+            pathlib.Path(self._in_sites).stem.replace("cev",""),
+        )
+        ta_path = os.path.join(self._outdir, ta_name)
+
+        if not has_ta:
+            # No TA -> standard association
+            self.calculate_association(mode, assoc_file if assoc_file else "")
+            return base_path
+
+        # With TA -> first TA, then standard, then fusion
+        self.calculate_association_TA()
+        self.calculate_association(mode, assoc_file if assoc_file else "")
+        fused_path = self._fusion_association_files(base_path, ta_path)
+        return fused_path
 
 
     def _read_measurements(self, out_wr: csvt.CSVWriter):
@@ -1065,38 +1184,10 @@ class CellAssociator:
                     # buffer the line at this point
                     points_buffer.append( (lat_m, lng_m, per_site_stats) )
 
-                # # Count total measurements for the pair (EARFCN, PCI)
-                # key_pair = (int(earfcn), int(pci))
-                # total_meas_per_pair[key_pair] += 1
-
-                # is_one_mask = coefs >= 1
-
-                # # Count coef1 occurrences for the pair (EARFCN, PCI) per site
-                # for idx, is_one in enumerate(is_one_mask):
-                #     site_key = int(site_ids[idx])
-                #     seen_sites.add(site_key)
-                #     if is_one:
-                #         coef1_counts[(key_pair[0], key_pair[1], site_key)] += 1
-
                 # Score by site with cartoradio number as key
                 for idx, coef in enumerate(coefs):
                     site_key = site_ids[idx]
                     vote_scores[site_key] = vote_scores.get(site_key, 0) + coef
-
-            # Generate ratios of coef1 counts to total measurements for the pair (EARFCN, PCI) per site
-            # denom = total_meas_per_pair[key_pair]
-            # if denom > 0:
-            #     for site_key in seen_sites:
-            #         num = coef1_counts.get((key_pair[0], key_pair[1], site_key), 0)
-            #         ratio = num / denom
-            #         ratios_rows.append({
-            #             "EARFCN": key_pair[0],
-            #             "PCI": key_pair[1],
-            #             "Cartoradio_Number": site_key,
-            #             "Coef1_Ratio": ratio,
-            #             "Coef1_Count": num,
-            #             "Total_Meas": denom
-            #         })
 
             if not vote_scores:
                 continue
@@ -1104,10 +1195,18 @@ class CellAssociator:
             # Select the site with the highest score
             # If multiple sites have the same score, the max function will return one of them
             selected_site, best_score = max(vote_scores.items(), key=lambda x: x[1])
+            top3_sites = sorted(vote_scores.items(), key=lambda x: x[1], reverse=True)[1:3]
+            top3_ids = [sid for sid, _ in top3_sites]
+            best_sites = {}
+            best_sites[selected_site] = best_score
+
+            for sid in top3_ids:
+                if vote_scores[sid] < best_score/2:
+                    continue
+                else:
+                    best_sites[sid] = vote_scores[sid]
 
             if debug: 
-                top3_sites = sorted(vote_scores.items(), key=lambda x: x[1], reverse=True)[:3]
-                top3_ids = [sid for sid, _ in top3_sites]
 
                 # writting CSV: one line per point, keeping only 3 sites
                 for (lat_m, lng_m, per_site_stats) in points_buffer:
@@ -1124,95 +1223,54 @@ class CellAssociator:
                     log_top3_row(pci=int(pci), earfcn=int(earfcn),
                                 lat=lat_m, lng=lng_m,
                                 top3_data=top3_data_for_point)
+                    
                 
             if best_score < threshold:
                 print(f"[WARNING] No suitable site found for EARFCN: {earfcn}, PCI: {pci} with score {best_score}.")
                 continue
             
-            # Among the antennas of the selected site, choose the one with the best azimuth match
-            subset_site = nearby_ants[nearby_ants['Cartoradio_Number'] == selected_site]
-            if subset_site.empty:
-                continue
+            for bsite in best_sites:
+                # Among the antennas of the selected site, choose the one with the best azimuth match
+                subset_site = nearby_ants[nearby_ants['Cartoradio_Number'] == bsite]
+                if subset_site.empty:
+                    continue
 
-            if use_azimuth:
-                # Average latitude and longitude of the measurements for bearing calculation
-                lat_cible = sub_df['Lat'].mean()
-                lng_cible = sub_df['Lng'].mean()
+                if use_azimuth:
+                    # Average latitude and longitude of the measurements for bearing calculation
+                    lat_cible = sub_df['Lat'].mean()
+                    lng_cible = sub_df['Lng'].mean()
 
-                # Compute bearings from the antennas to the average measurement point
-                # and compare with azimuths to find the best match
-                bearings = compute_bearing(
-                    subset_site['Lat'].values,
-                    subset_site['Lng'].values,
-                    lat_cible,
-                    lng_cible
-                )
+                    # Compute bearings from the antennas to the average measurement point
+                    # and compare with azimuths to find the best match
+                    bearings = compute_bearing(
+                        subset_site['Lat'].values,
+                        subset_site['Lng'].values,
+                        lat_cible,
+                        lng_cible
+                    )
 
-                # Convert azimuths to bearings
-                azis = subset_site['Azimuth'].values
-                diffs = np.abs((bearings - azis + 180) % 360 - 180)
-                best_idx = np.argmin(diffs)
+                    # Convert azimuths to bearings
+                    azis = subset_site['Azimuth'].values
+                    diffs = np.abs((bearings - azis + 180) % 360 - 180)
+                    best_idx = np.argmin(diffs)
 
-            else:
-                # When azimuth is not used, select the first antenna
-                best_idx = 0
+                else:
+                    # When azimuth is not used, select the first antenna
+                    best_idx = 0
 
-            # Data for the best antenna
-            best_ant = subset_site.iloc[best_idx]
-            sample = sub_df.iloc[0]
+                # Data for the best antenna
+                best_ant = subset_site.iloc[best_idx]
+                sample = sub_df.iloc[0]
 
-            # Building the association key
-            key_ant = (earfcn, best_ant['Cartoradio_Number'], best_ant['Ant_Number'])
+                # Insertion dans _assocs
+                self._assocs['Cartoradio_Number'].append(best_ant['Cartoradio_Number'])
+                self._assocs['Ant_Number'].append(best_ant['Ant_Number'])
+                self._assocs['TAC'].append(int(sample.get('TAC', 0)))
+                self._assocs['CID'].append(int(sample.get('CID', 0)))
+                self._assocs['EARFCN'].append(earfcn)
+                self._assocs['PCI'].append(pci)
+                self._assocs['Score'].append(confidence_by_pair.get((earfcn, pci), np.nan))
 
-            # Find the index of the antenna key in the list
-            col_idx = antenna_keys.index(key_ant)
-            row_idx = pci_keys.index(pci)
-            score_matrix[row_idx, col_idx] = max(score_matrix[row_idx, col_idx], vote_scores[selected_site])
-
-
-        for col_idx, key_ant in enumerate(antenna_keys):
-            # Score for all PCIs associated with this antenna, earfcn key
-            scores = score_matrix[:, col_idx]  # Get scores for this antenna across all PCIs
-            nonzero_rows = np.nonzero(scores)[0] # Get indices of non-zero scores
-
-            if len(nonzero_rows) == 0:
-                continue
-
-            # Best pci for the tuple (EARFCN, Cartoradio_Number, Ant_Number)
-            best_row_idx = nonzero_rows[np.argmax(scores[nonzero_rows])]
-            best_score = scores[best_row_idx]
-            best_pci = pci_keys[best_row_idx]
-
-            earfcn, cartoradio, ant_number = key_ant
-
-            # Extracting the sample row for the best PCI
-            sample_rows = df_meas[(df_meas['EARFCN'] == earfcn) & (df_meas['PCI'] == best_pci)]
-            if sample_rows.empty:
-                continue
-
-            sample = sample_rows.iloc[0]
-
-            # Insertion dans _assocs
-            self._assocs['Cartoradio_Number'].append(cartoradio)
-            self._assocs['Ant_Number'].append(ant_number)
-            self._assocs['TAC'].append(int(sample.get('TAC', 0)))
-            self._assocs['CID'].append(int(sample.get('CID', 0)))
-            self._assocs['EARFCN'].append(earfcn)
-            self._assocs['PCI'].append(best_pci)
-            self._assocs['Score'].append(confidence_by_pair.get((earfcn, int(best_pci)), np.nan))
-
-        # Write the ratios coef to 1 on all coef for a site for a couple EARFCN/PCI to a CSV file for analysis
-        # filtering of ratios for easier analysis
-
-        # rows_out = []
-        # for row in ratios_rows:
-        #     if (not pci_csv or row["PCI"] in pci_csv) and (not site_ids_csv or row["Cartoradio_Number"] in site_ids_csv):
-        #         rows_out.append(row)
-
-        # df_ratios = pd.DataFrame(rows_out).sort_values(["EARFCN", "PCI", "Cartoradio_Number"])
-
-        # path_name = f"coef1_ratios_pci{[pci for pci in pci_csv]}_sites{[site for site in site_ids_csv]}.csv"
-        # df_ratios.to_csv(path_name, index=False)
 
 
     def _write_output(self, out_wr: csvt.CSVWriter):

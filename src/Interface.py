@@ -255,7 +255,7 @@ class GUI(tkinter.Frame):
 
                 self.change_color('green')
 
-            elif number == 10:  # association with TA
+            elif number == 10:  # association 
 
                 self.change_color('red')
                 files = filedialog.askopenfilenames(initialdir=self.working_directory,
@@ -279,7 +279,7 @@ class GUI(tkinter.Frame):
                         meas_file,
                         site_file,
                         self.working_directory
-                    ).calculate_association_TA()
+                    ).fuse_associations()
                     elapsed = time.perf_counter() - start_time
                     print(f"Conversion duration: {elapsed:.6f} seconds")
 
