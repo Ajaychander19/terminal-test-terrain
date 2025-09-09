@@ -13,10 +13,13 @@ from dictutils import insert_data
 from scipy.spatial.distance import pdist
 import csv
 from datetime import datetime
+import copy
+
 
 # fichier où l'on log
 CSV_LOG_FILE = "scores_log.csv"
 debug = False
+
 # if debug = true créer csv qui donne valeur de ta, distance pour chaque point le meilleur site et les 2 suivants, retirer delta/2 si tjrs sup
 
 TOP3_CSV_FILE = "top3_sites_par_point.csv"
@@ -52,7 +55,6 @@ def log_top3_row(pci, earfcn, lat, lng, top3_data, csv_path=TOP3_CSV_FILE):
             else:
                 row += ["", "0.0", "0.0", "", "0.000000", "0.000000"]
         w.writerow(row)
-
 
 class CellAssociator:
 
@@ -157,256 +159,157 @@ class CellAssociator:
         self.start_date = None
         self.end_date = None
 
-    def calculate_association(self, mode: int, assoc_file: str):
+    def _prepare_header_for_writer(self, header: dict) -> None:
+        """Read DEFINE bloc of measurement file and extend line accordingly"""
 
+        # Open measurement file for reading
+        with open(self._in_meas, 'r', encoding='utf-8', errors='ignore') as fin:
+
+            # Scans the file line by line
+            for raw in fin:
+
+                # Removes the trailing line break
+                line = raw.rstrip('\n')
+
+                # Ignores empty lines
+                if not line:
+                    continue
+
+                # Cuts on '|': tag = first field, rest = rest of the line
+                tag, *rest = line.split('|')
+
+                # Ending of DEFINE bloc
+                if tag == 'CONTENT':
+                    break
+
+                # Get the version if present and convert it to float
+                if tag == 'VERSION':
+                    try: self.version = float(rest[0])
+                    except: pass
+
+                elif tag == 'TECHNO':
+                    self.techno = rest[0]
+
+                # Number of dynamic columns after 4 NA
+                elif tag == 'MEAS_EARFCNS':
+                    n = max(0, len(rest) - 4)  # nb of EARFCN_* to add
+                    header['MEAS_EARFCNS'] += [f'EARFCN_{i}' for i in range(n)]
+                elif tag == 'MEAS_PCIS':
+                    n = max(0, len(rest) - 4)
+                    header['MEAS_PCIS'] += [f'PCI_{i}' for i in range(n)]
+                elif tag == 'MEAS_BEAMS':
+                    n = max(0, len(rest) - 4)
+                    header['MEAS_BEAMS'] += [f'BEAM_{i}' for i in range(n)]
+                elif tag == 'MEAS_NB':
+                    n = max(0, len(rest) - 4)
+                    header['MEAS_NB'] += [f'nb_meas_{i}' for i in range(n)]
+                elif tag == 'MEASUREMENT':
+                    n = max(0, len(rest) - 4)
+                    header['MEASUREMENT'] += [f'Meas_{i}' for i in range(n)]
+
+
+    def calculate_association(self, mode: int, assoc_file: str, keep_only_keys: set[tuple] | None = None, out_name: str | None = None):
         """Calculates the association between EARFCNs / PCIs and base stations."""
 
         print('Starting association...')
 
-        file_name = os.path.join(self._outdir, 'assoc_{0}_{1}.csv'.format(
-                    pathlib.Path(self._in_meas).stem.replace("cev",""),
-                    pathlib.Path(self._in_sites).stem.replace("cev","")))
+        # Construct file name
+        file_name = os.path.join(
+            self._outdir, # target folde
+            (out_name if out_name else 'assoc_{0}_{1}.csv').format(
+                pathlib.Path(self._in_meas).stem.replace("cev",""),
+                pathlib.Path(self._in_sites).stem.replace("cev",""))
+        )
 
-        header = self._HEADER_V2
+        # independent copy
+        header = copy.deepcopy(self._HEADER_V2)
 
-        with csvt.CSVReader(self._in_meas) as meas:
-            for _ in range(10):
-                line = meas.read_line()
-                if not line:
-                    break
+        # Extends measure lines of header
+        self._prepare_header_for_writer(header)
 
-                if line[0] == 'VERSION':
-
-                    self.version = float(line[1])
-                    header = self._HEADER_V2
-
-                if line[0] == 'TECHNO':
-                    self.techno = str(line[1])
-
-                if line[0] == 'MEAS_EARFCNS':
-
-                    n = len(line) - 5
-
-                    header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
-                    header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
-                    header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
-                    header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
-                    header['MEASUREMENT'] = header['MEASUREMENT'] + ['Meas_{}'.format(i) for i in range(n)]
-                    break
-
+        # Open writer
         with csvt.CSVWriter(file_name, header) as out_wr:
-
-            print('Reading measurements...')
-
-            self._read_measurements(out_wr)
-
-            print('Reading sites...')
-
-            self._read_antennas(out_wr)
-
+            print('Reading measurements...'); self._read_measurements(out_wr) # Reads measurement file, fills self._measure_point and copies the useful DEFINE lines
+            print('Reading sites...');        self._read_antennas(out_wr) # Reads the sites, fills self._antennas and copies the DELIMITER
             if mode == 1:
                 print('Identifying possible Associations...')
-                self._associate_data()
+
+                # Filter of association with TA
+                allowed_ep = None
+                if keep_only_keys:
+                    allowed_ep = {(e, p) for (_,_,_,_,e,p) in keep_only_keys}
+                self._associate_data(allowed_ep=allowed_ep) # Compute assoc with RSRP using only these pairs
             else:
-                print('Using association file...')
-                self._associate_read(assoc_file)
-
+                print('Using association file...'); self._associate_read(assoc_file) 
             print('Writing output...')
-
-            self._write_output(out_wr)
-
-            header['MEAS_EARFCNS'] = ['NA', 'NA', 'NA', 'NA']
-            header['MEAS_PCIS'] = ['NA', 'NA', 'NA', 'NA']
-            header['MEAS_BEAMS'] = ['NA', 'NA', 'NA', 'NA']
-            header['MEAS_NB'] = ['NA', 'NA', 'NA', 'NA']
-            header['MEASUREMENT'] = ['Timestamp', 'Lat', 'Lng', 'Measurement_Name']
-
-
-    def calculate_association_TA(self):
-        """Calculates the association between EARFCNs / PCIs and base stations using timing advance."""
-
-        print('Starting association...')
-
-        file_meas = pathlib.Path(self._in_meas)
-        file_sites = pathlib.Path(self._in_sites)
-
-        file_name = os.path.join(self._outdir, 'assoc_{0}_{1}_TA.csv'.format(
-                    pathlib.Path(self._in_meas).stem.replace("cev",""),
-                    pathlib.Path(self._in_sites).stem.replace("cev","")))
+            self._write_output(out_wr, keep_only_keys=keep_only_keys) # write BS_ANT_DIR, ASSOC and MEASURE_SERVING
         
-        header = self._HEADER_V2
+        # reset dynamic header
+        header['MEAS_EARFCNS'] = ['NA','NA','NA','NA']
+        header['MEAS_PCIS'] = ['NA','NA','NA','NA']
+        header['MEAS_BEAMS'] = ['NA','NA','NA','NA']
+        header['MEAS_NB'] = ['NA','NA','NA','NA']
+        header['MEASUREMENT'] = ['Timestamp','Lat','Lng','Measurement_Name']
+        return file_name
+
+    def associate_single_pass_with_ta_filter(self, mode: int = 1, assoc_file: str = '') -> str:
+        """ Computes in memory the associations from the Timing Advance (TA) -> set of keys.
+            Runs the standard association and only writes the ASSOCs whose key is present on the TA side.
+            If no TA key is found, writes the complete standard association.
+
+            Args:
+            mode: 1 = compute associations; 0 = reread an existing association file.
+            assoc_file: path to the CSV file of associations to reread if mode==0.
+
+            Returns:
+            Path to the produced CSV file:
+            - *_FUSION.csv if a TA filter is applied,
+            - *.csv otherwise."""
+        ta_keys = self.compute_ta_assoc_keys()  # calculates all TA associations in memory (no file created)
+
+        # If no TA detected only execute the association method with the RSRP
+        if not ta_keys:
+            return self.calculate_association(mode, assoc_file, keep_only_keys=None, out_name='assoc_{0}_{1}.csv')
+        return self.calculate_association(
+            mode, assoc_file, keep_only_keys=ta_keys, out_name='assoc_{0}_{1}_FUSION.csv'
+        )
+
+
+    def compute_ta_assoc_keys(self) -> set[tuple]:
+        """ Calculates the associations using Timing Advance and returns
+            all the association keys.
+
+            Key = (Cartoradio_Number, Ant_Number, TAC, CID, EARFCN, PCI) as integers."""
         
+        # Resets variables before reading
+        self._measure_point = None
+        self._antennas = None
 
-        with csvt.CSVReader(self._in_meas) as meas:
-            for _ in range(10):
-                line = meas.read_line()
-                if not line:
-                    break
+        # Loads input data without writing anything
+        self._read_measurements(_NullWriter())
+        self._read_antennas(_NullWriter())
 
-                if line[0] == 'VERSION':
+        # Associates with TA and fills self._assoc
+        self._associate_data_with_TA()
 
-                    self.version = float(line[1])
-                    header = self._HEADER_V2
-                    header['START_DATE'] = ['Date']
-                    header['END_DATE'] = ['Date']
-                
-                if line[0] == 'START_DATE':
-                    self.start_date = line[1]
-
-                if line[0] == 'END_DATE':
-                    self.send_date = line[1]
-
-                if line[0] == 'TECHNO':
-                    self.techno = str(line[1])
-
-                if line[0] == 'MEAS_EARFCNS':
-
-                    n = len(line) - 5
-
-                    header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
-                    header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
-                    header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
-                    header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
-                    header['MEASUREMENT'] = header['MEASUREMENT'] + ['Meas_{}'.format(i) for i in range(n)]
-                    break
-            
-            
-        with csvt.CSVWriter(file_name, header) as out_wr:
-
-            print('Reading measurements...')
-
-            self._read_measurements(out_wr) # Measurements
-
-            print('Reading sites...')
-
-            self._read_antennas(out_wr) # Delimiter
-
-            print('Identifying possible Associations...')
-            print('Input files: {0} and {1}'.format(file_meas, file_sites))
-            self._associate_data_with_TA()
-            
-            self._write_output(out_wr)
-
-    def _has_ta_values(self) -> bool:
-        """Returns True if at least one TA value is present in the measurement file."""
-        try:
-            with csvt.CSVReader(self._in_meas) as meas:
-                line = meas.read_line()
-                while line != ['']:
-                    if line and line[0] == 'MEASURE_SERVING':
-                        # TA expected in column 11 if present.
-                        if len(line) > 10 and str(line[10]).strip() not in ('', 'NA'):
-                            return True
-                    line = meas.read_line()
-        except Exception:
-            pass
-        return False
-
-
-    def _to_int_token(x: str) -> int:
-        s = str(x).strip()
-        if s in ("", "NA"):
-            raise ValueError(f"Empty integer field or NA: {x!r}")
-        try:
-            return int(s)
-        except ValueError:
-            try:
-                return int(round(float(s)))
-            except ValueError:
-                if "." in s and s.split(".", 1)[0].isdigit():
-                    return int(s.split(".", 1)[0])
-                raise
-
-    def _fusion_association_files(self, file_assoc_no_ta: str, file_assoc_ta: str) -> str:
-        # 1) Keys present in the _TA file
+        # Contains normalize keys
         ta_keys = set()
-        with csvt.CSVReader(file_assoc_ta) as rdr:
-            line = rdr.read_line()
-            while line != ['']: 
-                if line and line[0] == 'ASSOC':
-                    try:
-                        key = tuple(CellAssociator._to_int_token(v) for v in line[1:7])  # CNR, Ant, TAC, CID, EARFCN, PCI
-                        ta_keys.add(key)
-                    except ValueError as e:
-                        print(f"[WARN] ASSOC TA ignorée: {line} ({e})")
-                line = rdr.read_line()
 
-        fused_name = os.path.join(
-            self._outdir,
-            'assoc_{0}_{1}_FUSION.csv'.format(
-                pathlib.Path(self._in_meas).stem.replace("cev",""),
-                pathlib.Path(self._in_sites).stem.replace("cev",""),
+        # Alias for readability
+        A = self._assocs
+
+        # Iterates over all produced associations
+        for i in range(len(A['Cartoradio_Number'])):
+            key = (
+                to_int_token(A['Cartoradio_Number'][i]),
+                to_int_token(A['Ant_Number'][i]),
+                to_int_token(A['TAC'][i]),
+                to_int_token(A['CID'][i]),
+                to_int_token(A['EARFCN'][i]),
+                to_int_token(A['PCI'][i]),
             )
-        )
-
-        # 2) RAW copy of the base file preserving the entire header (DEFINE ... CONTENT)
-        with open(file_assoc_no_ta, 'r', encoding='utf-8', errors='ignore') as fin:
-            lines = fin.read().splitlines(True)  # keep the \n
-
-        with open(fused_name, 'w', encoding='utf-8', newline='\n') as fout:
-            in_content = False
-            for raw in lines:
-                line = raw.rstrip('\n')
-                tag = line.split('|', 1)[0] if line else ''
-
-                if not in_content:
-                    fout.write(raw)
-                    if tag.upper() == 'CONTENT':
-                        in_content = True
-                    continue
-
-                # Once in the CONTENT part -> filter only the ASSOC data lines
-                if tag == 'ASSOC':
-                    parts = line.split('|')
-                    try:
-                        key = tuple(CellAssociator._to_int_token(v) for v in parts[1:7])
-                    except ValueError:
-                        key = None
-                    if key is not None and key in ta_keys:
-                        fout.write(raw)  # keep
-                    # Otherwise: skip
-                else:
-                    fout.write(raw)      # Rewrite without modification
-
-        return fused_name
-
-
-
-
-    def fuse_associations(self, mode: int = 1, assoc_file: str | None = None) -> str:
-        """
-        1) Detects the presence of TA in the measurement file.
-        2) If no TA -> launches calculate_association then returns the path to the generated file.
-        3) If TA -> launches calculate_association_TA then calculate_association,
-        then creates a FUSION file filtering out the ASSOCs missing from the TA result.
-        Returns the path to the FUSION file.
-        """
-        has_ta = self._has_ta_values()
-
-        # Expected names of standard outputs
-        base_name = 'assoc_{0}_{1}.csv'.format(
-            pathlib.Path(self._in_meas).stem.replace("cev",""),
-            pathlib.Path(self._in_sites).stem.replace("cev",""),
-        )
-        base_path = os.path.join(self._outdir, base_name)
-
-        ta_name = 'assoc_{0}_{1}_TA.csv'.format(
-            pathlib.Path(self._in_meas).stem.replace("cev",""),
-            pathlib.Path(self._in_sites).stem.replace("cev",""),
-        )
-        ta_path = os.path.join(self._outdir, ta_name)
-
-        if not has_ta:
-            # No TA -> standard association
-            self.calculate_association(mode, assoc_file if assoc_file else "")
-            return base_path
-
-        # With TA -> first TA, then standard, then fusion
-        self.calculate_association_TA()
-        self.calculate_association(mode, assoc_file if assoc_file else "")
-        fused_path = self._fusion_association_files(base_path, ta_path)
-        return fused_path
-
+            ta_keys.add(key) # Add key to set
+        return ta_keys
 
     def _read_measurements(self, out_wr: csvt.CSVWriter):
 
@@ -695,7 +598,7 @@ class CellAssociator:
                     # print(df1[df1.index == index1])
                     # print(self._assocDataFrame[self._assocDataFrame.index == index2])
 
-    def _associate_data(self, MIN_NUMBER_OF_MEASURES_FOR_ASSOCIATION=50):
+    def _associate_data(self, MIN_NUMBER_OF_MEASURES_FOR_ASSOCIATION=50, allowed_ep: set[tuple] | None = None):
 
         """PRIVATE METHOD which calculate the association between group of measurement points with
 
@@ -735,8 +638,12 @@ class CellAssociator:
             ['Cartoradio_Number', 'Ant_Number'])
 
         # Calculating convex hulls.
-        point_groups = self._measure_point.groupby(
-            ['TAC', 'CID', 'EARFCN', 'PCI'])
+        point_groups = self._measure_point.groupby(['TAC','CID','EARFCN','PCI'])
+        gr_keys = point_groups.groups.keys()
+        # filtre amont
+        if allowed_ep:
+            allowed = allowed_ep
+            gr_keys = [k for k in gr_keys if (int(k[2]), int(k[3])) in allowed]
 
         groups = {}     # Groups of points of same EARFCN / PCI.
         hulls = {}      # Convex hulls associated to groups of points.
@@ -1273,7 +1180,7 @@ class CellAssociator:
 
 
 
-    def _write_output(self, out_wr: csvt.CSVWriter):
+    def _write_output(self, out_wr,  keep_only_keys: set[tuple] | None = None):
 
         """PRIVATE METHOD which writes relation calculated by _associate_datas in the output file.
 
@@ -1285,37 +1192,39 @@ class CellAssociator:
         Parameters:
             out_wr: output file.
         """
-
-        # Writing antennas directivity.
+        # BS_ANT_DIR
         ants = self._antennas.groupby(['Ant_Number'])
-
         for a in ants.groups.keys():
             ant = ants.get_group((a,)).to_dict('list')
             out_wr.write_row([
                 'BS_ANT_DIR', ant['Cartoradio_Number'][0], ant['Ant_Number'][0], ant['Lat'][0],
                 ant['Lng'][0], ant['Dest_Lat'][0], ant['Dest_Lng'][0]
             ])
-
-        # Writing associations
-        for i in range(len(self._assocs['Cartoradio_Number'])):
+        # ASSOC
+        A = self._assocs
+        for i in range(len(A['Cartoradio_Number'])):
+            key = (
+                to_int_token(A['Cartoradio_Number'][i]),
+                to_int_token(A['Ant_Number'][i]),
+                to_int_token(A['TAC'][i]),
+                to_int_token(A['CID'][i]),
+                to_int_token(A['EARFCN'][i]),
+                to_int_token(A['PCI'][i]),
+            )
+            if keep_only_keys and key not in keep_only_keys:
+                continue
             out_wr.write_row([
-                'ASSOC', self._assocs['Cartoradio_Number'][i], self._assocs['Ant_Number'][i], self._assocs['TAC'][i],
-                self._assocs['CID'][i], self._assocs['EARFCN'][i], self._assocs['PCI'][i], self._assocs['Score'][i]
+                'ASSOC', A['Cartoradio_Number'][i], A['Ant_Number'][i], A['TAC'][i],
+                A['CID'][i], A['EARFCN'][i], A['PCI'][i], A['Score'][i]
             ])
-
-        # Writing points.
-        point_assoc = self._measure_point.to_dict('list')
-
-        for i in range(len(point_assoc['Lat'])):
-
+        # MEASURE_SERVING
+        P = self._measure_point.to_dict('list')
+        for i in range(len(P['Lat'])):
             out_wr.write_row([
-                'MEASURE_SERVING', point_assoc['Lat'][i], point_assoc['Lng'][i], point_assoc['TAC'][i],
-                point_assoc['CID'][i], point_assoc['EARFCN'][i], point_assoc['PCI'][i], point_assoc['BEAM'][i],
-                point_assoc['RSRP'][i], point_assoc['RSRQ'][i], point_assoc['RSSI'][i],
-                point_assoc['CINR'][i]
+                'MEASURE_SERVING', P['Lat'][i], P['Lng'][i], P['TAC'][i],
+                P['CID'][i], P['EARFCN'][i], P['PCI'][i], P['BEAM'][i],
+                P['RSRP'][i], P['RSRQ'][i], P['RSSI'][i], P['CINR'][i]
             ])
-
-        print(pd.DataFrame(self._assocs))
 
 def weight(rsrp: float) -> float:
 
@@ -1508,3 +1417,19 @@ def compute_distance_with_TA(ta, techno):
     elif techno == 'NR':
         return
     
+def to_int_token(x: str) -> int:
+    s = str(x).strip()
+    if s in ("", "NA"):
+        raise ValueError(f"Empty integer field or NA: {x!r}")
+    try:
+        return int(s)
+    except ValueError:
+        try:
+            return int(round(float(s)))
+        except ValueError:
+            if "." in s and s.split(".", 1)[0].isdigit():
+                return int(s.split(".", 1)[0])
+            raise
+    
+class _NullWriter:
+    def write_row(self, _): pass  # no-op pour réutiliser _read_* sans fichier

@@ -140,10 +140,6 @@ class GUI(tkinter.Frame):
         self.visualizaion.configure(height=2, width=25)
         self.visualizaion.pack(padx=5, pady=5)
 
-        self.association = tkinter.Button(self, command=lambda: self.button_click(10),
-                                          text="Cell Association Processing TA", font=boldFont, background='light green')
-        self.association.configure(height=2, width=25)
-        self.association.pack(padx=5, pady=5)
         self.association_ttp = CreateToolTip(
             self.association,
             "Choose the .csv site file created from the 'Cartoradio File Conversion' and the .csv measurement file")
@@ -247,41 +243,15 @@ class GUI(tkinter.Frame):
                     site_file = files[0] if 'sites' in files[0] else files[1]
                     meas_file = files[1] if 'sites' in files[0] else files[0]
 
-                    association.CellAssociator(
-                        meas_file,
-                        site_file,
-                        self.working_directory
-                    ).calculate_association(1, "")
-
-                self.change_color('green')
-
-            elif number == 10:  # association 
-
-                self.change_color('red')
-                files = filedialog.askopenfilenames(initialdir=self.working_directory,
-                                                    title='Choose measurement file and operator sites file',
-                                                    filetypes=(("cev CSV file SFR", "cevSFR*.csv"),
-                                                               ("cev CSV file Orange", "cevOrange*.csv"),
-                                                                ("all files", "*.*")))
-                if len(files) == 0:
-                    return
-                
-                elif len(files) != 2:
-                    messagebox.showerror("Error", "Two files expected.")
-                else:
-
-                    # Associate_cell(files, self.working_directory)
-                    site_file = files[0] if 'sites' in files[0] else files[1]
-                    meas_file = files[1] if 'sites' in files[0] else files[0]
-
                     start_time = time.perf_counter()
                     association.CellAssociator(
                         meas_file,
                         site_file,
                         self.working_directory
-                    ).fuse_associations()
+                    ).associate_single_pass_with_ta_filter(mode=1)
                     elapsed = time.perf_counter() - start_time
                     print(f"Conversion duration: {elapsed:.6f} seconds")
+
 
                 self.change_color('green')
 
