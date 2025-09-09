@@ -135,10 +135,6 @@ class GUI(tkinter.Frame):
             self.useassoc,
             "Choose the caf*.csv association file and the .csv measurement file")
 
-        self.visualizaion = tkinter.Button(self, command=lambda: self.button_click(7),
-                                           text="Visualisation", font=boldFont, background='light green')
-        self.visualizaion.configure(height=2, width=25)
-        self.visualizaion.pack(padx=5, pady=5)
 
         self.association_ttp = CreateToolTip(
             self.association,
@@ -152,6 +148,11 @@ class GUI(tkinter.Frame):
             self.association,
             "Choose the .csv site file created from the 'Cartoradio File Conversion' and the .csv measurement file")
         
+        self.visualizaion = tkinter.Button(self, command=lambda: self.button_click(7),
+                                           text="Visualisation", font=boldFont, background='light green')
+        self.visualizaion.configure(height=2, width=25)
+        self.visualizaion.pack(padx=5, pady=5)
+
         self.canvas = Canvas(self, height=20)
         self.canvas.pack()
         self.color = 'green'
@@ -234,7 +235,7 @@ class GUI(tkinter.Frame):
 
                 if len(files) == 0:
                     return
-                
+                 
                 elif len(files) != 2:
                     messagebox.showerror("Error", "Two files expected.")
                 else:
@@ -244,11 +245,7 @@ class GUI(tkinter.Frame):
                     meas_file = files[1] if 'sites' in files[0] else files[0]
 
                     start_time = time.perf_counter()
-                    association.CellAssociator(
-                        meas_file,
-                        site_file,
-                        self.working_directory
-                    ).associate_single_pass_with_ta_filter(mode=1)
+                    association.CellAssociator(meas_file, site_file, self.working_directory).process_asso()
                     elapsed = time.perf_counter() - start_time
                     print(f"Conversion duration: {elapsed:.6f} seconds")
 

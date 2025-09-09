@@ -14,6 +14,8 @@ from scipy.spatial.distance import pdist
 import csv
 from datetime import datetime
 import copy
+from pathlib import Path
+import os
 
 
 # fichier où l'on log
@@ -159,6 +161,31 @@ class CellAssociator:
         self.start_date = None
         self.end_date = None
 
+
+    def process_asso(self) -> str:
+        """ 1 = RSRP filtered by TA (a single *_FUSION.csv file, no intermediate files)
+            2 = TA association only (writes *_TA.csv)
+            3 = RSRP association only (writes *.csv)"""
+        
+        mode = 1 # 1=RSRP and TA, 2=TA only, 3=RSRP only
+        if mode == 1:
+            return self.associate_single_pass_with_ta_filter(mode=1)
+
+        elif mode == 2:
+            self.calculate_association_TA()
+            out = os.path.join(
+                self._outdir,
+                f"assoc_{Path(self._in_meas).stem.replace('cev','')}_{Path(self._in_sites).stem.replace('cev','')}_TA.csv"
+            )
+            return out
+
+        elif mode == 3:
+            return self.calculate_association(1, '', keep_only_keys=None, out_name='assoc_{0}_{1}.csv')
+
+        else:
+            raise ValueError("Invalid mode. 1=RSRP and TA, 2=TA only, 3=RSRP only")
+
+
     def _prepare_header_for_writer(self, header: dict) -> None:
         """Read DEFINE bloc of measurement file and extend line accordingly"""
 
@@ -207,6 +234,71 @@ class CellAssociator:
                     n = max(0, len(rest) - 4)
                     header['MEASUREMENT'] += [f'Meas_{i}' for i in range(n)]
 
+
+    def calculate_association_TA(self):
+        """Calculates the association between EARFCNs / PCIs and base stations using timing advance."""
+
+        print('Starting association...')
+
+        file_meas = pathlib.Path(self._in_meas)
+        file_sites = pathlib.Path(self._in_sites)
+
+        file_name = os.path.join(self._outdir, 'assoc_{0}_{1}_TA.csv'.format(
+                    pathlib.Path(self._in_meas).stem.replace("cev",""),
+                    pathlib.Path(self._in_sites).stem.replace("cev","")))
+        
+        header = self._HEADER_V2
+        
+
+        with csvt.CSVReader(self._in_meas) as meas:
+            for _ in range(10):
+                line = meas.read_line()
+                if not line:
+                    break
+
+                if line[0] == 'VERSION':
+
+                    self.version = float(line[1])
+                    header = self._HEADER_V2
+                    header['START_DATE'] = ['Date']
+                    header['END_DATE'] = ['Date']
+                
+                if line[0] == 'START_DATE':
+                    self.start_date = line[1]
+
+                if line[0] == 'END_DATE':
+                    self.send_date = line[1]
+
+                if line[0] == 'TECHNO':
+                    self.techno = str(line[1])
+
+                if line[0] == 'MEAS_EARFCNS':
+
+                    n = len(line) - 5
+
+                    header['MEAS_EARFCNS'] = header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
+                    header['MEAS_PCIS'] = header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
+                    header['MEAS_BEAMS'] = header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
+                    header['MEAS_NB'] = header['MEAS_NB'] + ['nb_meas_{}'.format(i) for i in range(n)]
+                    header['MEASUREMENT'] = header['MEASUREMENT'] + ['Meas_{}'.format(i) for i in range(n)]
+                    break
+            
+            
+        with csvt.CSVWriter(file_name, header) as out_wr:
+
+            print('Reading measurements...')
+
+            self._read_measurements(out_wr) # Measurements
+
+            print('Reading sites...')
+
+            self._read_antennas(out_wr) # Delimiter
+
+            print('Identifying possible Associations...')
+            print('Input files: {0} and {1}'.format(file_meas, file_sites))
+            self._associate_data_with_TA()
+            
+            self._write_output(out_wr)
 
     def calculate_association(self, mode: int, assoc_file: str, keep_only_keys: set[tuple] | None = None, out_name: str | None = None):
         """Calculates the association between EARFCNs / PCIs and base stations."""
