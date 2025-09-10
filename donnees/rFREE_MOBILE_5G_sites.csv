@@ -1,4 +1,0 @@
-DEFINE
-BS_ANTENNA|Support_Number|Cartoradio_Number|Lat|Lng|Height|Info_Addr|Info_Municipality|Ant_Number|Dest_Lat|Dest_Lng|Azimuth|AzimuthMin|AzimuthMax|MinFreq|MaxFreq
-DELIMITER|Cartoradio_Number|Support_Lat|Support_Lng|Del_Lat|Del_Lng
-CONTENT
