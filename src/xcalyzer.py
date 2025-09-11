@@ -636,7 +636,7 @@ class XcalConverter:
 
                 elif first == 'QCLTE_PTA':
                     if l_len >= 3 and last_serving_index >= 0:
-                        serving_ta = float(line[2])
+                        serving_ta = float(line[2])/(0.5208) # convert microsecond to time unit
                         # Add the TA to the last serving cell measurement
                         self._data_dict['ta'][last_serving_index] = serving_ta
 
