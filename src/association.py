@@ -987,14 +987,13 @@ class CellAssociator:
                         'Score': [1-self._assocsProp['Score'][i]]
                     }, 1)
 
-        print(self._assocs)
     
     def _associate_data_with_TA(self):
         """Associate EARFCN/PCI pairs to antennas using Timing Advance and Azimuth to choose antenna within selected site."""
 
         delta = 80  # Tolerance in meters
         alpha = 0.5 # Exponent for distance weighting
-        margin = 1  # Margin in km for bounding box
+        margin = 5  # Margin in km for bounding box
         threshold = 6  # Minimum score to consider an association valid
         distance_threshold = 50  # Minimum distance in meters between two values to consider a couple earfcns/pcis
         fact_rayon_terre = np.pi/180*6371  # conversion lat/lon to meters on earth surface: with theta in radian, multiply by this factor to have the distance in kilometers
@@ -1019,6 +1018,7 @@ class CellAssociator:
         df_meas = self._measure_point.copy()
         df_ant = self._antennas.copy()
 
+        print("Start association with timing advance")
         # Check if necessary columns are present
         if 'TA' not in df_meas.columns:
             print("[WARNING] No TA column found in measurement data.")
@@ -1068,6 +1068,7 @@ class CellAssociator:
         if sites_in_all != 0:
             S_cell_all = S_rect_all / (sites_in_all * 3.0)  # tri-sector
             D_global = np.sqrt(S_cell_all * 8.0 / (3.0 * np.sqrt(3.0)))
+            margin = (D_global/1000)*2 # adjust margin to cell size
         else:
             D_global = -1.0  # No antennas found
 
@@ -1098,7 +1099,7 @@ class CellAssociator:
             N = len(coords_xy)
             if D_global > 0:
                 confidence_score = np.exp(-K * max_distance * np.sqrt(N) / D_global)
-                print(f"Processing EARFCN={earfcn}, PCI={pci}, N={N}, max_distance={max_distance:.1f}m, confidence_score={confidence_score:.2f}")
+                # print(f"Processing EARFCN={earfcn}, PCI={pci}, N={N}, max_distance={max_distance:.1f}m, confidence_score={confidence_score:.2f}")
             else:
                 confidence_score = 1
                 print("[WARNING] No antennas detected in perimeter")
@@ -1269,6 +1270,9 @@ class CellAssociator:
                 self._assocs['EARFCN'].append(earfcn)
                 self._assocs['PCI'].append(pci)
                 self._assocs['Score'].append(confidence_by_pair.get((earfcn, pci), np.nan))
+
+                print(f"Association found: EARFCN: {earfcn}, PCI: {pci}, Cartoradio number: {best_ant['Cartoradio_Number']}, Antenne: {best_ant['Ant_Number']}, Score: {confidence_by_pair.get((earfcn, pci), np.nan)}")
+        print("End of association with timing advance")
 
 
 

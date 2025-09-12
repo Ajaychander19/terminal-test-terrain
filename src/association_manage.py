@@ -61,19 +61,28 @@ def _fmt_assoc_row(r):
 
 def _join_rows_short_merged(rows):
     """Join multiple association rows into a short string for display."""
-    if not rows: 
+    if not rows:
         return "-"
-    
+
     items = []
     for r in rows:
-        items.append(
-            f"{r['Cartoradio_Number']}/{r['Ant_Number']} -> {r['Azimuth']:.0f}° (S={format_score(r['Score'])})"
-        )
+        az = r.get("Azimuth", None)
+        if az is None or str(az).strip() == "":
+            items.append(
+                f"{r['Cartoradio_Number']}/{r['Ant_Number']} (S={format_score(r['Score'])})"
+            )
+        else:
+            try:
+                items.append(
+                    f"{r['Cartoradio_Number']}/{r['Ant_Number']} -> {float(az):.0f}° (S={format_score(r['Score'])})"
+                )
+            except Exception:
+                items.append(
+                    f"{r['Cartoradio_Number']}/{r['Ant_Number']} (S={format_score(r['Score'])})"
+                )
 
-    # Si plus de 3 items, afficher seulement 3 et indiquer le nombre restant
     if len(items) > 3:
-        return ", ".join(items[:3]) + f" … (+{len(items)-3})" 
-    
+        return ", ".join(items[:3]) + f" … (+{len(items)-3})"
     return ", ".join(items)
 
 def _join_rows_short_cevcaa(rows):
@@ -316,11 +325,11 @@ def _read_assoc_file(path, require_version=True, min_version=3.0):
             
             # Parse and validate numeric fields
             try:
-                earfcn = parts[5].strip()
-                pci    = parts[6].strip()
+                earfcn = int(float(parts[5].strip()))
+                pci    = int(float(parts[6].strip()))
                 score  = float(parts[7].strip())
-                int(earfcn); int(pci)
             except ValueError:
+                print(f"warning: skipping invalid ASSOC line in {os.path.basename(path)}: {line}")
                 continue
 
             ant_num = parts[2].strip()
@@ -401,7 +410,9 @@ def _merge_assoc_files(paths):
             "PCI": PCI,
             "Score": score,
             "_source": "+".join(sorted(set(r["_source"] for r in lst))),
+            "Azimuth": az_list[0] if az_list else None,
         }
+
         if az_list:
             row["Azimuth"] = az_list[0]
 
@@ -445,10 +456,7 @@ def manage_cevcaa(cevcaa_file, assoc_files, working_dir, parent=None):
     all_keys = set(idx_cevcaa.keys()) | set(idx_merged.keys())
 
     conflicts = []
-    for (pci, earfcn) in sorted(
-        all_keys,
-        key=lambda x: (int(x[0]), int(x[1])) if x[0].isdigit() and x[1].isdigit() else x
-    ):
+    for (pci, earfcn) in sorted(all_keys, key=lambda x: (x[0], x[1])):
         list_c = idx_cevcaa.get((pci, earfcn), [])
         list_m = idx_merged.get((pci, earfcn), [])
 
@@ -504,11 +512,8 @@ def manage_cevcaa(cevcaa_file, assoc_files, working_dir, parent=None):
     # Write final cevcaa file
     # Sort by EARFCN, PCI, Cartoradio_Number, Ant_Number
     final_rows = list(cevcaa_by_key.values())
-    final_rows.sort(key=lambda r: (
-        int(r["EARFCN"]), int(r["PCI"]),
-        r["Cartoradio_Number"], r["Ant_Number"]
-    ) if r["EARFCN"].isdigit() and r["PCI"].isdigit()
-      else (r["EARFCN"], r["PCI"], r["Cartoradio_Number"], r["Ant_Number"]))
+
+    final_rows.sort(key=_sort_key)
 
     base = os.path.splitext(os.path.basename(cevcaa_file))[0] if cevcaa_file else "cevcaa"
     ts = time.strftime("%Y%m%d_%H%M%S")
@@ -527,3 +532,9 @@ def manage_cevcaa(cevcaa_file, assoc_files, working_dir, parent=None):
             messagebox.showinfo("Summary", msg, parent=parent)
         except Exception:
             messagebox.showinfo("Summary", msg)
+
+def _tok(v):
+    try: return int(v)
+    except (TypeError, ValueError): return int(float(str(v)))  
+def _sort_key(r):
+    return (_tok(r["EARFCN"]), _tok(r["PCI"]), _tok(r["Cartoradio_Number"]), _tok(r["Ant_Number"]))
