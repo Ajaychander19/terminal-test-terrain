@@ -122,7 +122,7 @@ const processing = {
     getTechnologies: function (techno) {
         return techno.map(techno => techno.technology);
     },
-    
+
     getVersions: function (version) {
     return version.map(v => v.version);
 }

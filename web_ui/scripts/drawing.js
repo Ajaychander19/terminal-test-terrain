@@ -87,7 +87,7 @@ const drawing = {
             let delLayer = L.geoJson(turf.featureCollection(delFeats), styles.styleDelimiter());
             delLayer.bringToBack(); // Put delimiters behind other layers
 
-            // Optional: compute azimuths for debugging
+            
             delFeats.forEach((feature, featureIndex) => {
                 if (feature.geometry && feature.geometry.type === 'LineString') {
                     const coords = feature.geometry.coordinates;

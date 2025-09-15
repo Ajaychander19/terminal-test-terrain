@@ -443,7 +443,6 @@ const app = {
                 }
                 
                 btn.addEventListener("click", () => {
-                // Remplir les infos dynamiquement
                 document.getElementById("popup-techno").textContent = this._technology?.at(-1) || "N/A";
                 document.getElementById("popup-version").textContent = "v"+this._version+".0"
                 //document.getElementById("popup-date").textContent = this._fileReader?.measurementDate || new Date().toLocaleDateString();
