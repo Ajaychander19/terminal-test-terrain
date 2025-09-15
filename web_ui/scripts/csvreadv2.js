@@ -19,6 +19,10 @@ var csvreadv2 = {
         // File reading.
         _file
         _freader
+        //technology 4G/5G
+        _techno
+        // version
+        _version
 
         // Measurements columns.
         _earfcns
@@ -42,6 +46,7 @@ var csvreadv2 = {
         _sectDels
 
         _antennas
+        _antennasV2
 
         // Minimum / maximums.
         _minRSRP
@@ -77,8 +82,11 @@ var csvreadv2 = {
             this._cinrs = [];
             this._assocs = {};
             this._antDirs = [];
+            this._techno = [];
+            this._version= [];
             this._sectDels = [];
             this._antennas = {};
+            this._antennasV2 = {};
 
             this._minRSRP = null;
             this._minRSRQ = null;
@@ -145,7 +153,7 @@ var csvreadv2 = {
             }
 
             // compute number of samples per PCI (all beams)
-            for (let j = 0; j <this._pcis.length; j++){
+            for (let j = 0; j < this._pcis.length; j++){
                if (!this._pciNb[this._pcis[j]]) {
                   this._pciNb[this._pcis[j]] = 0
                }
@@ -241,18 +249,39 @@ var csvreadv2 = {
 
             });
 
+
             parsedResult.BS_ANT_DIR.forEach((line) => {
                 let antVect = {
                     cartoNum: +line['Cartoradio_Number'],
                     antNum: +line['Ant_Number'],
                     latA: +line['Support_Lat'],
                     lngA: +line['Support_Lng'],
-                    latB: +line['Dest_Lng'],
-                    lngB: +line['Dest_Lat']
+                    latB: +line['Dest_Lng'], 
+                    lngB: +line['Dest_Lat']  
                 };
 
                 this._antDirs.push(antVect);
             });
+
+           
+            parsedResult.TECHNO.forEach((line) => {
+                const raw = (line['Techno'] !== undefined && line['Techno'] !== null && String(line['Techno']).trim() !== '')
+                    ? String(line['Techno']).trim()
+                    : (line['TECHNO'] !== undefined && line['TECHNO'] !== null ? String(line['TECHNO']).trim() : '');
+
+                if (raw && raw.toUpperCase() !== 'TECHNO') {
+                    this._techno.push({ technology: raw });
+                }
+            });
+            
+            parsedResult.VERSION.forEach((line) => {
+                const raw = (line?.Version ?? line?.VERSION ?? '').trim();
+
+                if (raw && raw.toUpperCase() !== 'VERSION') {
+                    this._version.push({ version: raw });
+                }
+            });
+
 
             parsedResult.ASSOC.forEach((line) =>{
                 let carto = +line['Cartoradio_Number'];
@@ -303,6 +332,7 @@ var csvreadv2 = {
                     this._points[earfcn][pci][beam].push(point);
             });
         }
+
         _promiseFile() {
             return new Promise((resolve, reject) => {
                 this._freader.onload = (e) => resolve(this._freader.result);
@@ -386,6 +416,20 @@ var csvreadv2 = {
         get antennaDirections() { return utils.deepCopy(this._antDirs); }
 
         /**
+         * @returns technology
+         *
+         * @function
+         */
+        get measurementTechno() { return utils.deepCopy(this._techno); }
+
+        /**
+         * @returns version
+         *
+         * @function
+         */
+        get measurementVersion() { return utils.deepCopy(this._version); }
+
+        /**
          * @return Antennas data, and sector delimiters data.
          *
          * @function
@@ -423,6 +467,8 @@ var csvreadv2 = {
                 measureServing: [],
                 measurement: [],
                 bsAntDir: [],
+                techno: [],
+                version: [],
                 assoc:[],
                 others:[],
             };
@@ -442,6 +488,10 @@ var csvreadv2 = {
                     currentHeaderType = 'delimiter';
                 } else if (line[0] === 'BS_ANT_DIR') {
                     currentHeaderType = 'bsAntDir';
+                } else if (line[0] === 'TECHNO') {
+                    currentHeaderType = 'techno';
+                } else if (line[0] === 'VERSION') {
+                    currentHeaderType = 'version';
                 } else if (line[0] === 'MEASUREMENT') {
                     currentHeaderType = 'measurement';
                 } else if (line[0] === 'ASSOC') {
@@ -468,6 +518,8 @@ var csvreadv2 = {
             const parsedMeasurement = Papa.parse(parsedData.measurement.join('\n'), { header: true });
             const parsedDelimiter = Papa.parse(parsedData.delimiter.join('\n'), { header: true });
             const parsedAssoc = Papa.parse(parsedData.assoc.join('\n'), { header: true });
+            const parsedTechno = Papa.parse(parsedData.techno.join('\n'), { header: true });
+            const parsedVersion = Papa.parse(parsedData.version.join('\n'), { header: true });
             const parsedOthers = Papa.parse(parsedData.others.join('\n'), { header: true });
 
             return {
@@ -480,6 +532,8 @@ var csvreadv2 = {
                 ASSOC: parsedAssoc.data,
                 DELIMITER : parsedDelimiter.data,
                 BS_ANT_DIR : parsedBsAntDir.data,
+                TECHNO : parsedTechno.data,
+                VERSION : parsedVersion.data,
                 OTHERS: parsedOthers.data
             };
         }
