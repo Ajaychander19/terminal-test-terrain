@@ -67,7 +67,6 @@ const drawing = {
          * @function
          */
         drawCells(voronoi, antFeats, delFeats) {
-            console.log(delFeats); // Debug: show antenna features in the console
 
             // Initialize layers only once
             if (!this._cellLayer) this._cellLayer = L.layerGroup().addTo(this._map);
@@ -95,7 +94,7 @@ const drawing = {
                         const [lon1, lat1] = coords[i];
                         const [lon2, lat2] = coords[i + 1];
                         const azimuth = utils.calculateAzimuth(lat1, lon1, lat2, lon2);
-                        // console.log(`Delimiter Feature ${featureIndex}, segment ${i}: azimuth = ${azimuth.toFixed(2)}°`);
+                        
                     }
                 }
             });
@@ -218,15 +217,6 @@ const drawing = {
 
             let centerLat = (latMin + latMax) / 2;
             let centerLng = (lngMin + lngMax) / 2;
-
-            console.log("latMin:", latMin);
-            console.log("latMax:", latMax);
-            console.log("lngMin:", lngMin);
-            console.log("lngMax:", lngMax);
-            console.log("centerLat:", centerLat);
-            console.log("centerLng:", centerLng);
-
-            console.log(this._hasCenteredMap);
             if (!this._hasCenteredMap) {
                 this._map.setView([centerLat, centerLng], 13);
                 this._hasCenteredMap = true;
@@ -328,7 +318,6 @@ const drawing = {
                 }
             }
             // Drawing the layer.
-            console.log("drawing hex");
             layer.options.colorScaleExtent = [min, max];
             layer.redraw();
             // Adding data...
@@ -350,7 +339,6 @@ const drawing = {
          */
         drawAssocs(antdirs, assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns = null, pcis = null, beams = null, check_box = true, tech) {
             this._assocLayer.clearLayers();
-            console.log("used technology in drawassoc is : ",tech);
 
             for (let cartoNum in assocs) {
                 let assocList = assocs[cartoNum];  
@@ -373,8 +361,7 @@ const drawing = {
                     }
                 });
 
-                console.log(`Azimuth data for cartoNum ${cartoNum}:`);
-                console.log(azimuthData);
+
 
                 
                 let marker = L.marker([ant.lat, ant.lng], {
@@ -425,7 +412,6 @@ const drawing = {
             beams = null,
             tech
         ) {
-            console.log("used technology in popup is : ",tech);
 
             let popDiv = document.createElement('div');
 
@@ -649,7 +635,6 @@ const drawing = {
 
             // Group EARFCNs by PCI
             let groupedByPci = {};
-            console.log("used technology in popup before to freq is : ",tech);
             for (let i = 0; i < earpcis.earfcns.length; i++) {
                 let pci = earpcis.pcis[i];
                 let earfcn = earpcis.earfcns[i];
@@ -908,12 +893,12 @@ const drawing = {
          * @function
          */
         drawServingRSRP(points, min, max, earfcns = null, pcis = null, beams = null) {
+            console.log("i am in serving" );
             const rsrp = -85;
             const minRsrp = -120;
             const maxRsrp = -60;
 
             const color = utils.getColorFromPalette(maxRsrp, minRsrp, maxRsrp, styles.HEATMAP);
-            console.log("color of rsrp=-85 is "+color);
             this.drawServingHex(
                 this._servingRSRP, points, (_e, _p, pt) => Math.round(pt.rsrp),
                 min, max, earfcns, pcis, beams,
@@ -930,7 +915,7 @@ const drawing = {
          * @function
          */
         drawServingRSRQ(points, min, max, earfcns = null, pcis = null, beams = null) {
-            console.log("min="+ min + "max=" + max );
+            
             this.drawServingHex(
                 this._servingRSRQ, points, (_e, _p, pt) => Math.round(pt.rsrq),
                 min, max, earfcns, pcis, beams
@@ -1000,6 +985,9 @@ const drawing = {
          * @function
          */
         drawRSRP(measurements, earfcns, pcis, beams, min, max, subEarfcns = null, subPcis = null, subBeams = null) {
+            console.log("i am in global" );
+            //console.log("measurements: "+measurements );
+            //console.log("pci: "+subPcis );
             this.drawHex(this._rsrpLayer, measurements, earfcns, pcis, beams, min, max, subEarfcns, subPcis, subBeams);
         }
         /**

@@ -131,6 +131,7 @@ const app = {
             // Final EARFCNs and PCIs list.
             let finalEarfcns = (this._allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
             let finalPcis = (this._allSites) ? selPcis : onlySitesEarpcis.pcis;
+            console.log("finalpci: "+finalPcis + " , final earfcn: "+finalEarfcns);
             let finalBeams = checkBeams;
 
             // Updating TAC / PCI layers.
@@ -161,7 +162,7 @@ const app = {
          */
         updateDisplay() {
 
-            if (this._onServing) {
+            if (true) {
 
                 // Displaying serving measurement layers.
                 console.log("i am onserving");
@@ -395,11 +396,6 @@ const app = {
                 let ants = processing.calcAntennas(this._fileReader.antennaDirections);
                 this._technology = processing.getTechnologies(this._fileReader.measurementTechno);
                 this._version = processing.getVersions(this._fileReader.measurementVersion);
-
-
-                console.log("technology is: " + this._technology);
-                console.log("version is: " + this._version);
-
                 const heading = document.getElementById('earfcn-heading');
                 const select = document.getElementById('EARFCN_select');
                 
@@ -632,9 +628,7 @@ const app = {
                 document.getElementById('map').style.display = 'none';
                 document.getElementById('statistiques').style.display = 'block';
             
-                let points = this._fileReader.points;
-                console.log(points);
-            
+                let points = this._fileReader.points;            
                 const ctx = document.getElementById("Chart").getContext("2d");
             
                 if (this._chartInstance) {

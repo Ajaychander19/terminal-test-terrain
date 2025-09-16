@@ -270,7 +270,7 @@ const utils = {
     },
 
    tofreq: function(nrarfcn, mode) {
-        console.log("used technology in tofreq is : ", mode);
+
 
         if (!mode) return null;
         let techno = Array.isArray(mode) ? mode.at(-1) : mode;
