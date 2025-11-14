@@ -383,75 +383,55 @@ const utils = {
      * 
      * @function 
      */
-    subEarpci: function(earfcns, pcis, beams = null, reqEarfcns = null, reqPcis = null, reqBeams = null) {
-    let result = { earfcns: [], pcis: [], beams: {}, indices: [] };
+    subEarpci: function (earfcns, pcis, beams = null, reqEarfcns = null, reqPcis = null, reqBeams = null) {
+        let result = { earfcns: [], pcis: [], beams: {}, indices: [] };
 
-    if (!beams) beams = [];
+        if (!beams) beams = [];
 
-    // Convertir les filtres en Set pour lookup rapide
-    let reqEarfcnsSet = reqEarfcns ? new Set(reqEarfcns) : null;
-    let reqPcisSet = reqPcis ? new Set(reqPcis) : null;
+        // Convertir les filtres en Set pour lookup rapide
+        const reqEarfcnsSet = reqEarfcns ? new Set(reqEarfcns) : null;
+        const reqPcisSet = reqPcis ? new Set(reqPcis) : null;
 
-    // Déterminer les indices à considérer
-    let subEarfcnsIdx = reqEarfcns ? earfcns.map((val, i) => reqEarfcnsSet.has(val) ? i : -1).filter(i => i !== -1)
-                                   : earfcns.map((_, i) => i);
-    let subPcisIdx = reqPcis ? pcis.map((val, i) => reqPcisSet.has(val) ? i : -1).filter(i => i !== -1)
-                             : pcis.map((_, i) => i);
+        // Indices candidats
+        const subEarfcnsIdx = reqEarfcns ? earfcns.map((v, i) => reqEarfcnsSet.has(v) ? i : -1).filter(i => i !== -1)
+                                        : earfcns.map((_, i) => i);
+        const subPcisIdx = reqPcis ? pcis.map((v, i) => reqPcisSet.has(v) ? i : -1).filter(i => i !== -1)
+                                : pcis.map((_, i) => i);
 
-    // Utiliser un Set pour éviter duplication des clés (earfcn_pci)
-    let seenKeys = new Set();
+        const seenKeys = new Set();
 
-    subEarfcnsIdx.forEach(i => {
-        let e = earfcns[i];
-        let p = pcis[i];
+        subEarfcnsIdx.forEach(i => {
+            const e = earfcns[i];
+            const p = pcis[i];
 
-        // Vérifier si l'indice est également dans subPcisIdx
-        if (!subPcisIdx.includes(i)) return;
+            if (!subPcisIdx.includes(i)) return;
 
-        // Vérifier si la paire e/p correspond aux beams requis
-        if (reqBeams && beams[i] !== undefined) {
-            let beamAllowed = Array.isArray(reqBeams[p]) 
-                              ? reqBeams[p].includes("all") || reqBeams[p].includes(beams[i].toString())
-                              : true;
-            if (!beamAllowed) return;
-        }
-
-        // Clé unique pour éviter duplication
-        let key = `${e}_${p}`;
-        if (seenKeys.has(key)) return;
-        seenKeys.add(key);
-
-        // Ajouter les résultats
-        result.earfcns.push(e);
-        result.pcis.push(p);
-        result.indices.push(i);
-
-        // Ajouter les beams
-        if (beams[i] !== undefined) {
-            if (!result.beams[p]) result.beams[p] = [];
-            if (!result.beams[p].includes(beams[i])) result.beams[p].push(beams[i]);
-        }
-    });
-
-    // Fallback : seulement si aucun filtre n’est appliqué
-    if (result.earfcns.length === 0 && !reqEarfcns && !reqPcis && !reqBeams) {
-        for (let i = 0; i < earfcns.length; i++) {
-            let key = `${earfcns[i]}_${pcis[i]}`;
-            if (!seenKeys.has(key)) {
-                seenKeys.add(key);
-                result.earfcns.push(earfcns[i]);
-                result.pcis.push(pcis[i]);
-                result.indices.push(i);
-                if (beams[i] !== undefined) {
-                    if (!result.beams[pcis[i]]) result.beams[pcis[i]] = [];
-                    if (!result.beams[pcis[i]].includes(beams[i])) result.beams[pcis[i]].push(beams[i]);
-                }
+            // Collecter tous les beams d’un PCI
+            if (beams[i] !== undefined) {
+                if (!result.beams[p]) result.beams[p] = [];
+                if (!result.beams[p].includes(beams[i])) result.beams[p].push(beams[i]);
             }
-        }
-    }
 
-    return result;
-},
+            // Vérifier le filtre sur reqBeams
+            if (reqBeams && beams[i] !== undefined) {
+                const beamAllowed = Array.isArray(reqBeams[p])
+                    ? reqBeams[p].includes("all") || reqBeams[p].includes(beams[i].toString())
+                    : true;
+                if (!beamAllowed) return;
+            }
+
+            // Clé unique
+            const key = `${e}_${p}`;
+            if (seenKeys.has(key)) return;
+            seenKeys.add(key);
+
+            result.earfcns.push(e);
+            result.pcis.push(p);
+            result.indices.push(i);
+        });
+
+        return result;
+    },
 
 
 
