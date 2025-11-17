@@ -13,7 +13,7 @@ import cartoradio
 import association
 from viavianalyzer import Viavilyzer
 import gmonyzer
-from association_manage import manage_cevcaa
+from association_manage import manage_cevaf
 import time
 
 # Add path to COMET source dir to be able to find its modules
@@ -372,32 +372,31 @@ class GUI(tkinter.Frame):
 
                 self.change_color('green')
 
-            elif number == 11:  # Manage cevcaa file
+            elif number == 11:  # Manage cevaf file
                 self.change_color('red')
                 try:
                     files = filedialog.askopenfilenames(
                         initialdir=self.working_directory,
-                        title='Choose cevcaa/cevcaf and one or more assoc files',
+                        title='Choose cevcaf and one or more assoc files',
                         filetypes=[
-                            ("SFR cevcaf/assoc", ("cevcaaSFR*.csv", "cevcafSFR*.csv", "assoc_SFR*.csv")),
-                            ("Orange cevcaf/assoc", ("cevcaaOrange*.csv", "cevcafOrange*.csv", "assoc_Orange*.csv")),
+                            ("SFR cevcaf/assoc", ("cevcaf*.csv", "assoc*.csv")),
                             ("All files", "*.*"),
                         ]
                     )
                     if not files:
                         return
 
-                    cevcaa_paths = [p for p in files if ('cevcaf' or 'cevcaa') in os.path.basename(p).lower()]
+                    cevaf_paths = [p for p in files if ('cevcaf' or 'cevaf') in os.path.basename(p).lower()]
                     assoc_paths  = [p for p in files if 'assoc'  in os.path.basename(p).lower()]
 
-                    if len(cevcaa_paths) > 1:
-                        messagebox.showerror("Error", "You can't choose more than ONE cevcaa file.")
+                    if len(cevaf_paths) > 1:
+                        messagebox.showerror("Error", "You can't choose more than ONE cevaf file.")
                         return
-                    elif len(cevcaa_paths) == 1:
-                        cevcaa_file = cevcaa_paths[0]
-                        manage_cevcaa(cevcaa_file, assoc_paths, self.working_directory, parent=self)
+                    elif len(cevaf_paths) == 1:
+                        cevaf_file = cevaf_paths[0]
+                        manage_cevaf(cevaf_file, assoc_paths, self.working_directory, parent=self)
                     else:
-                        manage_cevcaa(None, assoc_paths, self.working_directory, parent=self)
+                        manage_cevaf(None, assoc_paths, self.working_directory, parent=self)
 
                     messagebox.showinfo("Done", "Association management completed.")
                 except Exception as e:
