@@ -15,4 +15,5 @@ src/__pycache__
 web_ui/node_modules
 tmp/*
 /Scripts
+/venv
 

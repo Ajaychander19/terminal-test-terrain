@@ -167,7 +167,7 @@ class CellAssociator:
             2 = TA association only (writes *_TA.csv)
             3 = RSRP association only (writes *.csv)"""
         
-        mode = 1 # 1=RSRP and TA, 2=TA only, 3=RSRP only
+        mode = 3 # 1=RSRP and TA, 2=TA only, 3=RSRP only
         if mode == 1:
             return self.associate_single_pass_with_ta_filter(mode=1)
 
@@ -469,22 +469,38 @@ class CellAssociator:
 
                     elif line[0] == 'TECHNO':
                         out_wr.write_row(line)
+                        self.techno = str(line[1])
 
                     # Registering measurements...
                     elif line[0] == 'MEASURE_SERVING':
+                        #print(f"techno is {self.techno}\n")
 
                         if self.techno == "5G NR":
                             
-                            ta_value = int(line[10]) if len(line) > 10 and line[10].strip() != '' else None
+                            try:
+                                # Verifying that all required fields are present in the line.
+                                required_fields = line[1:10] 
+                                if any(val.strip() == '' for val in required_fields):
+                                    raise ValueError(f"Missing values into MEASURE_SERVING at the line: {line}")
+                                
+                                ta_value = float(line[10]) if len(line) > 10 and line[10].strip() != '' else None
 
-                            insert_data(
-                                serving_dict,
-                                {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
-                                'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])], 'BEAM': [int(line[6])],
-                                'RSRP': [float(line[7])], 'RSRQ': [float(line[8])], 'RSSI': [float(line[9])],
-                                'CINR': [float(line[10])], 'TA': [ta_value]}, 
-                                1
-                            )
+                                insert_data(
+
+                                    serving_dict,
+
+                                    {'Timestamp': [float(line[1])], 'Lat': [float(line[2])],
+                                    'Lng': [float(line[3])], 'EARFCN': [int(line[4])], 'PCI': [int(line[5])],
+                                    'BEAM': [int(line[6])],
+                                    'RSRP': [float(line[7])], 'RSRQ': [float(line[8])], 'RSSI': [float(line[9])],
+                                    'CINR': [float(line[10])], 'TA': [ta_value]}, 
+
+                                    1
+
+                                )
+                            except ValueError as e:
+                                print(f"[ERROR] MEASURE_SERVING incorrectin 5G")
+
 
                         else:
                             try:

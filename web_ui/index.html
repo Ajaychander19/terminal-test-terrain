@@ -4,7 +4,8 @@
     <head>
 
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-	
+	    <script src="lib/geolib.js"></script>
+
 		<script type='text/javascript' src='library/d3/d3.min.js'></script>
 		<script type='text/javascript' src='library/d3/d3-hexbin.min.js'></script>
 		<script type='text/javascript' src='library/jquery-3.3.1.min.js '></script>
@@ -39,26 +40,86 @@
 		<link rel="stylesheet" href='library/bootstrap-3.3.7\bootstrap-3.3.7-dist\css\bootstrap-theme.css'>
 		<link rel="stylesheet" href='library/bootstrap-3.3.7\bootstrap-3.3.7-dist\css\bootstrap-toggle.min.css'>
 		<link rel="stylesheet" type="text/css" href="library/leaflet/leaflet.css" />
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
 		<!-- <input type="file" id="fileElem" multiple style="display:none" onchange="myFunction()" accept=".json"> -->
 		<input type="file" id="fileElem" style="display:none" accept=".csv">
+		
    </head>
 
 	<body>
 		<div class="container-fluid">
-			<div class="class=col-sm-4  text-center">
-				<h1>COVERAGE OF 4G-5G BASE STATIONS</h1>
+			
+
+			<div class="container-fluid py-2" style="background-color: #dff2fb;">
+				<div class="row align-items-center text-center text-sm-left">
+					
+					<div class="col-12 col-sm-4 d-flex justify-content-center justify-content-sm-start align-items-center mb-2 mb-sm-0">
+						<img src="img/FR2030.png" alt="Logo 1" style="height: 60px; margin-right: 10px;padding-top: 10px;">
+						<img src="img/Banque.png" alt="Logo 2" style="height: 60px;padding-top: 10px;">
+					</div>
+
+					<div class="col-12 col-sm-4 d-flex justify-content-center align-items-center mb-2 mb-sm-0">
+						<h2 style="margin: 0;padding-top: 10px;">CORENTIN: COVERAGE OF 4G-5G BASE STATIONS</h2>
+					</div>
+
+					<div class="col-12 col-sm-4 d-flex justify-content-sm-end align-items-center mb-2 mb-sm-0" style="gap: 10px;">
+						<img src="img/LogoIMTfor5GFondTransparent.png" alt="Logo 3" style="height: 60px;padding-top: 10px;">
+						<img src="img/imt.png" alt="Logo 4" style="height: 60px;padding-top: 10px;">
+					</div>
+
+				</div>
 			</div>
+
+
+
 			<div class="col-sm-9">
+				<div class="div2" id="popup">
+					<div class="div2-header" id="popupHeader">Heatmap Legend</div>
+					<button class="close-btn" id="close">Close</button>
+					<div class="legends">
+						<div id="legends-wrapper"></div>
+					</div>
+					
+				</div>
+				
 				 <div id="map"></div>
-				 <div class="panel-heading">ORIGINAL PROGRAM DEVELOPED BY HOANG TRIEU.<br>2022 VERSION OF THE PROGRAM DEVELOPED BY KILLIAN CALLAC.
-				 <br>2023 VERSION OF THE PROGRAM DEVELOPED BY TRISTAN MINIER.</div>
+				 
+				 <div id="loader-overlay">
+					<div class="loader"></div>
+				 </div>
+				 
+				 <div id="statistiques" style="display: none; height: 100%; background-color: #f4f4f4;">
+					<canvas id="Chart" width="800" height="400"></canvas>
+					<!-- Contenu futur du graphique -->
+				</div>
+				
+				 <div class="panel-heading" style="line-height: 1.6; font-size: 10px;">
+				<strong>Developers:</strong>
+				<span>Hoang Trieu (Original)</span>
+				<span>Killian Callac (2022)</span>
+				<span>Tristan Minier (2023)</span>
+				<span>Walid Ouaali (2025)</span>
+				<span style="font-size: 10px;">- This work was carried out within the «Compétences et Métier d’Avenir » IMTfor5G+ project and funded by France 2030 and by « Banque des Territoires ».</span>
+				</div>
+
+
 			</div>
 
 			<div id="tool-div" class="col-sm-3">
 				<div class="panel panel-success">
 					<button type="button" id="fileSelect" class="btn btn-success  btn-block">Select Association File</button>
+					<div class="alert_div" 
+						style="display: flex; align-items: center; gap: 10px;">
+					<span id="technoLabel" style="font-weight: bold; display:none;">Technology:</span>
+					<img id="technoImg" src="" alt="" 
+						style="width:40px; height:40px; display:none;">
+					<div id="alert-success" class="alert-success-message"></div>
+					<div id="processing" class="processing-message"></div>
+					</div>
 				</div>
+				
 
 				<!-- <div class="panel panel-success">
 					<button type="button" id="Base Station" class="btn btn-primary  btn-block " >Load Base Stations</button>
@@ -74,7 +135,7 @@
 									</div>
 					<div class="checkbox checkbox-primary">
 						<input class="styled" type="checkbox"  id="Theory_Cell">
-						<label for="Theory_Cell">Theoretical Cell</label>
+						<label for="Theory_Cell">Geometrical cells</label>
 					</div>
 
 					<!-- <label class="checkbox-inline">
@@ -128,7 +189,7 @@
 				</div>
 
 				<div class="panel panel-success visu-params">
-					<div class="panel-heading">EARFCN</div>
+					<div class="panel-heading" id="earfcn-heading">EARFCN/NRARFCN</div>
 					<select class="form-control selectpicker" id="EARFCN_select">
 						<option value="serving-earfcn">Serving EARFCN</option>
 						<option value="all-earfcns">All EARFCNs</option>
@@ -144,9 +205,36 @@
 					</select>
 				</div>
 
-				<div class="panel panel-success visu-params">
+				<!--<div class="panel panel-success visu-params">
 					<button type="button" id="clear-all" class="btn btn-primary  btn-block " >Clear All</button>
+				</div>-->
+				<div class="panel panel-success visu-params" 
+					style="display: flex; gap: 10px; justify-content: space-between;">
+				<button type="button" id="Heatmap_Legend" 
+						class="btn btn-primary" style="flex:1;">
+					Heatmap Legend
+				</button>
+				<button type="button" id="Measurement_info" 
+						class="btn btn-primary" style="flex:1;">
+					Measurement info
+				</button>
 				</div>
+
+				
+				<div class="panel panel-success visu-params">
+					<button type="button" id="showMapBtn" class="btn btn-success btn-block">Show Map</button>
+					<button type="button" id="showStatsBtn" class="btn btn-warning btn-block">Show Statistics</button>
+				</div>
+				<div id="measurementPopup" class="popup-overlay">
+					<div class="popup-content">
+						<span id="popupClose" class="popup-close">&times;</span>
+						<h3>Measurement Information</h3>
+						<p><strong>Technology:</strong> <span id="popup-techno">-</span></p>
+						<p><strong>Version:</strong> <span id="popup-version">-</span></p>
+						<!--<p><strong>Date of Measurement:</strong> <span id="popup-date">-</span></p-->
+					</div>
+				</div>
+				
 
 				<!--<div class="panel panel-success">
 					<button type="button" id="turn_off_server" class="btn btn-primary  btn-block " >shutdown the Server</button>

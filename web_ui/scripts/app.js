@@ -13,6 +13,8 @@ const app = {
         _map                        // Leaflet map.
         _drawingMap                 // Map object to wrap the Leaflet map.
         _fileReader                 // CSVReader object.
+        _technology                 // 4G/5G NR
+        _version
 
         _earfcnOnServing = true;    // true if "Serving EARFCN" is selected.
         _pciOnServing = true;       // true if "Serving PCI" is selected.
@@ -35,6 +37,10 @@ const app = {
         _rsrqChecked = false;
         _rssiChecked = false;
         _cinrChecked = false;
+        _pciTooltiprChecked = false;
+        _withCheckBox=false;
+        _chartInstance = null; // chart instance 
+        _inprocessing=false;
 
         /**
          * Application class constructor.
@@ -48,13 +54,24 @@ const app = {
                 'Base Layer': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 }),
-                'Dark Layer': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolls/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                'Dark Layer': L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    className: 'map-tiles'}),
+                'Satellite Layer': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
                 })
             };
 
             // Creating the map.
-            this._map = L.map('map', styles.mapStyle(baseMaps['Base Layer']));
+            //document.getElementById('map').style.height = '80vh';
+            let latMin = 41.3;   
+            let latMax = 51.1;   
+            let lngMin = -5.3;   
+            let lngMax = 9.6;    
+
+            let centerLat = (latMin + latMax) / 2;
+            let centerLng = (lngMin + lngMax) / 2;
+            this._map = L.map('map', styles.mapStyle(baseMaps['Base Layer'], 6, centerLat, centerLng));
 
             this.reset();   // Resetting UI.
 
@@ -77,6 +94,7 @@ const app = {
          */
         update() {
             let points = this._fileReader.points;       // Serving points.
+            
             let earfcns = this._fileReader.earfcns;     // EARFCNs
             let pcis = this._fileReader.pcis;           // PCIs
             let beams = this._fileReader.beams;         // beams
@@ -100,6 +118,9 @@ const app = {
             // TODO Determinate range for CINR.
             const CINR_MIN = -20;
             const CINR_MAX = 20;
+            // TODO Determinate range for PCI.
+            const PCI_MIN = 0;
+            const PCI_MAX = 1008;
 
             // Filtering EARFCNs and PCIs following drop down menus selection.
             let filtEarpcis = utils.subEarpci(earfcns, pcis, beams, selEarfcns, selPcis);
@@ -110,6 +131,7 @@ const app = {
             // Final EARFCNs and PCIs list.
             let finalEarfcns = (this._allSites) ? selEarfcns : onlySitesEarpcis.earfcns;
             let finalPcis = (this._allSites) ? selPcis : onlySitesEarpcis.pcis;
+            console.log("finalpci: "+finalPcis + " , final earfcn: "+finalEarfcns);
             let finalBeams = checkBeams;
 
             // Updating TAC / PCI layers.
@@ -118,15 +140,18 @@ const app = {
 
             // Updating serving measurement layers.
             this._drawingMap.drawServingRSRP(points, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis, finalBeams);
+            //this._drawingMap.drawServingPCI(points, PCI_MIN, PCI_MAX, finalEarfcns, finalPcis, finalBeams);
             this._drawingMap.drawServingRSRQ(points, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis, finalBeams);
             this._drawingMap.drawServingRSSI(points, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis, finalBeams);
             this._drawingMap.drawServingCINR(points, CINR_MIN, CINR_MAX, finalEarfcns, finalPcis, finalBeams);
+            this._drawingMap.drawServingPCI_tooltip(points, PCI_MIN, PCI_MAX, finalEarfcns, finalPcis, finalBeams);
         
             // Updating global measurement layers.
             this._drawingMap.drawRSRP(this._fileReader.rsrps, earfcns, pcis, beams, RSRP_MIN, RSRP_MAX, finalEarfcns, finalPcis, finalBeams);
             this._drawingMap.drawRSRQ(this._fileReader.rsrqs, earfcns, pcis, beams, RSRQ_MIN, RSRQ_MAX, finalEarfcns, finalPcis, finalBeams);
             this._drawingMap.drawRSSI(this._fileReader.rssis, earfcns, pcis, beams, RSSI_MIN, RSSI_MAX, finalEarfcns, finalPcis, finalBeams);
-        
+            //this._drawingMap.drawPCI(this._fileReader.pcis, earfcns, pcis, beams, PCI_MIN, PCI_MAX, finalEarfcns, finalPcis, finalBeams);
+
         }
 
         /**
@@ -137,31 +162,38 @@ const app = {
          */
         updateDisplay() {
 
-            if (this._onServing) {
+            if (true) {
 
                 // Displaying serving measurement layers.
+                console.log("i am onserving");
 
                 this._drawingMap.setServingRSRP(this._rsrpChecked);
                 this._drawingMap.setServingRSRQ(this._rsrqChecked);
                 this._drawingMap.setServingRSSI(this._rssiChecked);
                 this._drawingMap.setServingCINR(this._cinrChecked);
+                this._drawingMap.setServingPCITOOLTIP(this._pciTooltiprChecked);
 
                 this._drawingMap.setRSRP(false);
                 this._drawingMap.setRSRQ(false);
                 this._drawingMap.setRSSI(false);
+                //this._drawingMap.setpciTooltip(false);
 
             } else {
+                console.log("i am all");
+
 
                 // Displaying global measurement layers.
 
                 this._drawingMap.setRSRP(this._rsrpChecked);
                 this._drawingMap.setRSRQ(this._rsrqChecked);
                 this._drawingMap.setRSSI(this._rssiChecked);
+                //this._drawingMap.setpciTooltip(this._pciTooltiprChecked);
 
                 this._drawingMap.setServingRSRP(false);
                 this._drawingMap.setServingRSRQ(false);
                 this._drawingMap.setServingRSSI(false);
                 this._drawingMap.setServingCINR(false);
+                //this._drawingMap.setServingPCITOOLTIP(false);
 
             }
 
@@ -174,14 +206,14 @@ const app = {
          */
         updateAssocs() {
             // Getting selected EARFCNS / PCIS.
-
-            let earpcis = this._allSites ? {earfcns: [], pcis: [], beams: {}, indices: []} : utils.subEarpci(this._fileReader.earfcns,
-                this._fileReader.pcis, this._fileReader._beams, this._selEarfcns, this._selPcis);
-
+            let earpcis = utils.subEarpci(this._fileReader.earfcns,this._fileReader.pcis, this._fileReader._beams, this._selEarfcns, this._selPcis);
+            let frequency=utils.earfcnToFreqLte(5225);
             // Redrawing associated stations pins.
             this._drawingMap.drawAssocs(
-                this._fileReader.assocs, this._fileReader.antennas, this._checkEarfcns, this._checkPcis, this._checkBeams,
-                () => this.update(), earpcis.earfcns, earpcis.pcis, earpcis.beams);
+                this._fileReader.antennaDirections, this._fileReader.assocs, this._fileReader.antennas, this._checkEarfcns, this._checkPcis, this._checkBeams,
+                () => this.update(), earpcis.earfcns, earpcis.pcis, earpcis.beams,!this._allSites, this._technology);
+            this._withCheckBox=!this._withCheckBox;
+            
 
         }
 
@@ -211,6 +243,7 @@ const app = {
             this._rsrqChecked = false;
             this._rssiChecked = false;
             this._cinrChecked = false;
+            this._pciTooltiprChecked = false;
 
             this._fileReader = null;
             
@@ -247,11 +280,19 @@ const app = {
          */
         enableInputs(b) {
 
-            let visuInputs = document.querySelectorAll('.visu-params input, .visu-params select, #clear-all');
+            //let visuInputs = document.querySelectorAll('.visu-params input, .visu-params select, #clear-all');
+            let visuInputs = document.querySelectorAll('.visu-params input, .visu-params select, #Heatmap_Legend, #Measurement_info, #showStatsBtn');
             
             visuInputs.forEach((input) => input.disabled = !b);
 
         }
+        
+        /*showLoader() {
+            document.getElementById('loader').style.display = 'block';
+        }
+        hideLoader() {
+            document.getElementById('loader').style.display = 'none';
+        }*/
 
         /**
          * Attributes event handlers to UI components.
@@ -259,6 +300,68 @@ const app = {
          * @function
          */
         attributeEvents() {
+            document.querySelector('#Heatmap_Legend').onclick = () => {
+                document.getElementById('popup').style.display = 'block';
+                renderLegends();
+                
+            };
+            document.querySelector('#close').onclick = () => {
+                document.getElementById('popup').style.display = 'none';
+                
+            };
+            
+            const popup = document.getElementById("popup");
+            const header = document.getElementById("popupHeader");
+
+            let isDragging = false;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            header.addEventListener("mousedown", (e) => {
+            isDragging = true;
+            offsetX = e.clientX - popup.offsetLeft;
+            offsetY = e.clientY - popup.offsetTop;
+            });
+
+            document.addEventListener("mouseup", () => {
+            isDragging = false;
+            });
+
+            document.addEventListener("mousemove", (e) => {
+            if (isDragging) {
+                const maxLeft = window.innerWidth - popup.offsetWidth;
+                const maxTop = window.innerHeight - popup.offsetHeight;
+
+                let newLeft = e.clientX - offsetX;
+                let newTop = e.clientY - offsetY;
+
+                // Empêcher de sortir de l'écran
+                newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+                newTop = Math.max(0, Math.min(newTop, maxTop));
+
+                popup.style.left = `${newLeft}px`;
+                popup.style.top = `${newTop}px`;
+            }
+            });
+
+            function closePopup() {
+            popup.style.display = "none";
+            }
+
+            // tooltip background 
+            document.querySelectorAll('.hexbin-tooltip').forEach(el => {
+            el.style.background = 'white';
+            el.style.color = 'black';
+            el.style.padding = '6px 10px';
+            el.style.borderRadius = '10px';
+            el.style.border = '1px solid #ccc';
+            el.style.fontSize = '13px';
+            el.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+            el.style.pointerEvents = 'none';
+            el.style.maxWidth = '250px';
+            });
+
+
 
             // Select file button.
             document.querySelector('#fileSelect').onclick = (evt) => {
@@ -271,40 +374,94 @@ const app = {
             // File selector.
             // Asynchronous method due to the asynchronous file reading.
             document.querySelector('#fileElem').onchange = async (evt) => {
+                // Show loader overlay
+                document.getElementById('loader-overlay').classList.add('active');
 
-                // Reading file.
+                await new Promise(resolve => setTimeout(resolve, 50));
+
                 let file = evt.target.files[0];
                 this._fileReader = new csvreadv2.CSVReader(file);
-                await this._fileReader.readFile();  // Wait for file to be read.
+                await this._fileReader.readFile();
 
-                // Reading antennas data.
+                document.getElementById('loader-overlay').classList.remove('active');
+                const alertBox = document.getElementById("alert-success");
+                alertBox.textContent = "✅ The file has been read successfully!";
+                alertBox.style.display = "block";
+
+                await new Promise(resolve => setTimeout(resolve, 50));
+
                 let antennas = this._fileReader.antennas;
-
-                // Processing Voronoi cells, antenna directions and sector delimiters.
                 let vor = processing.calcVoronoi(antennas);
                 let dels = processing.calcDelimiters(vor, antennas);
                 let ants = processing.calcAntennas(this._fileReader.antennaDirections);
+                this._technology = processing.getTechnologies(this._fileReader.measurementTechno);
+                this._version = processing.getVersions(this._fileReader.measurementVersion);
+                const heading = document.getElementById('earfcn-heading');
+                const select = document.getElementById('EARFCN_select');
+                
 
-                // Reading EARFCNs and PCIs.
                 let earfcns = this._fileReader.earfcns;
                 let pcis = this._fileReader.pcis;
                 let pciNb = this._fileReader.pciNb;
 
-                // Drawing Voronoi cells.
                 this._drawingMap.drawCells(vor, ants, dels);
                 this.updateAssocs();
-
-                // Displaying base layers.
                 this._drawingMap.setAntLayer(true);
                 this._drawingMap.setAssocLayer(true);
-                this._drawingMap.drawSelectors(earfcns, pcis, pciNb);
-
-                // Enabling inputs.
+                this._drawingMap.drawSelectors(earfcns, pcis, pciNb, this._technology);
                 this.enableInputs(true);
-
-                // Updating the UI.
                 this.update();
 
+                const technoImg = document.getElementById("technoImg");
+                const technoLabel = document.getElementById("technoLabel");
+                const popup = document.getElementById("measurementPopup");
+                const btn = document.getElementById("Measurement_info");
+                const closeBtn = document.getElementById("popupClose");
+
+                if (this._technology.at(-1) === "5G NR") {
+                    heading.textContent = 'NRARFCN';
+                    select.options[0].text = 'Serving NRARFCN';
+                    select.options[1].text = 'All NRARFCNs';
+
+                    technoImg.src = "img/5G.png";
+                    technoImg.style.display = "inline-block";
+                    technoLabel.style.display = "inline-block";
+                    technoLabel.textContent = "Technology:";
+                } else {
+                    heading.textContent = 'EARFCN';
+                    select.options[0].text = 'Serving EARFCN';
+                    select.options[1].text = 'All EARFCNs';
+
+                    technoImg.src = "img/4G.png";
+                    technoImg.style.display = "inline-block";
+                    technoLabel.style.display = "inline-block";
+                    technoLabel.textContent = "Technology:";
+                }
+                
+                btn.addEventListener("click", () => {
+                document.getElementById("popup-techno").textContent = this._technology?.at(-1) || "N/A";
+                document.getElementById("popup-version").textContent = "v"+this._version+".0"
+                //document.getElementById("popup-date").textContent = this._fileReader?.measurementDate || new Date().toLocaleDateString();
+
+                
+                popup.style.display = "flex";
+                });
+
+                
+                closeBtn.addEventListener("click", () => {
+                popup.style.display = "none";
+                });
+
+                
+                window.addEventListener("click", (event) => {
+                if (event.target === popup) {
+                    popup.style.display = "none";
+                }
+                });
+
+                setTimeout(() => {
+                    alertBox.style.display = "none";
+                }, 1500);
             };
 
             // Theoritical cells checkbox.
@@ -314,13 +471,36 @@ const app = {
 
             // TAC checkbox.
             document.querySelector('#Tracking_area').onclick = (evt) => {
-                this._drawingMap.setTACLayer(evt.target.checked);
+                const processing = document.getElementById("processing");
+                processing.textContent = "processing ...";
+                processing.style.display = "block";
+
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        this._drawingMap.setTACLayer(evt.target.checked);
+                        processing.style.display = "none";
+                    }, 0);
+                });
             };
 
+
             // PCI checkbox.
-            document.querySelector('#PCI').onclick = (evt) => {
-                this._drawingMap.setPCILayer(evt.target.checked);
+            document.querySelector('#PCI').onclick = (evt) => {                              
+                const processing = document.getElementById("processing");
+                processing.textContent = "processing ...";
+                processing.style.display = "block";
+
+                requestAnimationFrame(() => {
+                        setTimeout(() => {
+                            this._pciTooltiprChecked = evt.target.checked;
+                            this._drawingMap.setPCILayer(evt.target.checked);
+                            this.updateDisplay();
+                            
+                            processing.style.display = "none";
+                        }, 0);
+                    });
             };
+
 
             // RSRP checkbox.
             document.querySelector('#RSRP').onclick = (evt) => {
@@ -356,62 +536,248 @@ const app = {
 
             // Sites selector.
             document.querySelector('#sites-select').onchange = (evt) => {
+                const processing = document.getElementById("processing");
+                processing.textContent = "processing ...";
+                processing.style.display = "block";
 
-                this._allSites = (evt.target.value === 'all-sites');
-                this.update();
-                this.updateAssocs();
+                requestAnimationFrame(() => {
+                        setTimeout(() => {
+                            this._allSites = (evt.target.value === 'all-sites');
+                            this.update();
+                            this.updateAssocs();
+                            processing.style.display = "none";
+                        }, 0);
+                    });
+            };
 
-            }
 
             // EARFCNs selector.
             document.querySelector('#EARFCN_select').onchange = (evt) => {
+                const processing = document.getElementById("processing");
+                processing.textContent = "processing ...";
+                processing.style.display = "block";
 
-                let val = evt.target.value; // Selector value.
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        let val = evt.target.value;    
 
-                // On serving cell ?
-                this._earfcnOnServing = (val === 'serving-earfcn');
+                        this._earfcnOnServing = (val === 'serving-earfcn');
 
-                // Choosing EARFCN selection.
-                this._selEarfcns = (!this._earfcnOnServing && val !== 'all-earfcns') ? 
-                    [parseInt(val)] : null;
+                        this._selEarfcns = (!this._earfcnOnServing && val !== 'all-earfcns') ? 
+                            [parseInt(val)] : null;
 
-                this._onServing = this._earfcnOnServing || this._pciOnServing;
+                        this._onServing = this._earfcnOnServing || this._pciOnServing;
 
-                // Updating UI.
-                this.update();
-                this.updateDisplay();
-                this.updateAssocs();
+                        this.update();
+                        this.updateDisplay();
+                        this.updateAssocs();
 
-            }
+                        processing.style.display = "none";
+                    }, 0);
+                });
+            };
+
 
             // PCIs selector.
             // Same than EARFCNs.
             document.querySelector('#pci-select').onchange = (evt) => {
+                const processing = document.getElementById("processing");
+                processing.textContent = "processing ...";
+                processing.style.display = "block";
 
-                let val = evt.target.value;
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        let val = evt.target.value;
 
-                this._pciOnServing = (val === 'serving-pci');
+                        this._pciOnServing = (val === 'serving-pci');
 
-                this._selPcis = (!this._pciOnServing && val !== 'all-pcis') ? [parseInt(val)] : null;
-                
-                this._onServing = this._earfcnOnServing || this._pciOnServing;
+                        this._selPcis = (!this._pciOnServing && val !== 'all-pcis') ? 
+                            [parseInt(val)] : null;
 
-                this.update();
-                this.updateDisplay();
-                this.updateAssocs();
+                        this._onServing = this._earfcnOnServing || this._pciOnServing;
 
-            }
+                        this.update();
+                        this.updateDisplay();
+                        this.updateAssocs();
+
+                        processing.style.display = "none";
+                    }, 0);
+                });
+            };
+
 
             // "Clear All" button.
-            document.querySelector('#clear-all').onclick = (evt) => this.reset();
+            //document.querySelector('#clear-all').onclick = (evt) => this.reset();
 
             // Alternative color button.
             document.querySelector('#ColorAlt').onclick = (evt) => {
+                const processing = document.getElementById("processing");
+                processing.textContent = "processing ...";
+                processing.style.display = "block";
 
-                this._altCol = evt.target.checked ? 0 : 1;
-                this.update();
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        this._altCol = evt.target.checked ? 0 : 1;
+                        this.update();
 
-            }
+                        processing.style.display = "none";
+                    }, 0);
+                });
+            };
+            document.querySelector('#showStatsBtn').onclick = () => {
+                document.getElementById('map').style.display = 'none';
+                document.getElementById('statistiques').style.display = 'block';
+            
+                let points = this._fileReader.points;            
+                const ctx = document.getElementById("Chart").getContext("2d");
+            
+                if (this._chartInstance) {
+                    this._chartInstance.destroy();
+                }
+            
+                const rsrpValues = [];
+                const rssiValues = [];
+                const rsrqValues = [];
+                const pciValues = [];
+                const indices = [];
+            
+                let index = 0;
+                for (const tac in points) {
+                    for (const pci in points[tac]) {
+                        for (const cid in points[tac][pci]) {
+                            const samples = points[tac][pci][cid];
+                            for (const sample of samples) {
+                                if (
+                                    sample.rsrp !== undefined &&
+                                    sample.rssi !== undefined &&
+                                    sample.rsrq !== undefined
+                                ) {
+                                    rsrpValues.push(sample.rsrp);
+                                    rssiValues.push(sample.rssi);
+                                    rsrqValues.push(sample.rsrq);
+                                    pciValues.push(pci); 
+                                    indices.push(index++);
+                                }
+                            }
+                        }
+                    }
+                }
+            
+                this._chartInstance = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: indices,
+                        datasets: [
+                            {
+                                label: "RSRP (dBm)",
+                                data: rsrpValues,
+                                borderColor: "#4e79a7",
+                                backgroundColor: "rgba(78, 121, 167, 0.1)",
+                                yAxisID: "yLeft",
+                                tension: 0.2,
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            {
+                                label: "RSSI (dBm)",
+                                data: rssiValues,
+                                borderColor: "#f28e2b",
+                                backgroundColor: "rgba(242, 142, 43, 0.1)",
+                                yAxisID: "yLeft",
+                                tension: 0.2,
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            {
+                                label: "RSRQ (dB)",
+                                data: rsrqValues,
+                                borderColor: "#59a14f",
+                                backgroundColor: "rgba(89, 161, 79, 0.1)",
+                                yAxisID: "yRight",
+                                tension: 0.2,
+                                pointRadius: 0,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: "RSRP, RSSI, and RSRQ Variation"
+                            },
+                            legend: {
+                                position: "top"
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.dataset.label || '';
+                                        const value = context.parsed.y;
+                                        const index = context.dataIndex;
+                                        const pci = pciValues[index];
+                                        return `${label}: ${value} dBm (PCI: ${pci})`;
+                                    }
+                                }
+                            },
+                            zoom: {
+                                pan: {
+                                    enabled: true,
+                                    mode: 'xy'
+                                },
+                                zoom: {
+                                    wheel: { enabled: true },
+                                    pinch: { enabled: true },
+                                    mode: 'x'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: "Measurement Index"
+                                }
+                            },
+                            yLeft: {
+                                type: "linear",
+                                position: "left",
+                                title: {
+                                    display: true,
+                                    text: "Signal Strength (dBm)"
+                                },
+                                ticks: {
+                                    beginAtZero: false
+                                }
+                            },
+                            yRight: {
+                                type: "linear",
+                                position: "right",
+                                title: {
+                                    display: true,
+                                    text: "RSRQ (dB)"
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        }
+                    }
+                });
+            };
+            
+        
+            
+            document.querySelector('#showMapBtn').onclick = () => {
+                document.getElementById('map').style.display = 'block';
+                document.getElementById('statistiques').style.display = 'none';
+            };
+            
 
         }
 
@@ -422,3 +788,110 @@ const app = {
 (function () {
     new app.App();
 })();
+
+function getRGBComponents(color) {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 1, 1);
+  const data = ctx.getImageData(0, 0, 1, 1).data;
+  return { r: data[0], g: data[1], b: data[2] };
+}
+
+function createLegend(label, minValue, maxValue) {
+  const container = document.createElement("div");
+  container.className = "legend-container";
+
+  const row = document.createElement("div");
+  row.className = "legend-row";
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 20;
+  canvas.height = 200;
+  const ctx = canvas.getContext("2d");
+
+
+  const imageData = ctx.createImageData(canvas.width, canvas.height);
+  for (let y = 0; y < canvas.height; y++) {
+    const val = maxValue - ((maxValue - minValue) * y / canvas.height);
+    const color = utils.getColorFromPalette(val, minValue, maxValue, styles.HEATMAP);
+    const rgb = getRGBComponents(color);
+
+    for (let x = 0; x < canvas.width; x++) {
+      const index = (y * canvas.width + x) * 4;
+      imageData.data[index] = rgb.r;
+      imageData.data[index + 1] = rgb.g;
+      imageData.data[index + 2] = rgb.b;
+      imageData.data[index + 3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+
+  
+  const steps = 10;
+  const scale = document.createElement("div");
+  scale.className = "scale";
+
+  for (let i = 0; i <= steps; i++) {
+    const val = maxValue - ((maxValue - minValue) / steps) * i;
+    const span = document.createElement("span");
+    span.textContent = Math.round(val);
+
+    const stepDiv = document.createElement("div");
+    stepDiv.style.height = `${canvas.height / steps}px`;
+    stepDiv.appendChild(span);
+
+    scale.appendChild(stepDiv);
+  }
+
+  row.appendChild(canvas);
+  row.appendChild(scale);
+
+  const labelDiv = document.createElement("div");
+  labelDiv.className = "legend-label";
+  labelDiv.textContent = label;
+
+  container.appendChild(row);
+  container.appendChild(labelDiv);
+
+  
+  const tooltip = document.createElement("div");
+  tooltip.className = "legend-tooltip";
+  document.body.appendChild(tooltip);
+
+  canvas.addEventListener("mousemove", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const val = maxValue - ((maxValue - minValue) * y / canvas.height);
+
+    tooltip.textContent = `${label}: ${Math.round(val)}`;
+    tooltip.style.left = `${e.pageX + 10}px`;
+    tooltip.style.top = `${e.pageY + 10}px`;
+    tooltip.style.display = "block";
+  });
+
+  canvas.addEventListener("mouseleave", () => {
+    tooltip.style.display = "none";
+  });
+
+  return container;
+}
+
+function renderLegends() {
+  const legendsWrapper = document.getElementById("legends-wrapper");
+  legendsWrapper.innerHTML = "";
+
+  const legends = [
+    { label: "RSRP (dBm)", min: -120, max: -60 },
+    { label: "RSRQ (dB)", min: -20, max: -3 },
+    { label: "RSSI (dBm)", min: -120, max: -30 },
+    { label: "CINR (dB)", min: -20, max: 20 }
+  ];
+
+  legends.forEach(({ label, min, max }) => {
+    const legend = createLegend(label, min, max);
+    legendsWrapper.appendChild(legend);
+  });
+}
+
+renderLegends();

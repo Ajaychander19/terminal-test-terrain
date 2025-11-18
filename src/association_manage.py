@@ -1,4 +1,4 @@
-"""This module manages associations. It allows you to add associations from associations files to the cevcaa sure associations file."""
+"""This module manages associations. It allows you to add associations from associations files to the cevcaf sure associations file."""
 
 import os, time # os for file operations, time for timestamping
 from collections import defaultdict # defaultdict for grouping list by keys automatically
@@ -85,7 +85,7 @@ def _join_rows_short_merged(rows):
         return ", ".join(items[:3]) + f" … (+{len(items)-3})"
     return ", ".join(items)
 
-def _join_rows_short_cevcaa(rows):
+def _join_rows_short_cevcaf(rows):
     """Join multiple association rows into a short string for display."""
     if not rows: 
         return "-"
@@ -165,13 +165,13 @@ class ConflictTableDialog(tk.Toplevel):
     """
         Print all the differences and new associations in a scrollable table.
         For each (PCI, EARFCN), propose an appropriate Combobox of actions (conflict vs. new).
-        On validation, self.results = dict[(pci,earfcn)] -> code ('keep cevcaa','none','use_assoc_i','add_assoc_i','skip').
+        On validation, self.results = dict[(pci,earfcn)] -> code ('keep cevcaf','none','use_assoc_i','add_assoc_i','skip').
     """
 
     def __init__(self, parent, conflicts):
         """parent: parent tk widget.
         conflicts: list of tuples (pci, earfcn, list_c, list_m, mode)
-        where list_c = list of cevcaa rows, list_m = list of merged rows"""
+        where list_c = list of cevcaf rows, list_m = list of merged rows"""
         
         super().__init__(parent) # Call parent constructor
         self.title("Resolve conflicts and new associations")
@@ -184,7 +184,7 @@ class ConflictTableDialog(tk.Toplevel):
         container = ttk.Frame(self) # Main container frame
         container.pack(fill="both", expand=True, padx=10, pady=8) # Padding around
 
-        headings = ("PCI", "EARFCN", "cevcaa (site/ant/score)", "merged (site/ant/score)", "Choice")
+        headings = ("PCI", "EARFCN", "cevcaf (site/ant/score)", "merged (site/ant/score)", "Choice")
         self.table = ScrollableTable(container, headings)
         self.table.pack(fill="both", expand=True) # Fill available space
         self.table.bind_mousewheel() # Enable mouse wheel scrolling
@@ -192,15 +192,15 @@ class ConflictTableDialog(tk.Toplevel):
         # Fill the table with conflicts/new associations
         for pci, earfcn, list_c, list_m, mode in conflicts:
             pci_s, earfcn_s = str(pci), str(earfcn) # Ensure strings
-            cevcaa_txt = _join_rows_short_cevcaa(list_c) # Short text for cevcaa rows
+            cevcaf_txt = _join_rows_short_cevcaf(list_c) # Short text for cevcaf rows
             merged_txt = _join_rows_short_merged(list_m) # Short text for merged rows
 
             # Construct option map and labels for Combobox
             option_map = {} # label -> code
             labels = [] # list of labels for Combobox
             if mode == "conflict":
-                option_map["Keep cevcaa"] = "keep_cevcaa" # Keep existing cevcaa associations
-                labels.append("Keep cevcaa") # Add to labels
+                option_map["Keep cevcaf"] = "keep_cevcaf" # Keep existing cevcaf associations
+                labels.append("Keep cevcaf") # Add to labels
 
                 # Add options to replace by one of the merged associations
                 for i, r in enumerate(list_m):
@@ -209,11 +209,11 @@ class ConflictTableDialog(tk.Toplevel):
                     labels.append(label)
 
                 # Option to delete all associations for this (pci, earfcn)
-                option_map["Delete association (cevcaa)"] = "none"
-                labels.append("Delete association (cevcaa)") 
+                option_map["Delete association (cevcaf)"] = "none"
+                labels.append("Delete association (cevcaf)") 
 
                 # Default selection
-                default_label = "Keep cevcaa"
+                default_label = "Keep cevcaf"
             
             # New association case
             else: 
@@ -232,7 +232,7 @@ class ConflictTableDialog(tk.Toplevel):
             # Create row widgets
             l_pci = ttk.Label(self.table.inner, text=pci_s)
             l_earfcn = ttk.Label(self.table.inner, text=earfcn_s)
-            l_c = ttk.Label(self.table.inner, text=cevcaa_txt)
+            l_c = ttk.Label(self.table.inner, text=cevcaf_txt)
             l_m = ttk.Label(self.table.inner, text=merged_txt)
 
             var = tk.StringVar(value=default_label)
@@ -356,12 +356,12 @@ def _read_assoc_file(path, require_version=True, min_version=3.0):
     # Return the list of valid rows
     return rows
 
-def _read_cevcaa(path):
-    """Read a cevcaa ASSOC file, without requiring VERSION line."""
+def _read_cevcaf(path):
+    """Read a cevcaf ASSOC file, without requiring VERSION line."""
     return _read_assoc_file(path, require_version=False)
 
-def _write_cevcaa_with_assoc(assoc_rows, path_out):
-    """Write a cevcaa ASSOC file with given assoc_rows."""
+def _write_cevaf_with_assoc(assoc_rows, path_out):
+    """Write a cevaf ASSOC file with given assoc_rows."""
 
     with open(path_out, "w", newline='', encoding='utf-8') as f:
         f.write("|".join(ASSOC_HEADER) + "\n") # Write header
@@ -432,32 +432,32 @@ def _same_assoc_key(r):
     """Return a key identifying the association (EARFCN, PCI, Cartoradio_Number, Ant_Number)."""
     return (r["EARFCN"], r["PCI"], r["Cartoradio_Number"], r["Ant_Number"])
 
-def manage_cevcaa(cevcaa_file, assoc_files, working_dir, parent=None):
+def manage_cevaf(cevaf_file, assoc_files, working_dir, parent=None):
     """
-    Process complete for managing associations in a cevcaa file:
-    - Load cevcaa and merge assoc_files
+    Process complete for managing associations in a cevaf file:
+    - Load cevaf and merge assoc_files
     - Multiply scores for identical associations
     - Collect conflicts and new associations
     - Open a single window to choose actions
     - Apply choices and write final file
     """
     # Load data
-    cevcaa_rows = _read_cevcaa(cevcaa_file) if cevcaa_file else []
+    cevaf_rows = _read_cevaf(cevaf_file) if cevaf_file else []
     merged_rows = _merge_assoc_files(assoc_files)
 
     # Index by (PCI, EARFCN)
-    idx_cevcaa = _index_by_pci_earfcn(cevcaa_rows)
+    idx_cevaf = _index_by_pci_earfcn(cevaf_rows)
     idx_merged = _index_by_pci_earfcn(merged_rows)
 
-    # Dict for quick access to cevcaa rows by full assoc key
-    cevcaa_by_key = { _same_assoc_key(r): dict(r) for r in cevcaa_rows }
+    # Dict for quick access to cevaf rows by full assoc key
+    cevaf_by_key = { _same_assoc_key(r): dict(r) for r in cevaf_rows }
 
     # All (PCI, EARFCN) keys
-    all_keys = set(idx_cevcaa.keys()) | set(idx_merged.keys())
+    all_keys = set(idx_cevaf.keys()) | set(idx_merged.keys())
 
     conflicts = []
     for (pci, earfcn) in sorted(all_keys, key=lambda x: (x[0], x[1])):
-        list_c = idx_cevcaa.get((pci, earfcn), [])
+        list_c = idx_cevaf.get((pci, earfcn), [])
         list_m = idx_merged.get((pci, earfcn), [])
 
         if list_c and list_m:
@@ -466,7 +466,7 @@ def manage_cevcaa(cevcaa_file, assoc_files, working_dir, parent=None):
                 for rm in list_m:
                     if _same_assoc_key(rc) == _same_assoc_key(rm):
                         k = _same_assoc_key(rc)
-                        cevcaa_by_key[k]["Score"] = float(rc["Score"]) * float(rm["Score"])
+                        cevaf_by_key[k]["Score"] = float(rc["Score"]) * float(rm["Score"])
 
             # conflict if different sets of sites/antennas
             c_sites = {(r["Cartoradio_Number"], r["Ant_Number"]) for r in list_c}
@@ -492,36 +492,36 @@ def manage_cevcaa(cevcaa_file, assoc_files, working_dir, parent=None):
                 continue
 
             if mode == "conflict":
-                if code == "keep_cevcaa":
+                if code == "keep_cevaf":
                     continue
                 elif code == "none":
                     for rc in list_c:
-                        cevcaa_by_key.pop(_same_assoc_key(rc), None)
+                        cevaf_by_key.pop(_same_assoc_key(rc), None)
                 elif code.startswith("use_assoc_"):
                     i = int(code.split("_")[-1])
                     chosen = list_m[i]
                     for rc in list_c:
-                        cevcaa_by_key.pop(_same_assoc_key(rc), None)
-                    cevcaa_by_key[_same_assoc_key(chosen)] = dict(chosen)
+                        cevaf_by_key.pop(_same_assoc_key(rc), None)
+                    cevaf_by_key[_same_assoc_key(chosen)] = dict(chosen)
 
             elif mode == "new" and code.startswith("add_assoc_"):
                 i = int(code.split("_")[-1])
                 chosen = list_m[i]
-                cevcaa_by_key[_same_assoc_key(chosen)] = dict(chosen)
+                cevaf_by_key[_same_assoc_key(chosen)] = dict(chosen)
 
-    # Write final cevcaa file
+    # Write final cevaf file
     # Sort by EARFCN, PCI, Cartoradio_Number, Ant_Number
-    final_rows = list(cevcaa_by_key.values())
+    final_rows = list(cevaf_by_key.values())
 
     final_rows.sort(key=_sort_key)
 
-    base = os.path.splitext(os.path.basename(cevcaa_file))[0] if cevcaa_file else "cevcaa"
+    base = os.path.splitext(os.path.basename(cevaf_file))[0] if cevaf_file else "cevaf"
     ts = time.strftime("%Y%m%d_%H%M%S")
     out_path = os.path.join(working_dir, f"{base}_updated_{ts}.csv")
-    _write_cevcaa_with_assoc(final_rows, out_path)
+    _write_cevaf_with_assoc(final_rows, out_path)
 
     msg = (
-        (f"Input cevcaa: {os.path.basename(cevcaa_file)}\n" if cevcaa_file else "No cevcaa provided\n") +
+        (f"Input cevaf: {os.path.basename(cevaf_file)}\n" if cevaf_file else "No cevaf provided\n") +
         f"Assoc merged: {len(merged_rows)} lines\n"
         f"Output: {os.path.basename(out_path)}\n"
         f"Total ASSOC written: {len(final_rows)}"

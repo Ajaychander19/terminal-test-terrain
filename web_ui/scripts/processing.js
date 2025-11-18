@@ -16,6 +16,22 @@ const processing = {
      * @function
      */
     calcVoronoi: function (antennas) {
+    
+        if (!Array.isArray(antennas)) {
+            antennas = Object.values(antennas);
+        }
+        let bsPoints = antennas.map(ant => turf.point([ant.lng, ant.lat]));
+        let bsFeats = turf.featureCollection(bsPoints);
+        let mercatorPoints = turf.toMercator(bsFeats);
+        let bbox = turf.bbox(mercatorPoints);
+        let voronoiMerc = turf.voronoi(mercatorPoints, { bbox });
+        return turf.toWgs84(voronoiMerc);
+    },
+
+    
+    ///Old version
+    /*calcVoronoi: function (antennas) {
+        
 
         // Base station coordinates list.
         let bsPoints = [];
@@ -32,7 +48,8 @@ const processing = {
 
         return turf.voronoi(bsFeats, {bbox: bbox});
 
-    },
+    },*/
+
 
     /**
      * Calculates sectors delimitation lines from delimiters data.
@@ -77,6 +94,7 @@ const processing = {
             antIndex++;
 
         }
+        
 
         return result;
 
@@ -92,11 +110,22 @@ const processing = {
      * @function
      */
     calcAntennas: function (antDirs) {
-
-        return antDirs.map(
-            (antDir) => turf.lineString([[antDir.lngA, antDir.latA], [antDir.lngB, antDir.latB]])
+        return antDirs.map((antDir) =>
+            turf.lineString(
+                [[antDir.lngA, antDir.latA], [antDir.lngB, antDir.latB]],
+                {
+                    cartoNum: antDir.cartoNum 
+                }
+            )
         );
+    },
+    getTechnologies: function (techno) {
+        return techno.map(techno => techno.technology);
+    },
 
-    }
+    getVersions: function (version) {
+    return version.map(v => v.version);
+}
+
 
 }

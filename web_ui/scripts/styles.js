@@ -41,7 +41,7 @@ const styles = {
     HEATMAP: [],
 
     /**
-     * 
+     * yelo
      * @param {number} opac Opacity (0.0-1.0)
      * @param {String} hexColor Hexadecimal color (RRGGBB).
      * @returns Voronoi cells style of opacity opac and color hexColor.
@@ -150,6 +150,17 @@ const styles = {
         }
 
     },
+    hexColor_pci: function () {
+
+        // copied from the old program.
+        return {
+			radius : 12,
+			opacity: 0,
+			duration: 200,
+			pointserEvents: 'all'
+        }
+
+    },
 
     /**
      * 
@@ -172,6 +183,20 @@ const styles = {
 
     },
 
+    loaderStyle: function(state){
+        return {
+            border: "6px solid #f3f3f3",
+            borderTop: "6px solid #3498db",
+            borderRadius: "50%",
+            width: "40px",
+            height: "40px",
+            animation: "spin 1s linear infinite",
+            margin: "auto",
+            display: state 
+        };
+
+    },
+
     /**
      * 
      * @param {*} baseMap Lealfet map default background.
@@ -189,6 +214,7 @@ const styles = {
             layers: baseMap
         };
     },
+    
 
     /**
      * Produces a gradient made of a given number of color for HexBin layers.
