@@ -473,7 +473,7 @@ class CellAssociator:
 
                     # Registering measurements...
                     elif line[0] == 'MEASURE_SERVING':
-                        print(f"techno is {self.techno}\n")
+                        #print(f"techno is {self.techno}\n")
 
                         if self.techno == "5G NR":
                             
