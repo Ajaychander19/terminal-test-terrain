@@ -241,3 +241,79 @@ body
 {
     font-weight: normal;
 }
+
+/* Fond semi-transparent pour mettre la modale en évidence */
+#profilModalBackdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5 );
+    backdrop-filter: blur(5px); /* Effet de flou moderne */
+    z-index: 9998;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#profilModal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Centrage parfait */
+    width: 90%;
+    max-width: 700px; /* Limite la largeur sur grand écran */
+    height: 450px;
+    background: #1e1e1e; /* Thème sombre */
+    color: #f0f0f0;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    opacity: 0;
+    transform: translate(-50%, -45%); /* Position initiale pour l'animation */
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#profilHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid #333;
+    font-weight: 600;
+    cursor: move;
+    user-select: none; /* Empêche la sélection de texte lors du déplacement */
+}
+
+#closeProfil {
+    background: #333;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+#closeProfil:hover {
+    background: #444;
+}
+
+#profilChartContainer {
+    flex-grow: 1;
+    padding: 20px;
+    overflow: hidden;
+}
+
+#profilChart {
+    width: 100% !important;
+    height: 100% !important;
+}

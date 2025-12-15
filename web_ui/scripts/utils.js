@@ -165,6 +165,36 @@ const nrArfcnParameters = [
 
 
 const utils = {
+    async  getAltitudes(points) {
+        const locations = points.map(p => ({ latitude: p[1], longitude: p[0] }));
+
+        const response = await fetch('https://api.open-elevation.com/api/v1/lookup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ locations })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erreur Open-Elevation: ${response.status}`);
+        }
+
+        const data = await response.json();
+        // data.results est un tableau d'objets {latitude, longitude, elevation}
+        return data.results.map(r => r.elevation);
+    },
+
+
+    generatePoints(point1, point2, n) {
+        const points = [];
+        for (let i = 0; i <= n; i++) {
+            const t = i / n;
+            const lng = point1[0] + t * (point2[0] - point1[0]);
+            const lat = point1[1] + t * (point2[1] - point1[1]);
+            points.push([lng, lat]);
+        }
+        return points;
+    },
+
     normalize: function(val, min, max) {
         // Clamp et normalisation
         return Math.min(Math.max((val - min) / (max - min), 0), 1);

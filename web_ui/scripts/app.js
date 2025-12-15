@@ -41,6 +41,7 @@ const app = {
         _withCheckBox=false;
         _chartInstance = null; // chart instance 
         _inprocessing=false;
+        _pointProfil = [];    // tableau final : [lng1, lat1, lng2, lat2]
 
         /**
          * Application class constructor.
@@ -80,6 +81,132 @@ const app = {
 
             // Wrapping the map in a map drawing object.
             this._drawingMap = new drawing.Map(this._map);
+            
+            this.marker1 = null;
+            this.marker2 = null;
+            this.profilLine = null;
+            this.createPointMarker = (latlng, number) => {
+                const color = number === 1 ? "#006CFF" : "#1ABC5C";
+
+                return L.circleMarker(latlng, {
+                    radius: 12,
+                    weight: 0,           // Pas de contour
+                    color: color,        // Couleur du contour (non visible)
+                    fillColor: color,    // Couleur principale
+                    fillOpacity: 1,      // Entièrement opaque
+                    className: "modern-marker"
+                }).addTo(this._map).bindTooltip(
+                    `<b>${number}</b>`,
+                    {
+                        permanent: true,
+                        direction: "center",
+                        className: "profil-label-modern"
+                    }
+                );
+            };
+
+            // CSS pour le label (version corrigée et modernisée)
+            const profilCSS = document.createElement("style");
+            profilCSS.innerHTML = `
+            .profil-label-modern {
+                /* --- Correction du rectangle blanc --- */
+                background-color: transparent; /* Fond transparent */
+                border: none;                  /* Aucune bordure */
+                box-shadow: none;              /* Aucune ombre sur le conteneur */
+
+                /* --- Améliorations esthétiques --- */
+                font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                font-size: 14px;
+                font-weight: 600;
+                color: white;
+                
+                /* Ombre portée sur le texte pour la lisibilité */
+                text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.5);
+
+                /* Empêche la sélection ou l'interaction avec le texte */
+                user-select: none;
+                pointer-events: none;
+            }
+
+            .modern-marker {
+                /* Vide pour ne pas avoir d'animation au survol */
+                /* On peut ajouter un curseur pour indiquer l'interactivité */
+                cursor: pointer;
+            }
+            `;
+            document.head.appendChild(profilCSS);
+
+
+
+
+            // --------- GESTION DES CLICS SUR LA CARTE --------- //
+            this._map.on("click", (e) => {
+                const profilBtn = document.getElementById("profil_milti");
+
+                // 1) Premier point
+                if (this._pointProfil.length === 0) {
+
+                    // Reset si ancien profil existait
+                    if (this.marker1) this._map.removeLayer(this.marker1);
+                    if (this.marker2) this._map.removeLayer(this.marker2);
+                    if (this.profilLine) this._map.removeLayer(this.profilLine);
+
+                    this.marker2 = null;
+                    this.profilLine = null;
+
+                    this._pointProfil.push(e.latlng.lng); // lng1
+                    this._pointProfil.push(e.latlng.lat); // lat1
+
+                    this.marker1 = this.createPointMarker(e.latlng, 1);
+
+                    console.log("Point 1 capté :", this._pointProfil);
+                    return;
+                }
+
+                // 2) Deuxième point
+                if (this._pointProfil.length === 2) {
+
+                    this._pointProfil.push(e.latlng.lng); // lng2
+                    this._pointProfil.push(e.latlng.lat); // lat2
+
+                    this.marker2 = this.createPointMarker(e.latlng, 2);
+
+                    this.profilLine = L.polyline(
+                        [
+                            [this._pointProfil[1], this._pointProfil[0]],
+                            [e.latlng.lat, e.latlng.lng]
+                        ],
+                        {
+                            color: "#FF5722",
+                            weight: 4,
+                            opacity: 0.9,
+                            dashArray: "6,6"
+                        }
+                    ).addTo(this._map);
+
+                    console.log("Point 2 capté :", this._pointProfil);
+                    profilBtn.disabled = false;
+
+                    return;
+                }
+
+                // 3) Si déjà 2 points → reset auto
+                if (this._pointProfil.length === 4) {
+                    profilBtn.disabled = true;
+                    this._pointProfil = [];
+                    if (this.marker1) this._map.removeLayer(this.marker1);
+                    if (this.marker2) this._map.removeLayer(this.marker2);
+                    if (this.profilLine) this._map.removeLayer(this.profilLine);
+
+                    this.marker1 = null;
+                    this.marker2 = null;
+                    this.profilLine = null;
+
+                    console.log("Réinitialisation → Cliquez pour nouveau point 1");
+                }
+
+            });
+
 
             // Setting up UI Events.
             this.attributeEvents();
@@ -300,6 +427,206 @@ const app = {
          * @function
          */
         attributeEvents() {
+            const profilButton = document.querySelector('#profil_milti');
+
+            // Déclare une variable globale (ou au scope de attributeEvents)
+            let profilChartInstance = null;
+            // Références aux éléments du DOM
+            const profilModal = document.getElementById('profilModal');
+            const profilModalBackdrop = document.getElementById('profilModalBackdrop');
+            const closeProfilButton = document.getElementById('closeProfil');
+            const ctxProfil = document.getElementById('profilChart').getContext('2d');
+            
+
+            // Fonction pour afficher la modale avec animation
+            function showProfilModal() {
+                profilModal.style.display = 'flex';
+                profilModalBackdrop.style.display = 'block';
+                setTimeout(() => {
+                    profilModal.style.opacity = 1;
+                    profilModal.style.transform = 'translate(-50%, -50%)';
+                    profilModalBackdrop.style.opacity = 1;
+                }, 10);
+            }
+
+            // Fonction pour masquer la modale
+            function hideProfilModal() {
+                profilModal.style.opacity = 0;
+                profilModal.style.transform = 'translate(-50%, -45%)';
+                profilModalBackdrop.style.opacity = 0;
+                setTimeout(() => {
+                    profilModal.style.display = 'none';
+                    profilModalBackdrop.style.display = 'none';
+                }, 300);
+            }
+
+            closeProfilButton.onclick = hideProfilModal;
+            profilModalBackdrop.onclick = hideProfilModal;
+
+            profilButton.onclick = async () => {
+                const point1 = [this._pointProfil[0], this._pointProfil[1]];
+                const point2 = [this._pointProfil[2], this._pointProfil[3]];
+                const dx = point2[0] - point1[0]; // différence de longitude
+                const dy = point2[1] - point1[1]; // différence de latitude
+
+                const distanceMeters = Math.sqrt(dx*dx + dy*dy) * 111000;
+                let nbpoints = Math.ceil(distanceMeters / 0.5);
+                console.log("nbpoints is: ",nbpoints);
+                console.log("distance  is: ",distanceMeters);
+
+                const points = utils.generatePoints(point1, point2, nbpoints);
+
+                try {
+                    const altitudes = await utils.getAltitudes(points);
+                    console.log("Altitudes :", altitudes);
+
+                    // Calcul des distances cumulées
+                    const distances = [0];
+                    for (let i = 1; i < points.length; i++) {
+                        const dx = points[i][0] - points[i-1][0];
+                        const dy = points[i][1] - points[i-1][1];
+                        distances.push(distances[i-1] + Math.sqrt(dx*dx + dy*dy) * 111000);
+                    }
+                    const startAltitude = altitudes[0];
+                    const endAltitude = altitudes[altitudes.length - 1];
+
+                    // Afficher le modal
+                    profilModal.style.display = 'block';
+
+                    // Détruire l'ancien graphique si existant
+                    if (profilChartInstance) {
+                        profilChartInstance.destroy();
+                    }
+
+                    // Créer le nouveau graphique
+                    showProfilModal();
+
+                    if (profilChartInstance) {
+                        profilChartInstance.destroy();
+                    }
+
+                    // Création du dégradé de couleur basé sur l'altitude
+                    const minAlt = Math.min(...altitudes);
+                    const maxAlt = Math.max(...altitudes);
+                    const colorScale = d3.interpolateRgb("green", "red"); // Vert (bas) -> Rouge (haut)
+
+                    profilChartInstance = new Chart(ctxProfil, {
+                        type: 'line',
+                        data: {
+                            labels: distances.map(d => d.toFixed(0)),
+                            datasets: [
+                                {
+                                label: 'Elevation Profile',
+                                data: altitudes,
+                                fill: {
+                                    target: 'origin',
+                                    above: 'rgba(255, 87, 34, 0.1)', // Couleur de remplissage sous la ligne
+                                },
+                                borderColor: 'rgba(255, 87, 34, 0.8)',
+                                tension: 0.4,
+                                pointRadius: 0, // On cache les points par défaut
+                                pointBackgroundColor: 'white',
+                                pointBorderColor: 'rgba(255, 87, 34, 1)',
+                                pointHoverRadius: 6, // Points plus gros au survol
+                                pointHoverBorderWidth: 3,
+                                borderWidth: 1.5,
+                                // Segmentation pour le dégradé de couleur
+                                segment: {
+                                    borderColor: ctx => {
+                                        const y = ctx.p1.parsed.y;
+                                        const normalizedAlt = (y - minAlt) / (maxAlt - minAlt);
+                                        return colorScale(normalizedAlt);
+                                    }
+                                }
+                                },
+                                {
+                                    label: 'Line of Sight',
+                                    // On ne dessine qu'entre le premier et le dernier point
+                                    data: [startAltitude, ...Array(altitudes.length - 2).fill(null), endAltitude],
+                                    borderColor: '#00BFFF',    // Couleur bleue pour la visibilité
+                                    borderWidth: 2,             // Épaisseur de la ligne
+                                    borderDash: [10, 5],        // Style en pointillés
+                                    fill: false,                // Pas de remplissage
+                                    tension: 0,                 // Ligne parfaitement droite
+                                    pointRadius: 5,             // Marquer le début et la fin
+                                    pointBackgroundColor: '#00BFFF',
+                                    spanGaps: true
+                                }
+                        ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: {
+                                duration: 1000,
+                                easing: 'easeInOutQuart'
+                            },
+                            plugins: {
+                                legend: { display: false }, // Le titre est suffisant
+                                title: { display: false }, // On utilise notre propre header
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                    titleFont: { size: 14, weight: 'bold' },
+                                    bodyFont: { size: 12 },
+                                    padding: 12,
+                                    cornerRadius: 8,
+                                    callbacks: {
+                                        label: (context) => `Altitude: ${context.parsed.y.toFixed(1)} m`
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: { display: true, text: 'Distance (m)', color: '#aaa' },
+                                    ticks: { color: '#aaa' },
+                                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Altitude (m)', color: '#aaa' },
+                                    ticks: { color: '#aaa' },
+                                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                                }
+                            },
+                            // Plugin pour dessiner une ligne verticale au survol
+                            interaction: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            plugins: [{
+                                id: 'crosshair',
+                                afterDraw: chart => {
+                                    if (chart.tooltip?._active?.length) {
+                                        let x = chart.tooltip._active[0].element.x;
+                                        let yAxis = chart.scales.y;
+                                        let ctx = chart.ctx;
+                                        ctx.save();
+                                        ctx.beginPath();
+                                        ctx.moveTo(x, yAxis.top);
+                                        ctx.lineTo(x, yAxis.bottom);
+                                        ctx.lineWidth = 1;
+                                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                                        ctx.stroke();
+                                        ctx.restore();
+                                    }
+                                }
+                            }]
+                        }
+                    });
+
+
+                } catch (err) {
+                    console.error(err);
+                }
+            };
+
+
+
+            
+
+
+
             document.querySelector('#Heatmap_Legend').onclick = () => {
                 document.getElementById('popup').style.display = 'block';
                 renderLegends();
