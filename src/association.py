@@ -102,7 +102,7 @@ class CellAssociator:
 
         'DELIMITER': ['Cartoradio_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng'],
 
-        'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
+        'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat', 'Height'],
 
         'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI'],
 
@@ -134,7 +134,7 @@ class CellAssociator:
 
         'DELIMITER': ['Cartoradio_Number', 'Support_Lat', 'Support_Lng', 'Del_Lat', 'Del_Lng'],
 
-        'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat'],
+        'BS_ANT_DIR': ['Cartoradio_Number', 'Ant_Number', 'Support_Lat', 'Support_Lng', 'Dest_Lng', 'Dest_Lat', 'Height'],
 
         'ASSOC': ['Cartoradio_Number', 'Ant_Number', 'TAC', 'CID', 'EARFCN', 'PCI', 'Score'],
 
@@ -625,7 +625,7 @@ class CellAssociator:
         # Antennas data
         antennas_dict = {
             'Cartoradio_Number': [], 'Ant_Number': [], 'Lat': [], 'Lng': [], 'Dest_Lat': [], 'Dest_Lng': [],
-            'Azimuth': [], 'AzimuthMin': [], 'AzimuthMax': []
+            'Azimuth': [], 'AzimuthMin': [], 'AzimuthMax': [], 'Height': []
         }
 
         version_boolean = False
@@ -654,7 +654,7 @@ class CellAssociator:
                             'Cartoradio_Number': [int(line[2])], 'Ant_Number': [int(line[8])],
                             'Lat': [float(line[3])], 'Lng': [float(line[4])], 'Dest_Lat': [float(line[9])],
                             'Dest_Lng': [float(line[10])], 'Azimuth': [float(line[11])],
-                            'AzimuthMin': [float(line[12])],  'AzimuthMax': [float(line[13])]
+                            'AzimuthMin': [float(line[12])],  'AzimuthMax': [float(line[13])], 'Height': [float(line[5])]
                         },
                         1
                     )
@@ -666,6 +666,7 @@ class CellAssociator:
                 line = sites.read_line()
 
             # Creating antennas information dataframe.
+            
             self._antennas = pd.DataFrame(antennas_dict)
 
     def _associate_read(self, assoc_file: str):
@@ -1306,11 +1307,12 @@ class CellAssociator:
         """
         # BS_ANT_DIR
         ants = self._antennas.groupby(['Ant_Number'])
+        print(self._antennas)
         for a in ants.groups.keys():
             ant = ants.get_group((a,)).to_dict('list')
             out_wr.write_row([
                 'BS_ANT_DIR', ant['Cartoradio_Number'][0], ant['Ant_Number'][0], ant['Lat'][0],
-                ant['Lng'][0], ant['Dest_Lat'][0], ant['Dest_Lng'][0]
+                ant['Lng'][0], ant['Dest_Lat'][0], ant['Dest_Lng'][0], ant['Height'][0]
             ])
         # ASSOC
         A = self._assocs
@@ -1327,7 +1329,7 @@ class CellAssociator:
                 continue
             out_wr.write_row([
                 'ASSOC', A['Cartoradio_Number'][i], A['Ant_Number'][i], A['TAC'][i],
-                A['CID'][i], A['EARFCN'][i], A['PCI'][i], A['Score'][i]
+                A['CID'][i], A['EARFCN'][i], A['PCI'][i], A['Score'][i], 28
             ])
         # MEASURE_SERVING
         P = self._measure_point.to_dict('list')

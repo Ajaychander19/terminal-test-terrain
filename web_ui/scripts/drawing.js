@@ -336,14 +336,17 @@ const drawing = {
          * @param {Array} pcis Selected PCIs (optional).
          * @param {*} beams Beam data (optional).
          * @param {boolean} check_box Whether to show checkboxes (true/false).
+         * @param {boolean} profil Whether to show ant to select for altimetric profil (true/false).
+
          */
-        drawAssocs(antdirs, assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns = null, pcis = null, beams = null, check_box = true, tech) {
+        drawAssocs(antdirs, assocs, antennas, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns = null, pcis = null, beams = null, check_box = true,profil = false, tech, appInstance = null) {
             this._assocLayer.clearLayers();
 
             for (let cartoNum in assocs) {
                 let assocList = assocs[cartoNum];  
                 let ant = antennas[cartoNum];      
-                let antdirList = antdirs.filter(dir => dir.cartoNum === +cartoNum);  
+                let antdirList = antdirs.filter(dir => dir.cartoNum === +cartoNum); 
+                console.log("antdirList: ",antdirList) 
 
                 let azimuthData = [];
 
@@ -367,16 +370,34 @@ const drawing = {
                 let marker = L.marker([ant.lat, ant.lng], {
                     icon: styles.stationIcon()
                 });
-
                 
-                let popupContent = check_box
-                    ? this.drawAssocPopup(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams, tech)
-                    : this.drawAssocPopupWithoutCheckbox(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams, tech);
+                let popupContent;
+                if (check_box && !profil){
+                    popupContent=this.drawAssocPopup(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams, tech)
+                }
+                else if(!check_box && !profil){
+                    popupContent=this.drawAssocPopupWithoutCheckbox(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams, tech);
+                }
+                else if(profil){
+                    popupContent=this.drawAssocPopupWithHeightRadio(azimuthData, ant, cartoNum, assocList, checkEarfcns, checkPcis, checkBeams, updateMethod, earfcns, pcis, beams, tech, antdirList, appInstance);
 
+                }
                 marker.bindPopup(popupContent, {
                     closeOnClick: true,
                     autoClose: true
                 });
+                
+                // Gestion de la fermeture du popup pour réinitialiser les données d'antenne
+                if (profil && appInstance) {
+                    marker.on('popupclose', () => {
+                        // Réinitialiser les données d'antenne
+                        appInstance._antennaData = null;
+                        // Réinitialiser les checkboxes
+                        checkEarfcns.length = 0;
+                        checkPcis.length = 0;
+                        console.log('Popup fermé, données réinitialisées');
+                    });
+                }
 
                 marker.addTo(this._assocLayer);
             }
@@ -412,7 +433,7 @@ const drawing = {
             beams = null,
             tech
         ) {
-
+            console.log("ant: ",ant)
             let popDiv = document.createElement('div');
 
             popDiv.innerHTML = `
@@ -740,6 +761,200 @@ const drawing = {
 
             return popDiv;
             }
+        /**
+/**
+ * Version 3 de la popup utilisant des boutons de sélection (Radio Buttons)
+ * Cette version affiche EARFCN, PCI, Azimuth et Height (au lieu de Beams).
+ */
+        drawAssocPopupWithHeightRadio(
+            azimuthData,
+            ant,
+            cartoNum,
+            assocList,
+            checkEarfcns,
+            checkPcis,
+            checkBeams,
+            updateMethod,
+            earfcns = null,
+            pcis = null,
+            beams = null,
+            tech,
+            antdirList, // Ajout de antdirList pour récupérer la hauteur
+            appInstance = null // Instance de l'application pour transmettre les données
+        ) {
+            let popDiv = document.createElement('div');
+
+            popDiv.innerHTML = `
+                <div class="tooltip-header" style="margin-bottom:8px;">
+                <strong>Site Number:</strong> 
+                <a href="https://www.cartoradio.fr/#/cartographie/all/lonlat/${ant.lng}/${ant.lat}" target="_blank" rel="noopener">
+                    ${cartoNum}
+                </a>
+                <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ant.lat},${ant.lng}" target="_blank" rel="noopener">
+                    <img src="./img/pngegg.png" alt="Street View" width="32" height="32">
+                </a>
+                </div>`;
+
+            let checkDiv = document.createElement('table');
+            checkDiv.classList.add('check-table');
+            checkDiv.style.width = '100%';
+            checkDiv.style.borderCollapse = 'collapse';
+
+            let thead = document.createElement('thead');
+            let headerRow = document.createElement('tr');
+            // Colonnes : Radio, EARFCN, PCI, Azimuth, Height
+            ['', 'EARFCN', 'PCI', 'Azimuth (°)', 'Height (m)'].forEach(text => {
+                let th = document.createElement('th');
+                th.textContent = text;
+                th.style.textAlign = 'left';
+                th.style.padding = '4px 8px';
+                th.style.borderBottom = '1px solid #ccc';
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            checkDiv.appendChild(thead);
+
+            let tbody = document.createElement('tbody');
+
+            let ascEarfcns = assocList.map(asc => asc.earfcn);
+            let ascPcis = assocList.map(asc => asc.pci);
+
+            let earpcis = utils.subEarpci(ascEarfcns, ascPcis, beams, earfcns, pcis);
+
+            let groupedByPci = {};
+            for (let i = 0; i < earpcis.earfcns.length; i++) {
+                let pci = earpcis.pcis[i];
+                let earfcn = earpcis.earfcns[i];
+                let freq = Math.round(utils.tofreq(earfcn, tech));
+
+                if (!groupedByPci[pci]) groupedByPci[pci] = [];
+                groupedByPci[pci].push({ earfcn, freq });
+            }
+
+            let sortedPcis = Object.keys(groupedByPci).map(Number).sort((a, b) => a - b);
+
+            for (let idx = 0; idx < sortedPcis.length; idx++) {
+                let pci = sortedPcis[idx];
+                let entries = groupedByPci[pci];
+                entries.sort((a, b) => b.freq - a.freq);
+
+                // Récupération de l'azimuth et de la hauteur
+                let azimuth = '-';
+                let height = '-';
+                
+                if (Array.isArray(azimuthData)) {
+                    let match = azimuthData.find(row => row[1] === pci);
+                    if (match) {
+                        let antNum = match[0];
+                        let latA = match[2];
+                        let lngA = match[3];
+                        let latB = match[4];
+                        let lngB = match[5];
+                        let azimuthAngle = utils.calculateAzimuth(latA, lngA, latB, lngB);
+                        azimuth = `${Math.round(azimuthAngle)}° (${utils.getCardinalDirection(azimuthAngle)})`;
+                        
+                        // Recherche de la hauteur dans antdirList via antNum
+                        if (antdirList) {
+                            let dirMatch = antdirList.find(dir => dir.antNum === antNum);
+                            if (dirMatch) {
+                                height = dirMatch.height;
+                            }
+                        }
+                    }
+                }
+
+                for (let { earfcn, freq } of entries) {
+                    let row = document.createElement('tr');
+                    row.setAttribute('data-earfcn', earfcn);
+                    row.setAttribute('data-pci', pci);
+                    row.setAttribute('data-azimuth', azimuth);
+                    row.setAttribute('data-height', height);
+
+                    // Cellule Radio
+                    let radioCell = document.createElement('td');
+                    radioCell.style.padding = '4px 8px';
+                    radioCell.style.verticalAlign = 'middle';
+
+                    let radioButton = document.createElement('input');
+                    radioButton.setAttribute('type', 'radio');
+                    radioButton.setAttribute('name', 'site-selection-' + cartoNum);
+                    
+                    if (utils.indexOfEarpci(checkEarfcns, checkPcis, earfcn, pci) !== -1) {
+                        radioButton.checked = true;
+                    }
+
+                    radioButton.onclick = (evt) => {
+                        if (evt.target.checked) {
+                            checkEarfcns.length = 0; 
+                            checkPcis.length = 0;
+                            checkEarfcns.push(earfcn);
+                            checkPcis.push(pci);
+                            
+                            // On garde la logique de beams par défaut même si non affiché
+                            if (!checkBeams[pci]) {
+                                checkBeams[pci] = ["all"];
+                            }
+                            
+                            // Récupérer toutes les données de la ligne
+                            const row = evt.target.closest('tr');
+                            const heightValue = row.getAttribute('data-height');
+                            const azimuthValue = row.getAttribute('data-azimuth');
+                            
+                            console.log('Hauteur sélectionnée =', heightValue);
+                            console.log('Azimuth =', azimuthValue);
+                            
+                            // Transmettre les données à l'instance app si disponible
+                            if (appInstance && appInstance.setAntennaData) {
+                                const antennaData = {
+                                    lng: ant.lng,
+                                    lat: ant.lat,
+                                    height: heightValue,
+                                    earfcn: earfcn,
+                                    pci: pci,
+                                    azimuth: azimuthValue,
+                                    cartoNum: cartoNum
+                                };
+                                appInstance.setAntennaData(antennaData);
+                            }
+                        }
+                        updateMethod();
+                    };
+
+                    radioCell.appendChild(radioButton);
+
+                    // Cellule EARFCN
+                    let earfcnCell = document.createElement('td');
+                    earfcnCell.style.padding = '4px 8px';
+                    earfcnCell.style.verticalAlign = 'middle';
+                    earfcnCell.textContent = `${earfcn} (${freq} MHz)`;
+
+                    // Cellule PCI
+                    let pciCell = document.createElement('td');
+                    pciCell.style.padding = '4px 8px';
+                    pciCell.style.verticalAlign = 'middle';
+                    pciCell.textContent = pci;
+
+                    // Cellule Azimuth
+                    let azimuthCell = document.createElement('td');
+                    azimuthCell.style.padding = '4px 8px';
+                    azimuthCell.style.verticalAlign = 'middle';
+                    azimuthCell.textContent = azimuth;
+
+                    // Cellule Height
+                    let heightCell = document.createElement('td');
+                    heightCell.style.padding = '4px 8px';
+                    heightCell.style.verticalAlign = 'middle';
+                    heightCell.textContent = height;
+
+                    row.append(radioCell, earfcnCell, pciCell, azimuthCell, heightCell);
+                    tbody.appendChild(row);
+                }
+            }
+
+            checkDiv.appendChild(tbody);
+            popDiv.appendChild(checkDiv);
+            return popDiv;
+        }
 
 
 

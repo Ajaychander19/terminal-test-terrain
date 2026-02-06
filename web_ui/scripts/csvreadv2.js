@@ -257,7 +257,8 @@ var csvreadv2 = {
                     latA: +line['Support_Lat'],
                     lngA: +line['Support_Lng'],
                     latB: +line['Dest_Lng'], 
-                    lngB: +line['Dest_Lat']  
+                    lngB: +line['Dest_Lat'],
+                    height: +line['Height']  
                 };
 
                 this._antDirs.push(antVect);

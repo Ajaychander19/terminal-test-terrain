@@ -29,7 +29,7 @@ const app = {
         _checkBeams = [];           // Selected Beams for each PCI
 
         _allSites = true;           // true if "All Sites" is selected in Sites.
-
+        _profil = false; 
         _altCol = 1;                // Alternate PCI color value.
 
         // Corresponds to layer checkboxes states, true if the checkbox is checked.
@@ -42,6 +42,7 @@ const app = {
         _chartInstance = null; // chart instance 
         _inprocessing=false;
         _pointProfil = [];    // tableau final : [lng1, lat1, lng2, lat2]
+        _antennaData = null;  // Données de l'antenne sélectionnée : {lng, lat, height, earfcn, pci, azimuth}
 
         /**
          * Application class constructor.
@@ -158,7 +159,9 @@ const app = {
                     this._pointProfil.push(e.latlng.lat); // lat1
 
                     this.marker1 = this.createPointMarker(e.latlng, 1);
-
+                    this._profil = true;
+                    this.updateAssocs()
+                    console.log("profil:",this._profil);
                     console.log("Point 1 capté :", this._pointProfil);
                     return;
                 }
@@ -183,6 +186,8 @@ const app = {
                             dashArray: "6,6"
                         }
                     ).addTo(this._map);
+                    this._profil = false;
+                    this.updateAssocs();
 
                     console.log("Point 2 capté :", this._pointProfil);
                     profilBtn.disabled = false;
@@ -192,8 +197,10 @@ const app = {
 
                 // 3) Si déjà 2 points → reset auto
                 if (this._pointProfil.length === 4) {
+                    
                     profilBtn.disabled = true;
                     this._pointProfil = [];
+                    this._antennaData = null;
                     if (this.marker1) this._map.removeLayer(this.marker1);
                     if (this.marker2) this._map.removeLayer(this.marker2);
                     if (this.profilLine) this._map.removeLayer(this.profilLine);
@@ -201,6 +208,8 @@ const app = {
                     this.marker1 = null;
                     this.marker2 = null;
                     this.profilLine = null;
+                    this._profil = false;
+                    this.updateAssocs();
 
                     console.log("Réinitialisation → Cliquez pour nouveau point 1");
                 }
@@ -230,6 +239,13 @@ const app = {
             let checkEarfcns = this._checkEarfcns;      // EARFCNs selected with checkboxes.
             let checkPcis = this._checkPcis;            // PCIs selected with sites checkboxes.
             let checkBeams = this._checkBeams;
+
+            console.log("selEarfcns:", selEarfcns);
+            console.log("selPcis:", selPcis);
+            console.log("checkEarfcns:", checkEarfcns);
+            console.log("checkPcis:", checkPcis);
+            console.log("checkBeams:", checkBeams);
+
 
             // Extremums
             const RSRP_MIN = -120;
@@ -327,6 +343,51 @@ const app = {
         }
 
         /**
+         * Définit les données de l'antenne sélectionnée depuis le popup.
+         * 
+         * @param {object} antennaData - Objet contenant {lng, lat, height, earfcn, pci, azimuth}
+         * @function
+         */
+        setAntennaData(antennaData) {
+            this._antennaData = antennaData;
+            console.log("Données d'antenne reçues dans app.js:", this._antennaData);
+            
+            // Si on a déjà un premier point, on peut activer le bouton profil
+            if (this._pointProfil.length === 2 && this._antennaData) {
+                const profilBtn = document.getElementById("profil_milti");
+                profilBtn.disabled = false;
+                
+                // Créer le marker 2 pour l'antenne
+                if (this.marker2) this._map.removeLayer(this.marker2);
+                this.marker2 = this.createPointMarker(
+                    {lat: antennaData.lat, lng: antennaData.lng}, 
+                    2
+                );
+                
+                // Créer la ligne entre le point 1 et l'antenne
+                if (this.profilLine) this._map.removeLayer(this.profilLine);
+                this.profilLine = L.polyline(
+                    [
+                        [this._pointProfil[1], this._pointProfil[0]],
+                        [antennaData.lat, antennaData.lng]
+                    ],
+                    {
+                        color: "#FF5722",
+                        weight: 4,
+                        opacity: 0.9,
+                        dashArray: "6,6"
+                    }
+                ).addTo(this._map);
+                
+                // Mettre à jour _pointProfil avec les coordonnées de l'antenne
+                this._pointProfil[2] = antennaData.lng;
+                this._pointProfil[3] = antennaData.lat;
+                
+                console.log("Profil prêt avec antenne:", this._pointProfil);
+            }
+        }
+
+        /**
          * Update sites pins and their checkboxes, following selected EARFCNs and PCIs.
          * 
          * @function
@@ -336,9 +397,11 @@ const app = {
             let earpcis = utils.subEarpci(this._fileReader.earfcns,this._fileReader.pcis, this._fileReader._beams, this._selEarfcns, this._selPcis);
             let frequency=utils.earfcnToFreqLte(5225);
             // Redrawing associated stations pins.
+            console.log("test: ",this._fileReader.antennaDirections);
+            console.log("profil:",this._profil);
             this._drawingMap.drawAssocs(
                 this._fileReader.antennaDirections, this._fileReader.assocs, this._fileReader.antennas, this._checkEarfcns, this._checkPcis, this._checkBeams,
-                () => this.update(), earpcis.earfcns, earpcis.pcis, earpcis.beams,!this._allSites, this._technology);
+                () => this.update(), earpcis.earfcns, earpcis.pcis, earpcis.beams,!this._allSites,this._profil, this._technology, this);
             this._withCheckBox=!this._withCheckBox;
             
 
@@ -487,8 +550,19 @@ const app = {
                         const dy = points[i][1] - points[i-1][1];
                         distances.push(distances[i-1] + Math.sqrt(dx*dx + dy*dy) * 111000);
                     }
+                    
+                    // Gestion de l'altitude de départ et d'arrivée (avec hauteur d'antenne si applicable)
                     const startAltitude = altitudes[0];
-                    const endAltitude = altitudes[altitudes.length - 1];
+                    let endAltitude = altitudes[altitudes.length - 1];
+                    
+                    // Si une antenne est sélectionnée, ajouter sa hauteur à l'altitude finale
+                    if (this._antennaData && this._antennaData.height && this._antennaData.height !== '-') {
+                        const antennaHeight = parseFloat(this._antennaData.height);
+                        if (!isNaN(antennaHeight)) {
+                            endAltitude += antennaHeight;
+                            console.log(`Hauteur d'antenne ajoutée: ${antennaHeight}m, altitude finale: ${endAltitude}m`);
+                        }
+                    }
 
                     // Afficher le modal
                     profilModal.style.display = 'block';
