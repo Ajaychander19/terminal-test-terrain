@@ -652,20 +652,27 @@ class XcalConverter:
 
                 new_line = read_line(aof)
 
-                if first == 'GPS' or new_line == ['']:
+                if first == 'GPS' or first == 'AndroidSystemInfo' or first == 'AndroidSystemInfo Ver3' or new_line == ['']:
 
                     # Current geolocation.
                     if first == 'GPS':
                         curr_pos = (float(line[3]), float(line[2]))
+                    elif first == 'AndroidSystemInfo' or first == 'AndroidSystemInfo Ver3':
+                        # Latitude is at index 5, Longitude at index 6
+                        try:
+                            curr_pos = (float(line[5]), float(line[6]))
+                        except (ValueError, IndexError):
+                            curr_pos = last_pos
+                    else:
+                        curr_pos = last_pos
 
+                    if first in ['GPS', 'AndroidSystemInfo', 'AndroidSystemInfo Ver3']:
                         # If the GPS message is the first, completing the last geolocation with it.
                         if last_gps_ind == -1:
                             last_pos = curr_pos
                             last_tstamp = tstamp
                         else:
                             last_tstamp = self._data_dict['timestamp'][last_gps_ind]
-                    else:
-                        curr_pos = last_pos
 
                     estimator = generate_estimator(last_pos, curr_pos, last_tstamp, tstamp)
 
