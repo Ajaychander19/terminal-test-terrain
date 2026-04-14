@@ -348,7 +348,7 @@ class XcalConverter:
                             if l_len < 2:
                                 syntax_error(line_num, "2 columns minimum expected, {} found.".format(l_len))
 
-                        if first == 'QCLTE_RRCMSG_V2' or first == 'QCLTE_RRCMSG':
+                        if first == 'QCLTE_RRCMSG' or first == 'QCLTE_RRCMSG_V2':
 
                             is_v2 = first == 'QCLTE_RRCMSG_V2'
 
@@ -356,6 +356,8 @@ class XcalConverter:
                             if l_len < 13:
                                 syntax_error(line_num, "13 columns expected, {} found.".format(l_len))
 
+                            # Correction for XCAL5: QCLTE_RRCMSG_V2 has Channel Type at index 6
+                            # QCLTE_RRCMSG has Channel Type at index 5
                             msg_type = line[6 if is_v2 else 5]  # Message type.
                             payload = line[12 if is_v2 else 11]  # Message payload.
 
@@ -373,7 +375,8 @@ class XcalConverter:
                                 syntax_error(line_num, "7 columns expected for LTE NAS messages, {} found.".format(l_len))
 
                             msg_type = 'NAS EPS'  # Message type.
-                            payload = line[6]  # Message payload.
+                            # Correction for XCAL5: payload is at the last index
+                            payload = line[l_len - 1].strip()  # Message payload.
 
                             # Check if the message type is valid.
                             if msg_type not in self._files.keys():
