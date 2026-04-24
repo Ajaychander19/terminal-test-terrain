@@ -303,7 +303,7 @@ const app = {
          */
         updateDisplay() {
 
-            if (true) {
+            if (this._onServing) {
 
                 // Displaying serving measurement layers.
                 console.log("i am onserving");
