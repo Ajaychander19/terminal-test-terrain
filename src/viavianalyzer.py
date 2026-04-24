@@ -282,10 +282,11 @@ class Viavilyzer:
                 'Timestamp', 'Lat', 'Lng', 'Serving_EARFCN', 'Serving_PCI', 'Serving_BEAM',
                 'Serving_RSRP', 'Serving_RSRQ', 'Serving_RSSI', 'Serving_CINR'
             ],
-            'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name', 'Values']
+            'MEASUREMENT': ['Timestamp', 'Lat', 'Lng', 'Measurement_Name']
         }
 
         # add column names for each tuples (EARFCN, PCI, BEAM)
+        csv_header['MEASUREMENT'] = csv_header['MEASUREMENT'] + ['Meas_{}'.format(i) for i in range(n)]
         csv_header['MEAS_EARFCNS'] = csv_header['MEAS_EARFCNS'] + ['EARFCN_{}'.format(i) for i in range(n)]
         csv_header['MEAS_PCIS'] = csv_header['MEAS_PCIS'] + ['PCI_{}'.format(i) for i in range(n)]
         csv_header['MEAS_BEAMS'] = csv_header['MEAS_BEAMS'] + ['BEAM_{}'.format(i) for i in range(n)]
