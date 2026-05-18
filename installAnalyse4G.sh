@@ -30,7 +30,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 
   echo "4) Installing required Python libraries..."
   pip install --upgrade pip
-  pip install pandas shapely scipy Pillow
+  pip install pandas shapely scipy Pillow customtkinter
 
   deactivate
 
