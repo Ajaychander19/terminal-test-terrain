@@ -48,8 +48,7 @@ def getLeaflet(name):
     Returns:
         The file's absolute path.
     """
-    return os.path.abspath(os.path.join(os.path.abspath(name), os.path.pardir, os.path.pardir, 'web_ui', name))
-#    return os.path.abspath("..\\..\\leaflet\\" + name)
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'web_ui', name))
 
 # this function gets the path of wireshark application
 # input: name of the application

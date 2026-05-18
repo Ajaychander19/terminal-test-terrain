@@ -244,8 +244,12 @@ class ModernGUI(ctk.CTk if ctk else tk.Tk):
                     messagebox.showerror("Error", "Three files expected.")
 
             elif number == 7:  # Visualization
-                url = "file://" + getLeaflet('index.html')
-                webbrowser.open_new_tab(url)
+                from pathlib import Path
+                path = Path(getLeaflet('index.html'))
+                if path.exists():
+                    webbrowser.open_new_tab(path.as_uri())
+                else:
+                    messagebox.showerror("Error", f"Visualization page not found at:\n{path}")
 
             elif number == 8:  # COMET
                 file_path = filedialog.askopenfilename(initialdir=self.working_directory, title='Choose COMET file',
