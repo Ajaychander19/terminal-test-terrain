@@ -277,7 +277,15 @@ def _read_assoc_file(path, require_version=True, min_version=3.0):
     boolean_bs_ant_header = 0 # Counter to ignore bs_ant_dir header
 
 
-    with open(path, newline='', encoding='utf-8') as f:
+    # Detect encoding: try utf-8 first, fallback to latin-1
+    try:
+        with open(path, 'r', encoding='utf-8') as test_file:
+            test_file.read(4096)
+        encoding = 'utf-8'
+    except UnicodeDecodeError:
+        encoding = 'latin-1'
+
+    with open(path, newline='', encoding=encoding, errors='ignore') as f:
         for raw in f:
             line = raw.strip() # Remove whitespace
             if not line:

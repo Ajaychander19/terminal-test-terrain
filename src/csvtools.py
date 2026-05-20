@@ -174,8 +174,15 @@ class CSVReader:
         self._header = {}
 
     def open_file(self):
+        # Detect encoding: try utf-8 first, fallback to latin-1
+        try:
+            with open(self._fname, 'r', encoding='utf-8') as test_file:
+                test_file.read(4096)
+            encoding = 'utf-8'
+        except UnicodeDecodeError:
+            encoding = 'latin-1'
 
-        with open(self._fname) as file:
+        with open(self._fname, encoding=encoding, errors='ignore') as file:
             state = 0
 
             line = file.readline().split('|')
@@ -257,7 +264,7 @@ class CSVReader:
                 llen = len(line)
                 first = line[0]
 
-        self._file = open(self._fname)
+        self._file = open(self._fname, encoding=encoding, errors='ignore')
 
         first = self._file.readline().split('|')[0]
         while first != 'CONTENT\n':
